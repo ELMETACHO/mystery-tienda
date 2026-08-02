@@ -1,0 +1,11 @@
+
+> mystery-tienda@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.12 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.2.8:3000
+- Environments: .env.local
+✓ Ready in 663ms
+
+ GET /checkout 200 in 360ms (next.js: 202ms, application-code: 158ms)
