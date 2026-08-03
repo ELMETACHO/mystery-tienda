@@ -31,6 +31,7 @@ const PHONE_PREFIXES = [
 export default function CheckoutPage() {
   const router = useRouter();
   const [order, setOrder] = useState(null);
+  const [isLoadingOrder, setIsLoadingOrder] = useState(true);
   const [customer, setCustomer] = useState(emptyCustomer);
   const [isWidgetReady, setIsWidgetReady] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
@@ -38,15 +39,32 @@ export default function CheckoutPage() {
   const widgetRef = useRef(null);
 
   useEffect(() => {
-    const stored = loadOrder();
-    if (!stored || !stored.croppedImage) {
-      router.replace("/crear");
-      return;
-    }
-    setOrder(stored);
+    let cancelled = false;
+
+    (async () => {
+      const stored = await loadOrder();
+      if (cancelled) return;
+
+      if (!stored || !stored.croppedImage) {
+        router.replace("/crear");
+        return;
+      }
+      setOrder(stored);
+      setIsLoadingOrder(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
-  if (!order) return null;
+  if (isLoadingOrder || !order) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-6 py-16">
+        <p className="text-zinc-400">Cargando tu pedido...</p>
+      </div>
+    );
+  }
 
   const isFormValid =
     customer.fullName.trim() &&
@@ -66,7 +84,7 @@ export default function CheckoutPage() {
     setIsPaying(true);
 
     const fullOrder = { ...order, customer };
-    saveOrder(fullOrder);
+    await saveOrder(fullOrder);
 
     const reference = `mystery-${Date.now()}`;
     const amountInCents = order.priceCOP * 100;
@@ -142,7 +160,7 @@ export default function CheckoutPage() {
       }
 
       setIsPaying(false);
-      saveOrder({
+      await saveOrder({
         ...fullOrder,
         payment: {
           reference: confirmation.reference,

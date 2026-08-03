@@ -3,7 +3,11 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Cropper from "react-easy-crop";
-import { getCroppedImage, pdfFirstPageToImage } from "./cropImage";
+import {
+  getCroppedImage,
+  getDefaultCropArea,
+  pdfFirstPageToImage,
+} from "./cropImage";
 import { SIZES, saveOrder } from "../lib/order";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
@@ -64,6 +68,7 @@ export default function CrearPage() {
       setImageDimensions(dimensions);
       setCrop({ x: 0, y: 0 });
       setZoom(1);
+      setCroppedAreaPixels(null);
     } catch (err) {
       console.error(err);
       setError("No se pudo procesar el archivo. Intenta con otro.");
@@ -86,14 +91,22 @@ export default function CrearPage() {
   }, []);
 
   const handleContinue = async () => {
-    if (!imageSrc || !croppedAreaPixels) return;
-    const croppedImage = await getCroppedImage(imageSrc, croppedAreaPixels);
+    console.log("Click en Continuar - imageSrc:", imageSrc, "croppedAreaPixels:", croppedAreaPixels);
+    if (!imageSrc) return;
+
+    // Si el usuario nunca interactuó con el zoom/arrastre, react-easy-crop
+    // no habrá emitido croppedAreaPixels todavía: lo calculamos aquí mismo
+    // como respaldo para que "Continuar" siempre tenga un valor válido.
+    const finalCrop =
+      croppedAreaPixels || getDefaultCropArea(imageDimensions, selectedSize.ratio);
+
+    const croppedImage = await getCroppedImage(imageSrc, finalCrop);
     console.log("Tamaño elegido:", selectedSize.label);
     console.log("Resolución original:", imageDimensions);
     console.log("Resolución baja para este tamaño:", isLowResolution);
     console.log("Imagen recortada (dataURL):", croppedImage);
 
-    saveOrder({
+    await saveOrder({
       sizeId: selectedSize.id,
       sizeLabel: selectedSize.label,
       priceCOP: selectedSize.priceCOP,

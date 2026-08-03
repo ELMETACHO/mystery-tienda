@@ -1,3 +1,19 @@
+// Recorte centrado que cubre el aspecto del marco, usado como respaldo cuando
+// react-easy-crop todavía no emitió un croppedAreaPixels (p. ej. si el usuario
+// nunca interactuó con el tamaño por defecto antes de continuar).
+export function getDefaultCropArea({ width, height }, aspect) {
+  const imageAspect = width / height;
+  const cropWidth = imageAspect > aspect ? height * aspect : width;
+  const cropHeight = imageAspect > aspect ? height : width / aspect;
+
+  return {
+    x: (width - cropWidth) / 2,
+    y: (height - cropHeight) / 2,
+    width: cropWidth,
+    height: cropHeight,
+  };
+}
+
 // Genera la imagen recortada final a partir del área seleccionada en react-easy-crop.
 export function getCroppedImage(imageSrc, croppedAreaPixels) {
   return new Promise((resolve, reject) => {

@@ -8,8 +8,14 @@ export default function ConfirmacionPage() {
   const [reference, setReference] = useState(null);
 
   useEffect(() => {
-    const order = loadOrder();
-    setReference(order?.payment?.reference ?? null);
+    let cancelled = false;
+    (async () => {
+      const order = await loadOrder();
+      if (!cancelled) setReference(order?.payment?.reference ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

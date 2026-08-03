@@ -35,16 +35,17 @@ export function formatCOP(amount) {
   }).format(amount);
 }
 
-export function saveOrder(order) {
-  sessionStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(order));
+// El pedido completo (incluida la imagen final en base64, que puede pesar
+// varios MB) se guarda en IndexedDB vía idb-keyval en lugar de sessionStorage:
+// sessionStorage tiene un límite de ~5-10MB por origen y lanza
+// QuotaExceededError con fotos de buena resolución.
+export async function saveOrder(order) {
+  const { set } = await import("idb-keyval");
+  await set(ORDER_STORAGE_KEY, order);
 }
 
-export function loadOrder() {
-  const raw = sessionStorage.getItem(ORDER_STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+export async function loadOrder() {
+  const { get } = await import("idb-keyval");
+  const order = await get(ORDER_STORAGE_KEY);
+  return order ?? null;
 }
