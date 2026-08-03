@@ -1,3 +1,7 @@
+// packageCm/weightKg: dimensiones de envío reales (caja con el cuadro
+// sobre madera, marco trasero de ~3cm incluido) y peso — punto medio del
+// rango confirmado por el negocio. Usados para cotizar/crear guías con
+// Skydropx (ver app/lib/skydropx.js).
 export const SIZES = [
   {
     id: "30x40",
@@ -6,6 +10,8 @@ export const SIZES = [
     minWidth: 1200,
     minHeight: 1600,
     priceCOP: 80000,
+    packageCm: { length: 35, width: 45, height: 5 },
+    weightKg: 1.0,
   },
   {
     id: "40x50",
@@ -14,6 +20,8 @@ export const SIZES = [
     minWidth: 1600,
     minHeight: 2000,
     priceCOP: 110000,
+    packageCm: { length: 45, width: 55, height: 5 },
+    weightKg: 1.5,
   },
   {
     id: "50x70",
@@ -22,10 +30,17 @@ export const SIZES = [
     minWidth: 2000,
     minHeight: 2800,
     priceCOP: 150000,
+    packageCm: { length: 55, width: 75, height: 5 },
+    weightKg: 2.15,
   },
 ];
 
 export const ORDER_STORAGE_KEY = "mystery:pedido";
+
+// Anticipo fijo para "Pago contraentrega": cubre costos de producción por
+// adelantado vía Wompi; el resto (priceCOP - COD_DEPOSIT_COP) se paga en
+// efectivo al recibir el cuadro.
+export const COD_DEPOSIT_COP = 20000;
 
 export function formatCOP(amount) {
   return new Intl.NumberFormat("es-CO", {

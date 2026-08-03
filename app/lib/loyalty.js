@@ -37,7 +37,13 @@ function orderHistoryKey(email) {
 // agregar el nuevo). Nunca lanza: si Redis no está disponible o falla,
 // retorna isReturningCustomer: false para no bloquear la confirmación del
 // pago.
-export async function recordOrderAndCheckReturning({ email, reference, amountCOP }) {
+export async function recordOrderAndCheckReturning({
+  email,
+  reference,
+  amountCOP,
+  trackingNumber,
+  carrierName,
+}) {
   const client = getRedisClient();
   if (!client) {
     console.error(
@@ -55,6 +61,10 @@ export async function recordOrderAndCheckReturning({ email, reference, amountCOP
       reference,
       date: new Date().toISOString(),
       amountCOP,
+      // Solo presentes en pedidos contraentrega con guía generada por
+      // Skydropx; undefined se omite naturalmente al serializar a JSON.
+      trackingNumber,
+      carrierName,
     });
     await client.rpush(key, record);
 

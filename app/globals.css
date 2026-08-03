@@ -89,3 +89,20 @@ input[type="range"]::-moz-range-thumb {
 .animate-ready-in {
   animation: ready-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* Botones de pago en /checkout: "respiración" muy sutil para que se
+   sientan vivos sin ser una alerta parpadeante — scale casi imperceptible,
+   ida y vuelta lenta con ease-in-out. */
+@keyframes pay-button-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.025);
+  }
+}
+
+.animate-pay-breathe {
+  animation: pay-button-breathe 2.6s ease-in-out infinite;
+}

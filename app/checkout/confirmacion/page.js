@@ -13,11 +13,22 @@ const CONFETTI_COLORS = ["#a855f7", "#c084fc", "#ffffff", "#f5d576"];
 // placeholder hasta que se defina el usuario/link oficial de Mystery.
 const INSTAGRAM_URL = "#";
 
-const TIMELINE = [
-  { label: "Pago confirmado", detail: "Ya recibimos tu pago" },
-  { label: "En producción", detail: "3-5 días hábiles" },
-  { label: "En camino a tu casa", detail: "Según tiempo de envío" },
-];
+function getTimeline(order) {
+  const isCod = order?.metodo_pago === "contraentrega";
+  return [
+    {
+      label: isCod ? "Anticipo confirmado" : "Pago confirmado",
+      detail: isCod ? "Ya recibimos tu anticipo" : "Ya recibimos tu pago",
+    },
+    { label: "En producción", detail: "3-5 días hábiles" },
+    {
+      label: "En camino a tu casa",
+      detail: isCod
+        ? "Pagas el saldo al recibir tu cuadro"
+        : "Según tiempo de envío",
+    },
+  ];
+}
 
 function shippingAddress(customer) {
   if (!customer) return "";
@@ -223,6 +234,23 @@ export default function ConfirmacionPage() {
                 </div>
               </div>
 
+              {order.metodo_pago === "contraentrega" && (
+                <div className="flex flex-col gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-300">Anticipo pagado</span>
+                    <span className="font-semibold text-emerald-300">
+                      {formatCOP(order.anticipo_pagado)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-300">Saldo al recibir tu cuadro</span>
+                    <span className="font-semibold text-white">
+                      {formatCOP(order.saldo_pendiente)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-col gap-2 border-t border-white/10 pt-3 text-sm">
                 {order.payment?.reference && (
                   <div className="flex items-start justify-between gap-3">
@@ -291,9 +319,9 @@ export default function ConfirmacionPage() {
                 Próximos pasos
               </h2>
               <ol className="flex flex-col gap-0">
-                {TIMELINE.map((step, i) => {
+                {getTimeline(order).map((step, i, timeline) => {
                   const isDone = i === 0;
-                  const isLast = i === TIMELINE.length - 1;
+                  const isLast = i === timeline.length - 1;
                   return (
                     <li key={step.label} className="flex gap-3">
                       <div className="flex flex-col items-center">

@@ -550,7 +550,7 @@ export default function CrearPage() {
                 Más de 1.000 hogares ya tienen un Mystery
               </p>
               <div
-                className="group relative w-full max-w-md overflow-hidden rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+                className="group relative w-full max-w-[200px] overflow-hidden rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] sm:max-w-md"
                 style={{ aspectRatio: EXAMPLE_MOCKUP.ratio }}
               >
                 {/* Mockup ya diseñado (cuadro + pared en una sola imagen),
@@ -600,7 +600,7 @@ export default function CrearPage() {
           {/* LIENZO — columna izquierda (~65%) */}
           <div className="flex flex-col items-center gap-3">
             <div
-              className="relative w-full max-w-xl overflow-hidden rounded-2xl"
+              className="relative w-full max-w-[240px] overflow-hidden rounded-2xl sm:max-w-xl"
               style={{ aspectRatio: EDIT_BACKGROUND.ratio }}
             >
               {/* Fondo de ambiente: repisa de madera con pared vacía arriba.
@@ -683,59 +683,69 @@ export default function CrearPage() {
               </label>
             </div>
 
-            <div>
-              <h2 className="mb-3 text-sm font-medium text-zinc-300">Ajuste</h2>
-              <div className="flex items-center gap-3">
-                <ZoomOutIcon />
-                <input
-                  type="range"
-                  min={1}
-                  max={3}
-                  step={0.01}
-                  value={zoom}
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                  className="flex-1"
-                />
-                <ZoomInIcon />
+            {/* En móvil, "Ajuste" y "Tamaño" van lado a lado (grid de 2
+                columnas) en vez de apilados: así ambos caben en menos alto
+                y quedan visibles junto al mockup, sin scroll, para ver el
+                efecto de cada cambio de inmediato. En desktop (sm+) vuelven
+                a apilarse como antes, sin cambios de comportamiento. */}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-1 sm:gap-6">
+              <div>
+                <h2 className="mb-3 text-sm font-medium text-zinc-300">Ajuste</h2>
+                <div className="flex items-center gap-3">
+                  <ZoomOutIcon />
+                  <input
+                    type="range"
+                    min={1}
+                    max={3}
+                    step={0.01}
+                    value={zoom}
+                    onChange={(e) => setZoom(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                  <ZoomInIcon />
+                </div>
+                <p className="mt-1.5 text-[11px] text-zinc-500">
+                  Arrastra la imagen para moverla
+                </p>
               </div>
-            </div>
 
-            <div>
-              <h2 className="mb-3 text-sm font-medium text-zinc-300">Tamaño</h2>
-              <div className="flex flex-col gap-2">
-                {SIZES.map((size) => {
-                  const heightCm = Number(size.id.split("x")[1]);
-                  const isSelected = size.id === sizeId;
-                  return (
-                    <button
-                      key={size.id}
-                      type="button"
-                      onClick={() => setSizeId(size.id)}
-                      className={`flex w-full items-center justify-between rounded-xl border px-4 py-3.5 text-left transition-colors sm:py-3 ${
-                        isSelected
-                          ? "border-accent bg-accent/15 shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
-                          : "border-white/10 bg-white/5 hover:border-white/20"
-                      }`}
-                    >
-                      <span className="flex items-center gap-3">
-                        <ScaleSilhouette
-                          heightCm={heightCm}
-                          currentColorClass={isSelected ? "text-accent-soft" : "text-zinc-500"}
-                        />
-                        <span className={`text-sm ${isSelected ? "text-white" : "text-zinc-300"}`}>
-                          {size.label}
-                        </span>
-                      </span>
-                      <span
-                        className={`text-lg font-bold ${
-                          isSelected ? "text-accent-soft" : "text-zinc-400"
+              <div>
+                <h2 className="mb-3 text-sm font-medium text-zinc-300">Tamaño</h2>
+                <div className="flex flex-col gap-2">
+                  {SIZES.map((size) => {
+                    const heightCm = Number(size.id.split("x")[1]);
+                    const isSelected = size.id === sizeId;
+                    return (
+                      <button
+                        key={size.id}
+                        type="button"
+                        onClick={() => setSizeId(size.id)}
+                        className={`flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition-colors sm:px-4 sm:py-3 ${
+                          isSelected
+                            ? "border-accent bg-accent/15 shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
+                            : "border-white/10 bg-white/5 hover:border-white/20"
                         }`}
                       >
-                        {formatCOP(size.priceCOP)}
-                      </span>
-                    </button>
-                  );
-                })}
+                        <span className="flex items-center gap-2 sm:gap-3">
+                          <ScaleSilhouette
+                            heightCm={heightCm}
+                            currentColorClass={isSelected ? "text-accent-soft" : "text-zinc-500"}
+                          />
+                          <span className={`text-xs sm:text-sm ${isSelected ? "text-white" : "text-zinc-300"}`}>
+                            {size.label}
+                          </span>
+                        </span>
+                        <span
+                          className={`text-sm font-bold sm:text-lg ${
+                            isSelected ? "text-accent-soft" : "text-zinc-400"
+                          }`}
+                        >
+                          {formatCOP(size.priceCOP)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

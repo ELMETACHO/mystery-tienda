@@ -39,6 +39,21 @@ const BRAND = {
 
 const FONT_STACK = "Arial, Helvetica, sans-serif";
 
+// Extrae el base64 de un data URL de imagen, validando primero que
+// realmente tenga esa forma ("data:image/...;base64,XXXX"). Si el valor no
+// es un data URL de imagen válido (undefined, string vacío, corrupto,
+// etc.), devuelve null en vez de adjuntar bytes basura sin darse cuenta —
+// mejor no adjuntar nada a que llegue un PNG que no abre.
+function extractImageBase64(dataUrl) {
+  if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) {
+    return null;
+  }
+  const commaIndex = dataUrl.indexOf(",");
+  if (commaIndex === -1) return null;
+  const base64 = dataUrl.slice(commaIndex + 1);
+  return base64 || null;
+}
+
 function housingDetailsRows(customer) {
   if (customer.housingType === "apartamento") {
     return `
@@ -57,7 +72,15 @@ function housingDetailsRows(customer) {
 // Correo al cliente
 // ---------------------------------------------------------------------
 
-function customerEmailHtml({ order, customer, isReturningCustomer }) {
+function customerEmailHtml({
+  order,
+  customer,
+  isReturningCustomer,
+  paymentMethod,
+  anticipoPagado,
+  saldoPendiente,
+}) {
+  const isCod = paymentMethod === "cod";
   const loyaltyBlock = isReturningCustomer
     ? `
       <tr>
@@ -90,7 +113,11 @@ function customerEmailHtml({ order, customer, isReturningCustomer }) {
         <tr>
           <td style="padding:32px 32px 8px 32px;">
             <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Gracias por tu pedido, ${customer.fullName}!</p>
-            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">Confirmamos que tu pago fue aprobado y tu cuadro personalizado ya está en preparación.</p>
+            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">${
+              isCod
+                ? "Confirmamos que recibimos tu anticipo — el saldo restante lo pagas en efectivo cuando recibas tu cuadro. Tu cuadro personalizado ya está en preparación."
+                : "Confirmamos que tu pago fue aprobado y tu cuadro personalizado ya está en preparación."
+            }</p>
           </td>
         </tr>
 
@@ -107,11 +134,30 @@ function customerEmailHtml({ order, customer, isReturningCustomer }) {
           </td>
         </tr>
 
+        ${
+          isCod
+            ? `
+        <tr>
+          <td style="padding:12px 32px 4px 32px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:8px;">
+              <tr>
+                <td style="padding:12px 16px;">
+                  <p style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">✅ Anticipo recibido: <strong>${formatCOP(anticipoPagado)}</strong></p>
+                  <p style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">💵 Saldo a pagar al recibir tu cuadro: <strong>${formatCOP(saldoPendiente)}</strong></p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        `
+            : ""
+        }
+
         <tr>
           <td style="padding:20px 32px 8px 32px;">
             <p style="margin:0 0 10px 0;font-family:${FONT_STACK};font-size:12px;font-weight:bold;color:${BRAND.ink};text-transform:uppercase;letter-spacing:0.5px;">Próximos pasos</p>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-              <tr><td style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">✅&nbsp; <strong>Pago confirmado</strong></td></tr>
+              <tr><td style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">✅&nbsp; <strong>${isCod ? "Anticipo confirmado (pagas el saldo contraentrega)" : "Pago confirmado"}</strong></td></tr>
               <tr><td style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">🎨&nbsp; En producción <span style="color:#a1a1aa;">(3-5 días hábiles)</span></td></tr>
               <tr><td style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">🚚&nbsp; Envío a tu dirección</td></tr>
             </table>
@@ -144,11 +190,71 @@ function customerEmailHtml({ order, customer, isReturningCustomer }) {
 // Correo al admin/fabricante — operativo, legible rápido desde el celular
 // ---------------------------------------------------------------------
 
-function adminEmailHtml({ order, customer, transaction, isReturningCustomer }) {
+function adminEmailHtml({
+  order,
+  customer,
+  transaction,
+  isReturningCustomer,
+  paymentMethod,
+  trackingNumber,
+  carrierName,
+  anticipoPagado,
+  saldoPendiente,
+}) {
+  const isCod = paymentMethod === "cod";
   // En la práctica esta función solo se llama después de verificar el pago
-  // con Wompi (ver app/api/confirm-order/route.js), así que isPaid siempre
-  // debería ser true — igual se deja explícito y visible en vez de asumido.
+  // con Wompi (ver app/api/confirm-order/route.js) para el método normal,
+  // así que isPaid siempre debería ser true ahí — igual se deja explícito y
+  // visible en vez de asumido. Los pedidos contraentrega también verifican
+  // el anticipo con Wompi antes de llegar acá (ver
+  // app/api/confirm-cod-order/route.js) — su banner muestra el desglose
+  // anticipo/saldo en vez de un simple "pagado"/"no confirmado".
   const isPaid = transaction.status === "APPROVED";
+
+  const paymentBanner = isCod
+    ? `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:6px;">
+        <tr>
+          <td style="padding:10px 14px;">
+            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${BRAND.success};">✅ Anticipo pagado: ${formatCOP(anticipoPagado)}</p>
+            <p style="margin:0;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${BRAND.success};">💵 Saldo a cobrar al entregar: ${formatCOP(saldoPendiente)}</p>
+          </td>
+        </tr>
+      </table>
+    `
+    : `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${isPaid ? BRAND.successBg : BRAND.warningBg};border-radius:6px;">
+        <tr>
+          <td style="padding:10px 14px;">
+            <p style="margin:0;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${isPaid ? BRAND.success : BRAND.warning};">
+              Estado de pago: ${isPaid ? "✅ Pagado" : `⚠️ No confirmado (${transaction.status})`}
+            </p>
+          </td>
+        </tr>
+      </table>
+    `;
+
+  const trackingRow = isCod
+    ? `
+      <tr>
+        <td style="padding:0 20px 16px 20px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${trackingNumber ? BRAND.successBg : BRAND.warningBg};border-radius:6px;">
+            <tr>
+              <td style="padding:10px 14px;">
+                <p style="margin:0;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${trackingNumber ? BRAND.success : BRAND.warning};">
+                  ${
+                    trackingNumber
+                      ? `🚚 Guía generada (${carrierName || "transportadora"}): ${trackingNumber}`
+                      : "⚠️ No se pudo generar la guía automática — crearla manualmente en Servientrega/Interrapidísimo."
+                  }
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `
+    : "";
 
   return `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgAdminOuter};padding:16px 10px;font-family:${FONT_STACK};">
@@ -187,17 +293,11 @@ function adminEmailHtml({ order, customer, transaction, isReturningCustomer }) {
 
         <tr>
           <td style="padding:8px 20px 16px 20px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${isPaid ? BRAND.successBg : BRAND.warningBg};border-radius:6px;">
-              <tr>
-                <td style="padding:10px 14px;">
-                  <p style="margin:0;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${isPaid ? BRAND.success : BRAND.warning};">
-                    Estado de pago: ${isPaid ? "✅ Pagado" : `⚠️ No confirmado (${transaction.status})`}
-                  </p>
-                </td>
-              </tr>
-            </table>
+            ${paymentBanner}
           </td>
         </tr>
+
+        ${trackingRow}
 
         <!-- Nota de la imagen adjunta, justo después del bloque prioritario. -->
         <tr>
@@ -243,18 +343,47 @@ function adminEmailHtml({ order, customer, transaction, isReturningCustomer }) {
   `;
 }
 
-export async function sendOrderEmails({ order, customer, transaction, isReturningCustomer }) {
+export async function sendOrderEmails({
+  order,
+  customer,
+  transaction,
+  isReturningCustomer,
+  paymentMethod = "wompi",
+  trackingNumber,
+  carrierName,
+  anticipoPagado,
+  saldoPendiente,
+}) {
   // El fabricante recibe la versión CON sangrado de producción
   // (order.printImage); si por algún motivo no viene (pedidos guardados
-  // antes de agregar el sangrado), se usa la imagen normal como respaldo
-  // en vez de no adjuntar nada.
-  const printBase64 = (order.printImage || order.croppedImage)?.split(",")[1];
+  // antes de agregar el sangrado), se usa la imagen normal como respaldo.
+  // Esto es INDEPENDIENTE del resultado de la guía de Skydropx — no hay
+  // ningún adjunto relacionado a la guía en ningún momento, solo esta
+  // imagen del cuadro. extractImageBase64 valida el formato antes de
+  // adjuntar, así que un dato corrupto o ausente simplemente no se adjunta
+  // en vez de mandar un PNG roto.
+  const printBase64 = extractImageBase64(order.printImage) || extractImageBase64(order.croppedImage);
+  if (!printBase64) {
+    console.error(
+      "[email] order.printImage/croppedImage no es un data URL de imagen válido — no se adjuntará ningún archivo al correo del fabricante."
+    );
+  }
 
   await resend.emails.send({
     from: FROM_EMAIL,
     to: ADMIN_RECIPIENTS,
     subject: `Nuevo pedido Mystery - ${customer.fullName}`,
-    html: adminEmailHtml({ order, customer, transaction, isReturningCustomer }),
+    html: adminEmailHtml({
+      order,
+      customer,
+      transaction,
+      isReturningCustomer,
+      paymentMethod,
+      trackingNumber,
+      carrierName,
+      anticipoPagado,
+      saldoPendiente,
+    }),
     attachments: printBase64
       ? [{ filename: "cuadro-mystery.png", content: printBase64 }]
       : [],
@@ -269,6 +398,13 @@ export async function sendOrderEmails({ order, customer, transaction, isReturnin
     from: FROM_EMAIL,
     to: customer.email,
     subject: "¡Tu cuadro Mystery está confirmado!",
-    html: customerEmailHtml({ order, customer, isReturningCustomer }),
+    html: customerEmailHtml({
+      order,
+      customer,
+      isReturningCustomer,
+      paymentMethod,
+      anticipoPagado,
+      saldoPendiente,
+    }),
   });
 }

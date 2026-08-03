@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
-import { formatCOP, loadOrder, saveOrder } from "../lib/order";
+import { COD_DEPOSIT_COP, formatCOP, loadOrder, saveOrder } from "../lib/order";
 
 const WOMPI_PUBLIC_KEY = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
 
@@ -20,11 +20,63 @@ const emptyCustomer = {
   additionalInstructions: "",
   neighborhood: "",
   city: "",
+  department: "",
+  postalCode: "",
 };
+
+// Los 32 departamentos de Colombia + Bogotá D.C. — Skydropx requiere
+// area_level1 (departamento) para cotizar envíos dentro de Colombia; el
+// código postal (postal_code) no es estrictamente obligatorio según su
+// documentación de direcciones (basta con area_level1/area_level2 para
+// cotizar), así que se deja como campo opcional.
+const DEPARTMENTS_CO = [
+  "Amazonas",
+  "Antioquia",
+  "Arauca",
+  "Atlántico",
+  "Bogotá D.C.",
+  "Bolívar",
+  "Boyacá",
+  "Caldas",
+  "Caquetá",
+  "Casanare",
+  "Cauca",
+  "Cesar",
+  "Chocó",
+  "Córdoba",
+  "Cundinamarca",
+  "Guainía",
+  "Guaviare",
+  "Huila",
+  "La Guajira",
+  "Magdalena",
+  "Meta",
+  "Nariño",
+  "Norte de Santander",
+  "Putumayo",
+  "Quindío",
+  "Risaralda",
+  "San Andrés y Providencia",
+  "Santander",
+  "Sucre",
+  "Tolima",
+  "Valle del Cauca",
+  "Vaupés",
+  "Vichada",
+];
 
 const HOUSING_TYPES = [
   { id: "casa", label: "Casa" },
   { id: "apartamento", label: "Apartamento" },
+];
+
+const PAYMENT_METHODS = [
+  { id: "wompi", label: "Pagar en línea", detail: "Tarjeta / PSE con Wompi" },
+  {
+    id: "cod",
+    label: "Pago contraentrega",
+    detail: `Anticipo de ${formatCOP(COD_DEPOSIT_COP)} + saldo en efectivo`,
+  },
 ];
 
 const PHONE_PREFIXES = [
@@ -43,6 +95,13 @@ const PHONE_PREFIXES = [
 const INPUT_CLASS =
   "rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm";
 
+// Botones de pago: el color/gradiente/sombra intensos y la respiración
+// sutil (ver .animate-pay-breathe en globals.css) buscan que sea el
+// elemento que más llama la atención de la pantalla — es la acción
+// principal que el cliente debe tomar.
+const PAY_BUTTON_CLASS =
+  "mt-1 w-full rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-accent/50 transition-all duration-200 hover:shadow-[0_0_36px_rgba(168,85,247,0.85)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:animate-none";
+
 export default function CheckoutPage() {
   const router = useRouter();
   const [order, setOrder] = useState(null);
@@ -51,6 +110,8 @@ export default function CheckoutPage() {
   const [isWidgetReady, setIsWidgetReady] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [payError, setPayError] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("wompi"); // "wompi" | "cod"
+  const [isConfirmingCod, setIsConfirmingCod] = useState(false);
   const widgetRef = useRef(null);
 
   useEffect(() => {
@@ -89,9 +150,13 @@ export default function CheckoutPage() {
     customer.street.trim() &&
     customer.neighborhood.trim() &&
     customer.city.trim() &&
+    customer.department.trim() &&
     (customer.housingType === "apartamento"
       ? customer.buildingName.trim() && customer.apartmentNumber.trim()
       : true);
+
+  const isCodDisabled = !isFormValid || !isWidgetReady || isConfirmingCod;
+  const isWompiDisabled = !isFormValid || !isWidgetReady || isPaying;
 
   const handleChange = (field) => (e) =>
     setCustomer((prev) => ({ ...prev, [field]: e.target.value }));
@@ -188,6 +253,109 @@ export default function CheckoutPage() {
           status: confirmation.status,
           id: transaction.id,
         },
+        cliente_recurrente: Boolean(confirmation.isReturningCustomer),
+      });
+
+      router.push("/checkout/confirmacion");
+    });
+  };
+
+  // Pago contraentrega: NO cobra el precio completo por Wompi — solo el
+  // anticipo fijo (COD_DEPOSIT_COP), con el mismo widget y el mismo patrón
+  // de verificación server-side que el pago completo. El saldo restante
+  // se paga en efectivo al recibir el cuadro.
+  const handlePayCod = async () => {
+    if (!isFormValid || !isWidgetReady || !window.WidgetCheckout) return;
+    setPayError("");
+    setIsConfirmingCod(true);
+
+    const fullOrder = { ...order, customer };
+    await saveOrder(fullOrder);
+
+    const reference = `mystery-cod-${Date.now()}`;
+    const amountInCents = COD_DEPOSIT_COP * 100;
+    const currency = "COP";
+
+    let signature;
+    try {
+      const res = await fetch("/api/wompi-signature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reference, amountInCents, currency }),
+      });
+      if (!res.ok) throw new Error("No se pudo generar la firma");
+      ({ signature } = await res.json());
+    } catch (err) {
+      console.error(err);
+      setPayError("No se pudo iniciar el pago del anticipo. Intenta de nuevo.");
+      setIsConfirmingCod(false);
+      return;
+    }
+
+    widgetRef.current = new window.WidgetCheckout({
+      currency,
+      amountInCents,
+      reference,
+      publicKey: WOMPI_PUBLIC_KEY,
+      signature: { integrity: signature },
+      customerData: {
+        email: customer.email,
+        fullName: customer.fullName,
+        phoneNumber: customer.phone,
+        phoneNumberPrefix: customer.phonePrefix,
+      },
+    });
+
+    widgetRef.current.open(async (result) => {
+      const transaction = result?.transaction;
+      console.log("Resultado de Wompi (anticipo contraentrega):", transaction);
+
+      if (
+        !transaction?.id ||
+        transaction.status === "DECLINED" ||
+        transaction.status === "ERROR"
+      ) {
+        setIsConfirmingCod(false);
+        setPayError("El anticipo no se pudo procesar. Puedes intentarlo de nuevo.");
+        return;
+      }
+
+      let confirmation;
+      try {
+        const res = await fetch("/api/confirm-cod-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            transactionId: transaction.id,
+            order: fullOrder,
+            customer,
+          }),
+        });
+        confirmation = await res.json();
+        if (!res.ok) throw new Error(confirmation.error || "Verificación fallida");
+      } catch (err) {
+        console.error(err);
+        setIsConfirmingCod(false);
+        setPayError(
+          "No pudimos confirmar tu anticipo con Wompi. Si el cobro se realizó, contáctanos."
+        );
+        return;
+      }
+
+      setIsConfirmingCod(false);
+      await saveOrder({
+        ...fullOrder,
+        payment: {
+          reference: confirmation.reference,
+          status: confirmation.status,
+          id: transaction.id,
+          method: "contraentrega",
+        },
+        metodo_pago: "contraentrega",
+        anticipo_pagado: confirmation.anticipoPagado,
+        saldo_pendiente: confirmation.saldoPendiente,
+        trackingNumber: confirmation.trackingNumber || null,
+        carrierName: confirmation.carrierName || null,
         cliente_recurrente: Boolean(confirmation.isReturningCustomer),
       });
 
@@ -347,6 +515,77 @@ export default function CheckoutPage() {
               />
             </div>
 
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <select
+                value={customer.department}
+                onChange={handleChange("department")}
+                className={`flex-1 ${INPUT_CLASS} ${
+                  customer.department ? "" : "text-zinc-500"
+                }`}
+              >
+                <option value="" disabled className="bg-zinc-900">
+                  Departamento
+                </option>
+                {DEPARTMENTS_CO.map((dept) => (
+                  <option key={dept} value={dept} className="bg-zinc-900">
+                    {dept}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="Código postal (opcional)"
+                value={customer.postalCode}
+                onChange={handleChange("postalCode")}
+                className={`flex-1 ${INPUT_CLASS}`}
+              />
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-medium text-zinc-400">Método de pago</p>
+              <div className="grid grid-cols-2 gap-3">
+                {PAYMENT_METHODS.map((method) => {
+                  const isSelected = paymentMethod === method.id;
+                  return (
+                    <button
+                      key={method.id}
+                      type="button"
+                      onClick={() => setPaymentMethod(method.id)}
+                      className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                        isSelected
+                          ? "border-accent bg-accent/15 text-white shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
+                          : "border-white/10 bg-white/5 text-zinc-300 hover:border-white/20"
+                      }`}
+                    >
+                      <span className="block text-sm font-medium">{method.label}</span>
+                      <span className="block text-xs text-zinc-500">{method.detail}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {paymentMethod === "cod" && (
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">Anticipo a pagar ahora</span>
+                  <span className="font-semibold text-accent-soft">
+                    {formatCOP(COD_DEPOSIT_COP)}
+                  </span>
+                </div>
+                <p className="mb-2 text-xs text-zinc-500">Cubre costos de producción</p>
+                <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                  <span className="text-zinc-400">Saldo al recibir tu cuadro</span>
+                  <span className="font-semibold text-white">
+                    {formatCOP(order.priceCOP - COD_DEPOSIT_COP)}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-zinc-500">
+                  Sin costo adicional por pagar contraentrega.
+                </p>
+              </div>
+            )}
+
             {/* En móvil el resumen + botón de pago de arriba queda fuera de
                 vista al llenar un formulario largo. Repetimos solo el botón
                 (mismas condiciones y mismo handler) al final del formulario;
@@ -355,18 +594,47 @@ export default function CheckoutPage() {
             {payError && (
               <p className="text-sm text-red-400 sm:hidden">{payError}</p>
             )}
-            <button
-              type="button"
-              disabled={!isFormValid || !isWidgetReady || isPaying}
-              onClick={handlePay}
-              className="mt-1 w-full rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-3.5 text-sm font-medium text-white shadow-md shadow-accent/20 transition-all duration-200 hover:shadow-[0_0_28px_rgba(168,85,247,0.65)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none sm:hidden"
-            >
-              {isPaying
-                ? "Procesando..."
-                : isWidgetReady
-                ? "Pagar"
-                : "Cargando pasarela..."}
-            </button>
+            {paymentMethod === "cod" ? (
+              <div className="sm:hidden">
+                <button
+                  type="button"
+                  disabled={isCodDisabled}
+                  onClick={handlePayCod}
+                  className={`${PAY_BUTTON_CLASS} ${
+                    isCodDisabled ? "" : "animate-pay-breathe"
+                  }`}
+                >
+                  {isConfirmingCod
+                    ? "Procesando..."
+                    : isWidgetReady
+                    ? "Pagar al recibir"
+                    : "Cargando pasarela..."}
+                </button>
+                <p className="mt-1.5 text-center text-xs text-zinc-500">
+                  Anticipo de {formatCOP(COD_DEPOSIT_COP)} + excedente al recibir
+                </p>
+              </div>
+            ) : (
+              <div className="sm:hidden">
+                <button
+                  type="button"
+                  disabled={isWompiDisabled}
+                  onClick={handlePay}
+                  className={`${PAY_BUTTON_CLASS} ${
+                    isWompiDisabled ? "" : "animate-pay-breathe"
+                  }`}
+                >
+                  {isPaying
+                    ? "Procesando..."
+                    : isWidgetReady
+                    ? "Pagar ahora"
+                    : "Cargando pasarela..."}
+                </button>
+                <p className="mt-1.5 text-center text-xs text-zinc-500">
+                  Tarjeta / PSE con Wompi
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="order-1 flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)] sm:gap-4 sm:p-6 lg:order-2 lg:w-72">
@@ -430,20 +698,41 @@ export default function CheckoutPage() {
               <p className="text-sm text-red-400">{payError}</p>
             )}
 
-            <button
-              type="button"
-              disabled={!isFormValid || !isWidgetReady || isPaying}
-              onClick={handlePay}
-              className="mt-1 w-full rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-3.5 text-sm font-medium text-white shadow-md shadow-accent/20 transition-all duration-200 hover:shadow-[0_0_28px_rgba(168,85,247,0.65)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none sm:mt-2 sm:py-3"
-            >
-              {isPaying
-                ? "Procesando..."
-                : isWidgetReady
-                ? "Pagar"
-                : "Cargando pasarela..."}
-            </button>
+            {paymentMethod === "cod" ? (
+              <button
+                type="button"
+                disabled={isCodDisabled}
+                onClick={handlePayCod}
+                className={`${PAY_BUTTON_CLASS} sm:mt-2 sm:py-3 ${
+                  isCodDisabled ? "" : "animate-pay-breathe"
+                }`}
+              >
+                {isConfirmingCod
+                  ? "Procesando..."
+                  : isWidgetReady
+                  ? "Pagar al recibir"
+                  : "Cargando pasarela..."}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={isWompiDisabled}
+                onClick={handlePay}
+                className={`${PAY_BUTTON_CLASS} sm:mt-2 sm:py-3 ${
+                  isWompiDisabled ? "" : "animate-pay-breathe"
+                }`}
+              >
+                {isPaying
+                  ? "Procesando..."
+                  : isWidgetReady
+                  ? "Pagar ahora"
+                  : "Cargando pasarela..."}
+              </button>
+            )}
             <p className="text-center text-xs text-zinc-500">
-              Sandbox de pruebas — no se realizan cobros reales.
+              {paymentMethod === "cod"
+                ? `Anticipo de ${formatCOP(COD_DEPOSIT_COP)} + excedente al recibir · Tarjeta / PSE con Wompi. Sin costo adicional por pagar contraentrega.`
+                : "Tarjeta / PSE con Wompi — sandbox de pruebas, no se realizan cobros reales."}
             </p>
           </div>
         </div>
