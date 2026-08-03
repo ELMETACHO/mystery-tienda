@@ -60,7 +60,7 @@ export default function CheckoutPage() {
 
   if (isLoadingOrder || !order) {
     return (
-      <div className="flex flex-1 items-center justify-center px-6 py-16">
+      <div className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6">
         <p className="text-zinc-400">Cargando tu pedido...</p>
       </div>
     );
@@ -181,18 +181,18 @@ export default function CheckoutPage() {
         onReady={() => setIsWidgetReady(true)}
       />
 
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-10 px-6 py-16">
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 py-4 sm:gap-10 sm:px-6 sm:py-16">
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
             Finaliza tu pedido
           </h1>
-          <p className="mt-2 text-zinc-400">
+          <p className="mt-1 text-sm text-zinc-400 sm:mt-2 sm:text-base">
             Completa tus datos de envío y paga con Wompi (modo prueba).
           </p>
         </div>
 
-        <div className="flex flex-col gap-8 lg:flex-row">
-          <div className="flex flex-1 flex-col gap-4">
+        <div className="flex flex-col gap-4 sm:gap-8 lg:flex-row">
+          <div className="order-2 flex flex-1 flex-col gap-3 sm:gap-4 lg:order-1">
             <h2 className="text-sm font-medium text-zinc-300">Tus datos</h2>
 
             <input
@@ -200,20 +200,20 @@ export default function CheckoutPage() {
               placeholder="Nombre completo"
               value={customer.fullName}
               onChange={handleChange("fullName")}
-              className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none focus:border-accent"
+              className="rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none focus:border-accent sm:py-3 sm:text-sm"
             />
             <input
               type="email"
               placeholder="Correo electrónico"
               value={customer.email}
               onChange={handleChange("email")}
-              className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none focus:border-accent"
+              className="rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none focus:border-accent sm:py-3 sm:text-sm"
             />
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <select
                 value={customer.phonePrefix}
                 onChange={handleChange("phonePrefix")}
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-3 text-sm outline-none focus:border-accent"
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-3.5 text-base outline-none focus:border-accent sm:w-44 sm:py-3 sm:text-sm"
               >
                 {PHONE_PREFIXES.map((p) => (
                   <option key={p.code} value={p.code} className="bg-zinc-900">
@@ -226,7 +226,7 @@ export default function CheckoutPage() {
                 placeholder="Teléfono"
                 value={customer.phone}
                 onChange={handleChange("phone")}
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none focus:border-accent"
+                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none focus:border-accent sm:py-3 sm:text-sm"
               />
             </div>
 
@@ -238,42 +238,91 @@ export default function CheckoutPage() {
               placeholder="Calle y número"
               value={customer.street}
               onChange={handleChange("street")}
-              className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none focus:border-accent"
+              className="rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none focus:border-accent sm:py-3 sm:text-sm"
             />
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <input
                 type="text"
                 placeholder="Ciudad"
                 value={customer.city}
                 onChange={handleChange("city")}
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none focus:border-accent"
+                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none focus:border-accent sm:py-3 sm:text-sm"
               />
               <input
                 type="text"
                 placeholder="Departamento"
                 value={customer.department}
                 onChange={handleChange("department")}
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none focus:border-accent"
+                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none focus:border-accent sm:py-3 sm:text-sm"
               />
             </div>
+
+            {/* En móvil el resumen + botón de pago de arriba queda fuera de
+                vista al llenar un formulario largo. Repetimos solo el botón
+                (mismas condiciones y mismo handler) al final del formulario;
+                en desktop ambas columnas ya están lado a lado, así que ahí
+                no hace falta. */}
+            {payError && (
+              <p className="text-sm text-red-400 sm:hidden">{payError}</p>
+            )}
+            <button
+              type="button"
+              disabled={!isFormValid || !isWidgetReady || isPaying}
+              onClick={handlePay}
+              className="mt-1 w-full rounded-full bg-accent px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40 sm:hidden"
+            >
+              {isPaying
+                ? "Procesando..."
+                : isWidgetReady
+                ? "Pagar"
+                : "Cargando pasarela..."}
+            </button>
           </div>
 
-          <div className="flex w-full flex-col gap-4 rounded-xl border border-white/10 bg-white/5 p-6 lg:w-72">
-            <h2 className="text-sm font-medium text-zinc-300">Tu pedido</h2>
+          <div className="order-1 flex w-full flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:gap-4 sm:p-6 lg:order-2 lg:w-72">
+            {/* Móvil: tarjeta compacta y colapsable — solo lo esencial visible,
+                se expande al tocarla para no obligar a tanto scroll antes de
+                llegar al formulario. */}
+            <details className="group sm:hidden">
+              <summary className="flex cursor-pointer list-none items-center gap-3">
+                <img
+                  src={order.croppedImage}
+                  alt="Preview del cuadro"
+                  className="h-12 w-12 shrink-0 rounded-md border border-white/10 object-cover"
+                />
+                <div className="flex flex-1 items-center justify-between gap-2">
+                  <span className="text-sm text-zinc-300">{order.sizeLabel}</span>
+                  <span className="text-sm font-semibold">
+                    {formatCOP(order.priceCOP)}
+                  </span>
+                </div>
+                <span className="shrink-0 text-xs text-zinc-500 transition-transform group-open:rotate-180">
+                  ▾
+                </span>
+              </summary>
+              <img
+                src={order.croppedImage}
+                alt="Preview del cuadro"
+                className="mt-3 w-full rounded-md border border-white/10 object-cover"
+              />
+            </details>
 
-            <img
-              src={order.croppedImage}
-              alt="Preview del cuadro"
-              className="w-full rounded-md border border-white/10 object-cover"
-            />
-
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-zinc-400">Tamaño</span>
-              <span>{order.sizeLabel}</span>
-            </div>
-            <div className="flex items-center justify-between text-base font-semibold">
-              <span>Total</span>
-              <span>{formatCOP(order.priceCOP)}</span>
+            {/* sm y superior: resumen completo siempre visible. */}
+            <div className="hidden flex-col gap-4 sm:flex">
+              <h2 className="text-sm font-medium text-zinc-300">Tu pedido</h2>
+              <img
+                src={order.croppedImage}
+                alt="Preview del cuadro"
+                className="w-full rounded-md border border-white/10 object-cover"
+              />
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-zinc-400">Tamaño</span>
+                <span>{order.sizeLabel}</span>
+              </div>
+              <div className="flex items-center justify-between text-base font-semibold">
+                <span>Total</span>
+                <span>{formatCOP(order.priceCOP)}</span>
+              </div>
             </div>
 
             {payError && (
@@ -284,12 +333,12 @@ export default function CheckoutPage() {
               type="button"
               disabled={!isFormValid || !isWidgetReady || isPaying}
               onClick={handlePay}
-              className="mt-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
+              className="mt-1 w-full rounded-full bg-accent px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40 sm:mt-2 sm:py-3"
             >
               {isPaying
                 ? "Procesando..."
                 : isWidgetReady
-                ? "Pagar con Wompi"
+                ? "Pagar"
                 : "Cargando pasarela..."}
             </button>
             <p className="text-center text-xs text-zinc-500">

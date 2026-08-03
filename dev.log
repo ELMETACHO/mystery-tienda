@@ -6,9 +6,8 @@
 - Local:         http://localhost:3000
 - Network:       http://192.168.2.8:3000
 - Environments: .env.local
-✓ Ready in 698ms
+✓ Ready in 635ms
 
- GET /crear 200 in 406ms (next.js: 245ms, application-code: 161ms)
- GET /crear 200 in 33ms (next.js: 3ms, application-code: 30ms)
- GET /checkout 200 in 93ms (next.js: 54ms, application-code: 38ms)
- GET /checkout/confirmacion 200 in 125ms (next.js: 60ms, application-code: 65ms)
+ GET / 200 in 659ms (next.js: 204ms, application-code: 455ms)
+ GET / 200 in 140ms (next.js: 8ms, application-code: 132ms)
+ GET / 200 in 81ms (next.js: 3ms, application-code: 78ms)
