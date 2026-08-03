@@ -188,6 +188,7 @@ export default function CheckoutPage() {
           status: confirmation.status,
           id: transaction.id,
         },
+        cliente_recurrente: Boolean(confirmation.isReturningCustomer),
       });
 
       router.push("/checkout/confirmacion");

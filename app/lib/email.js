@@ -28,11 +28,12 @@ function housingDetailsHtml(customer) {
   `;
 }
 
-function adminEmailHtml({ order, customer, transaction }) {
+function adminEmailHtml({ order, customer, transaction, isReturningCustomer }) {
   return `
     <h2>Nuevo pedido Mystery</h2>
     <p><strong>Referencia de la transacción:</strong> ${transaction.reference}</p>
     <p><strong>Estado del pago:</strong> ${transaction.status}</p>
+    <p><strong>Cliente recurrente:</strong> ${isReturningCustomer ? "Sí" : "No"}</p>
 
     <h3>Cuadro</h3>
     <ul>
@@ -75,14 +76,14 @@ function customerEmailHtml({ order, customer }) {
   `;
 }
 
-export async function sendOrderEmails({ order, customer, transaction }) {
+export async function sendOrderEmails({ order, customer, transaction, isReturningCustomer }) {
   const base64Image = order.croppedImage?.split(",")[1];
 
   await resend.emails.send({
     from: FROM_EMAIL,
     to: ADMIN_RECIPIENTS,
     subject: `Nuevo pedido Mystery - ${customer.fullName}`,
-    html: adminEmailHtml({ order, customer, transaction }),
+    html: adminEmailHtml({ order, customer, transaction, isReturningCustomer }),
     attachments: base64Image
       ? [{ filename: "cuadro-mystery.png", content: base64Image }]
       : [],
