@@ -269,7 +269,7 @@ export default function CheckoutPage() {
               type="button"
               disabled={!isFormValid || !isWidgetReady || isPaying}
               onClick={handlePay}
-              className="mt-1 w-full rounded-full bg-accent px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40 sm:hidden"
+              className="mt-1 w-full rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-3.5 text-sm font-medium text-white shadow-md shadow-accent/20 transition-all duration-200 hover:shadow-[0_0_28px_rgba(168,85,247,0.65)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none sm:hidden"
             >
               {isPaying
                 ? "Procesando..."
@@ -279,7 +279,7 @@ export default function CheckoutPage() {
             </button>
           </div>
 
-          <div className="order-1 flex w-full flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-3 sm:gap-4 sm:p-6 lg:order-2 lg:w-72">
+          <div className="order-1 flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)] sm:gap-4 sm:p-6 lg:order-2 lg:w-72">
             {/* Móvil: tarjeta compacta y colapsable — solo lo esencial visible,
                 se expande al tocarla para no obligar a tanto scroll antes de
                 llegar al formulario. */}
@@ -288,7 +288,7 @@ export default function CheckoutPage() {
                 <img
                   src={order.croppedImage}
                   alt="Preview del cuadro"
-                  className="h-12 w-12 shrink-0 rounded-md border border-white/10 object-cover"
+                  className="h-12 w-12 shrink-0 rounded-lg border border-white/10 object-cover"
                 />
                 <div className="flex flex-1 items-center justify-between gap-2">
                   <span className="text-sm text-zinc-300">{order.sizeLabel}</span>
@@ -303,25 +303,36 @@ export default function CheckoutPage() {
               <img
                 src={order.croppedImage}
                 alt="Preview del cuadro"
-                className="mt-3 w-full rounded-md border border-white/10 object-cover"
+                className="mt-3 w-full rounded-lg border border-white/10 object-cover"
               />
             </details>
 
-            {/* sm y superior: resumen completo siempre visible. */}
+            {/* sm y superior: tarjeta de producto premium — miniatura grande
+                con sombra propia, tamaño y precio destacado, para que se
+                sienta como confirmar un producto terminado. */}
             <div className="hidden flex-col gap-4 sm:flex">
-              <h2 className="text-sm font-medium text-zinc-300">Tu pedido</h2>
-              <img
-                src={order.croppedImage}
-                alt="Preview del cuadro"
-                className="w-full rounded-md border border-white/10 object-cover"
-              />
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-400">Tamaño</span>
-                <span>{order.sizeLabel}</span>
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-zinc-300">Tu pedido</h2>
+                <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-medium text-accent-soft">
+                  Listo para producción
+                </span>
               </div>
-              <div className="flex items-center justify-between text-base font-semibold">
-                <span>Total</span>
-                <span>{formatCOP(order.priceCOP)}</span>
+              <div className="overflow-hidden rounded-xl border border-white/10 shadow-lg shadow-black/40">
+                <img
+                  src={order.croppedImage}
+                  alt="Preview del cuadro"
+                  className="w-full object-cover"
+                />
+              </div>
+              <div className="flex items-center justify-between border-t border-white/10 pt-3 text-sm">
+                <span className="text-zinc-400">Tamaño</span>
+                <span className="font-medium">{order.sizeLabel}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-zinc-400">Total</span>
+                <span className="text-2xl font-bold text-accent-soft">
+                  {formatCOP(order.priceCOP)}
+                </span>
               </div>
             </div>
 
@@ -333,7 +344,7 @@ export default function CheckoutPage() {
               type="button"
               disabled={!isFormValid || !isWidgetReady || isPaying}
               onClick={handlePay}
-              className="mt-1 w-full rounded-full bg-accent px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40 sm:mt-2 sm:py-3"
+              className="mt-1 w-full rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-3.5 text-sm font-medium text-white shadow-md shadow-accent/20 transition-all duration-200 hover:shadow-[0_0_28px_rgba(168,85,247,0.65)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none sm:mt-2 sm:py-3"
             >
               {isPaying
                 ? "Procesando..."
