@@ -6,6 +6,7 @@ import Image from "next/image";
 import Cropper from "react-easy-crop";
 import {
   getCroppedImage,
+  getCroppedImageWithBleed,
   getDefaultCropArea,
   pdfFirstPageToImage,
 } from "./cropImage";
@@ -34,20 +35,35 @@ const EXAMPLE_MOCKUP = {
   ratio: 1086 / 1448,
 };
 
+// Fondo de ambiente para la pantalla de EDICIÓN (zoom/posición): repisa de
+// madera con pared vacía arriba. "zone" es el área de pared libre sobre la
+// repisa donde debe vivir el marco — calibrada a ojo mirando la foto
+// (planta a la izquierda hasta ~20% del ancho, repisa empieza ~y=77%):
+// si se ve desalineada, son los valores a ajustar.
+const EDIT_BACKGROUND = {
+  src: "/images/mockups/icon2.png",
+  ratio: 1122 / 1402,
+  zone: { left: 25, top: 1.5, width: 72, height: 75 },
+};
+
 // El tamaño físico más grande del catálogo (50x70, 70cm de alto) es la
-// referencia: ocupa la mayor parte del alto de la zona de pared. Los
-// demás tamaños se calculan como fracción real de esa altura (misma
-// proporción que existe entre 30x40 / 40x50 / 50x70 en centímetros), no
-// como una diferencia arbitraria.
+// referencia: ocupa la mayor parte del alto de la zona definida. Los demás
+// tamaños se calculan como fracción real de esa altura (misma proporción
+// que existe entre 30x40 / 40x50 / 50x70 en centímetros), no como una
+// diferencia arbitraria.
 const MOCKUP_MAX_HEIGHT_CM = 70;
-const MOCKUP_MAX_ZONE_FILL = 0.9;
 
-function getMockupOverlayStyle(sizeId, sizeRatio) {
+// Calcula, para un mockup con una "zone" definida (% de su propia imagen),
+// el rectángulo (left/top/width/height, todo en %) donde debe ir el marco
+// del tamaño elegido — centrado dentro de esa zona y con el mismo alto
+// proporcional real entre tamaños. `maxZoneFill` controla cuánto del alto
+// de la zona ocupa como máximo el tamaño más grande (deja aire alrededor).
+function getFramePlacement(mockup, sizeId, sizeRatio, maxZoneFill = 0.78) {
   const heightCm = Number(sizeId.split("x")[1]);
-  const { left, top, width, height } = MOCKUP.zone;
+  const { left, top, width, height } = mockup.zone;
 
-  const heightPercent = (heightCm / MOCKUP_MAX_HEIGHT_CM) * MOCKUP_MAX_ZONE_FILL * height;
-  const widthPercent = (heightPercent * sizeRatio) / MOCKUP.ratio;
+  const heightPercent = (heightCm / MOCKUP_MAX_HEIGHT_CM) * maxZoneFill * height;
+  const widthPercent = (heightPercent * sizeRatio) / mockup.ratio;
 
   const zoneCenterX = left + width / 2;
   const zoneCenterY = top + height / 2;
@@ -55,8 +71,16 @@ function getMockupOverlayStyle(sizeId, sizeRatio) {
   return {
     left: `${zoneCenterX - widthPercent / 2}%`,
     top: `${zoneCenterY - heightPercent / 2}%`,
+    width: `${widthPercent}%`,
     height: `${heightPercent}%`,
   };
+}
+
+// 0.9 dejaba el tamaño más grande (50x70) tocando o saliéndose del borde
+// de la zona de pared del mockup de "listo"; bajado para que quede aire
+// alrededor incluso en el caso más grande.
+function getMockupOverlayStyle(sizeId, sizeRatio) {
+  return getFramePlacement(MOCKUP, sizeId, sizeRatio, 0.78);
 }
 
 function ProgressSteps({ current }) {
@@ -323,6 +347,16 @@ export default function CrearPage() {
     console.log("Resolución baja para este tamaño:", isLowResolution);
     console.log("Imagen recortada (dataURL):", croppedImage);
 
+    // Imagen para el fabricante: mismo recorte + 1cm de sangrado por lado,
+    // escalado a la densidad real del recorte (no un valor fijo de
+    // píxeles) — esta es la que se adjunta en el correo de producción. La
+    // que ve el cliente (croppedImage, arriba) nunca lleva sangrado.
+    const widthCm = Number(selectedSize.id.split("x")[0]);
+    const pxPerCm = finalCrop.width / widthCm;
+    const bleedPx = Math.round(pxPerCm * 1);
+    const printImage = await getCroppedImageWithBleed(imageSrc, finalCrop, bleedPx);
+    console.log("[sangrado] px/cm:", pxPerCm.toFixed(1), "bleedPx por lado:", bleedPx);
+
     // No navegamos todavía: mostramos primero la pantalla de confirmación
     // "Tu cuadro está listo" con el resultado final ya calculado, y
     // guardamos/navegamos recién cuando el usuario confirma desde ahí.
@@ -331,6 +365,7 @@ export default function CrearPage() {
       sizeLabel: selectedSize.label,
       priceCOP: selectedSize.priceCOP,
       croppedImage,
+      printImage,
       isLowResolution,
     });
   };
@@ -565,52 +600,52 @@ export default function CrearPage() {
           {/* LIENZO — columna izquierda (~65%) */}
           <div className="flex flex-col items-center gap-3">
             <div
-              className="relative w-full max-w-xl overflow-hidden rounded-2xl p-4 sm:p-8 md:p-12"
-              style={{
-                background:
-                  "radial-gradient(ellipse at 50% 35%, rgba(168,85,247,0.22), transparent 65%), #0d0b12",
-              }}
+              className="relative w-full max-w-xl overflow-hidden rounded-2xl"
+              style={{ aspectRatio: EDIT_BACKGROUND.ratio }}
             >
-              {/* Marco oscuro tipo madera mate, con sombra asimétrica para
-                  sensación 3D de "flotar" sobre el glow del escenario. */}
+              {/* Fondo de ambiente: repisa de madera con pared vacía arriba.
+                  Solo decorativo — nunca forma parte del recorte/validación
+                  final, que sigue operando exclusivamente sobre la imagen
+                  del usuario dentro del marco. */}
+              <Image
+                src={EDIT_BACKGROUND.src}
+                alt="Ambiente de referencia"
+                fill
+                priority
+                className="object-cover"
+              />
+
+              {/* Marco fijo sobre la repisa: posición y tamaño calculados
+                  una vez por tamaño elegido (getFramePlacement) y no se
+                  mueven — el zoom/arrastre de react-easy-crop queda
+                  contenido DENTRO de este marco, el marco en sí es estático.
+                  Los cuadros Mystery no tienen marco frontal visible (la
+                  imagen cubre borde a borde; el marco físico va por detrás,
+                  solo para colgar), así que acá no hay madera ni borde de
+                  color — solo un contorno delgado de referencia y una
+                  sombra sutil que sugiere que el cuadro está "despegado"
+                  de la pared por la profundidad del marco trasero. */}
               <div
-                className="relative mx-auto rounded-sm p-2.5 sm:p-3"
+                className="absolute overflow-hidden rounded-sm bg-black"
                 style={{
-                  background:
-                    "repeating-linear-gradient(115deg, #2a2019, #2a2019 10px, #221a14 10px, #221a14 20px)",
-                  maxWidth: `calc(58vh * ${selectedSize.ratio} + 24px)`,
-                  boxShadow: "18px 26px 46px rgba(0,0,0,0.55), -4px -4px 12px rgba(255,255,255,0.03)",
+                  ...getFramePlacement(EDIT_BACKGROUND, selectedSize.id, selectedSize.ratio, 0.85),
+                  border: "1.5px solid rgba(0,0,0,0.6)",
+                  boxSizing: "border-box",
+                  boxShadow: "6px 10px 18px rgba(0,0,0,0.35)",
                 }}
               >
-                {/* width:100% + aspect-ratio es el patrón que react-easy-crop
-                    necesita para medir bien su contenedor (getBoundingClientRect
-                    no debe devolver 0 en el primer render). El tope de tamaño en
-                    pantallas chicas se logra con maxWidth calculado a partir de
-                    un alto de pantalla objetivo (~58vh), no achicando el alto
-                    directamente — así el marco sigue siendo ancho-driven y el
-                    cropper se renderiza correctamente. Deja espacio arriba/abajo
-                    para poder hacer scroll sin tocar la imagen. */}
-                <div
-                  className="relative mx-auto bg-black/40"
-                  style={{
-                    width: "100%",
-                    maxWidth: `calc(58vh * ${selectedSize.ratio})`,
-                    aspectRatio: selectedSize.ratio,
-                  }}
-                >
-                  <Cropper
-                    image={imageSrc}
-                    crop={crop}
-                    zoom={zoom}
-                    aspect={selectedSize.ratio}
-                    cropShape="rect"
-                    showGrid={false}
-                    objectFit="cover"
-                    onCropChange={setCrop}
-                    onZoomChange={setZoom}
-                    onCropComplete={onCropComplete}
-                  />
-                </div>
+                <Cropper
+                  image={imageSrc}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={selectedSize.ratio}
+                  cropShape="rect"
+                  showGrid={false}
+                  objectFit="cover"
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={onCropComplete}
+                />
               </div>
             </div>
 
