@@ -13,9 +13,19 @@ const emptyCustomer = {
   phonePrefix: "+57",
   phone: "",
   street: "",
+  housingType: "casa", // "casa" | "apartamento"
+  buildingName: "",
+  tower: "",
+  apartmentNumber: "",
+  additionalInstructions: "",
+  neighborhood: "",
   city: "",
-  department: "",
 };
+
+const HOUSING_TYPES = [
+  { id: "casa", label: "Casa" },
+  { id: "apartamento", label: "Apartamento" },
+];
 
 const PHONE_PREFIXES = [
   { code: "+57", label: "+57 Colombia" },
@@ -27,6 +37,11 @@ const PHONE_PREFIXES = [
   { code: "+593", label: "+593 Ecuador" },
   { code: "+34", label: "+34 España" },
 ];
+
+// Mismo tratamiento premium de /crear: bordes sutiles, foco con anillo
+// morado y transición suave.
+const INPUT_CLASS =
+  "rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -72,11 +87,17 @@ export default function CheckoutPage() {
     customer.phonePrefix.trim() &&
     customer.phone.trim() &&
     customer.street.trim() &&
+    customer.neighborhood.trim() &&
     customer.city.trim() &&
-    customer.department.trim();
+    (customer.housingType === "apartamento"
+      ? customer.buildingName.trim() && customer.apartmentNumber.trim()
+      : true);
 
   const handleChange = (field) => (e) =>
     setCustomer((prev) => ({ ...prev, [field]: e.target.value }));
+
+  const setHousingType = (housingType) =>
+    setCustomer((prev) => ({ ...prev, housingType }));
 
   const handlePay = async () => {
     if (!isFormValid || !isWidgetReady || !window.WidgetCheckout) return;
@@ -181,7 +202,13 @@ export default function CheckoutPage() {
         onReady={() => setIsWidgetReady(true)}
       />
 
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 py-4 sm:gap-10 sm:px-6 sm:py-16">
+      <div className="relative overflow-hidden">
+        <div
+          className="pointer-events-none absolute -top-32 left-1/2 h-96 w-[36rem] -translate-x-1/2 rounded-full opacity-20 blur-3xl"
+          style={{ background: "var(--accent)" }}
+        />
+
+        <div className="relative mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 py-4 sm:gap-10 sm:px-6 sm:py-16">
         <div className="text-center">
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
             Finaliza tu pedido
@@ -197,23 +224,23 @@ export default function CheckoutPage() {
 
             <input
               type="text"
-              placeholder="Nombre completo"
+              placeholder="Nombre y apellido"
               value={customer.fullName}
               onChange={handleChange("fullName")}
-              className="rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none focus:border-accent sm:py-3 sm:text-sm"
+              className={INPUT_CLASS}
             />
             <input
               type="email"
               placeholder="Correo electrónico"
               value={customer.email}
               onChange={handleChange("email")}
-              className="rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none focus:border-accent sm:py-3 sm:text-sm"
+              className={INPUT_CLASS}
             />
             <div className="flex flex-col gap-3 sm:flex-row">
               <select
                 value={customer.phonePrefix}
                 onChange={handleChange("phonePrefix")}
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-3.5 text-base outline-none focus:border-accent sm:w-44 sm:py-3 sm:text-sm"
+                className={`${INPUT_CLASS} sm:w-44`}
               >
                 {PHONE_PREFIXES.map((p) => (
                   <option key={p.code} value={p.code} className="bg-zinc-900">
@@ -223,10 +250,10 @@ export default function CheckoutPage() {
               </select>
               <input
                 type="tel"
-                placeholder="Teléfono"
+                placeholder="Celular"
                 value={customer.phone}
                 onChange={handleChange("phone")}
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none focus:border-accent sm:py-3 sm:text-sm"
+                className={`flex-1 ${INPUT_CLASS}`}
               />
             </div>
 
@@ -235,25 +262,87 @@ export default function CheckoutPage() {
             </h2>
             <input
               type="text"
-              placeholder="Calle y número"
+              placeholder="Dirección (calle/carrera y número)"
               value={customer.street}
               onChange={handleChange("street")}
-              className="rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none focus:border-accent sm:py-3 sm:text-sm"
+              className={INPUT_CLASS}
             />
+
+            <div>
+              <p className="mb-2 text-xs font-medium text-zinc-400">
+                ¿Casa o apartamento?
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {HOUSING_TYPES.map((option) => {
+                  const isSelected = customer.housingType === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setHousingType(option.id)}
+                      className={`rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
+                        isSelected
+                          ? "border-accent bg-accent/15 text-white shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
+                          : "border-white/10 bg-white/5 text-zinc-300 hover:border-white/20"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {customer.housingType === "apartamento" ? (
+              <div className="flex flex-col gap-3">
+                <input
+                  type="text"
+                  placeholder="Nombre del edificio"
+                  value={customer.buildingName}
+                  onChange={handleChange("buildingName")}
+                  className={INPUT_CLASS}
+                />
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <input
+                    type="text"
+                    placeholder="Torre"
+                    value={customer.tower}
+                    onChange={handleChange("tower")}
+                    className={`flex-1 ${INPUT_CLASS}`}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Apartamento"
+                    value={customer.apartmentNumber}
+                    onChange={handleChange("apartmentNumber")}
+                    className={`flex-1 ${INPUT_CLASS}`}
+                  />
+                </div>
+              </div>
+            ) : (
+              <textarea
+                placeholder="Indicaciones adicionales (color de la casa, referencias cercanas, etc.)"
+                value={customer.additionalInstructions}
+                onChange={handleChange("additionalInstructions")}
+                rows={2}
+                className={`resize-none ${INPUT_CLASS}`}
+              />
+            )}
+
             <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="text"
+                placeholder="Barrio"
+                value={customer.neighborhood}
+                onChange={handleChange("neighborhood")}
+                className={`flex-1 ${INPUT_CLASS}`}
+              />
               <input
                 type="text"
                 placeholder="Ciudad"
                 value={customer.city}
                 onChange={handleChange("city")}
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none focus:border-accent sm:py-3 sm:text-sm"
-              />
-              <input
-                type="text"
-                placeholder="Departamento"
-                value={customer.department}
-                onChange={handleChange("department")}
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none focus:border-accent sm:py-3 sm:text-sm"
+                className={`flex-1 ${INPUT_CLASS}`}
               />
             </div>
 
@@ -356,6 +445,7 @@ export default function CheckoutPage() {
               Sandbox de pruebas — no se realizan cobros reales.
             </p>
           </div>
+        </div>
         </div>
       </div>
     </>

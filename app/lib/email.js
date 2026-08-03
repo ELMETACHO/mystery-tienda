@@ -9,8 +9,23 @@ const ADMIN_RECIPIENTS = [ADMIN_EMAIL, process.env.MANUFACTURER_EMAIL].filter(
   Boolean
 );
 
-function fullAddress(customer) {
-  return `${customer.street}, ${customer.city}, ${customer.department}`;
+// Detalle de la vivienda (edificio/torre/apto o indicaciones de casa),
+// según lo que Servientrega necesita para la entrega.
+function housingDetailsHtml(customer) {
+  if (customer.housingType === "apartamento") {
+    return `
+      <li><strong>Tipo de vivienda:</strong> Apartamento</li>
+      <li><strong>Edificio:</strong> ${customer.buildingName || "-"}</li>
+      <li><strong>Torre:</strong> ${customer.tower || "-"}</li>
+      <li><strong>Apartamento:</strong> ${customer.apartmentNumber || "-"}</li>
+    `;
+  }
+  return `
+    <li><strong>Tipo de vivienda:</strong> Casa</li>
+    <li><strong>Indicaciones adicionales:</strong> ${
+      customer.additionalInstructions || "-"
+    }</li>
+  `;
 }
 
 function adminEmailHtml({ order, customer, transaction }) {
@@ -29,8 +44,15 @@ function adminEmailHtml({ order, customer, transaction }) {
     <ul>
       <li><strong>Nombre:</strong> ${customer.fullName}</li>
       <li><strong>Correo:</strong> ${customer.email}</li>
-      <li><strong>Teléfono:</strong> ${customer.phonePrefix} ${customer.phone}</li>
-      <li><strong>Dirección de envío:</strong> ${fullAddress(customer)}</li>
+      <li><strong>Celular:</strong> ${customer.phonePrefix} ${customer.phone}</li>
+    </ul>
+
+    <h3>Dirección de envío (Servientrega)</h3>
+    <ul>
+      <li><strong>Dirección:</strong> ${customer.street}</li>
+      ${housingDetailsHtml(customer)}
+      <li><strong>Barrio:</strong> ${customer.neighborhood}</li>
+      <li><strong>Ciudad:</strong> ${customer.city}</li>
     </ul>
 
     <p>La imagen final ajustada por el cliente va adjunta a este correo.</p>
