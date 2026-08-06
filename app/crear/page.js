@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -264,8 +264,29 @@ export default function CrearPage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [imageDimensions, setImageDimensions] = useState(null);
   const [readyOrder, setReadyOrder] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Mismo patrón que RecentesDriftWall: matchMedia contra el breakpoint
+  // "sm" de Tailwind (640px) para decidir el texto de la caja de carga
+  // ("Arrastra..." no tiene sentido en un dispositivo táctil).
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const selectedSize = SIZES.find((s) => s.id === sizeId);
+  const isUploadScreen = !imageSrc && !readyOrder;
+
+  // Solo en la primera pantalla (subir foto) y solo en móvil: la caja de
+  // carga va primero, el indicador de pasos después, y la cabecera
+  // (TextType + DriftWall) al final — en desktop (sm+) se resetea al
+  // orden natural del DOM (cabecera → pasos → caja de carga).
+  const mobileOrderHeader = isUploadScreen ? "order-3 sm:order-none" : "";
+  const mobileOrderSteps = isUploadScreen ? "order-1 sm:order-none" : "";
+  const mobileOrderUpload = isUploadScreen ? "order-2 sm:order-none" : "";
 
   const isLowResolution =
     imageDimensions &&
@@ -434,8 +455,8 @@ export default function CrearPage() {
           de escribir + DriftWall en vez del título estático + el mockup
           lateral fijo que había antes — solo en este paso, los pasos 2/3
           conservan el título simple original. */}
-      {!imageSrc && !readyOrder ? (
-        <div className="mb-6 grid items-center gap-6 sm:mb-8 sm:gap-8 lg:grid-cols-2">
+      {isUploadScreen ? (
+        <div className={`mb-6 grid items-center gap-6 sm:mb-8 sm:gap-8 lg:grid-cols-2 ${mobileOrderHeader}`}>
           <div className="flex flex-col items-center gap-1.5 text-center lg:items-start lg:text-left">
             <Link
               href="/"
@@ -473,7 +494,9 @@ export default function CrearPage() {
         </div>
       )}
 
-      <ProgressSteps current={readyOrder ? 3 : imageSrc ? 2 : 1} />
+      <div className={mobileOrderSteps}>
+        <ProgressSteps current={readyOrder ? 3 : imageSrc ? 2 : 1} />
+      </div>
 
       {/* Input único, reutilizado por todos los <label htmlFor="file-upload">
           de esta página. El navegador abre el selector de archivos nativo al
@@ -557,7 +580,7 @@ export default function CrearPage() {
           </button>
         </div>
       ) : !imageSrc ? (
-        <div className="flex flex-col gap-8">
+        <div className={`flex flex-col gap-8 ${mobileOrderUpload}`}>
           {/* La caja de carga ahora ocupa todo el ancho: el mockup lateral
               estático que iba a su derecha se quitó (ver TextType +
               RecentesDriftWall en la cabecera de esta pantalla, más
@@ -583,7 +606,7 @@ export default function CrearPage() {
                   <>
                     <EmptyFramePlusIcon />
                     <p className="text-lg font-medium">
-                      Arrastra tu imagen aquí
+                      {isMobile ? "Toca para subir tu foto" : "Arrastra tu imagen aquí"}
                     </p>
                     <p className="text-sm text-zinc-400">
                       PNG, JPG, HEIC (fotos de iPhone) o PDF (se usará la primera página)
