@@ -2,8 +2,12 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import Cropper from "react-easy-crop";
+import { AnimatePresence, motion } from "motion/react";
+import TextType from "../components/TextType";
+import RecentesDriftWall from "../components/RecentesDriftWall";
 import {
   getCroppedImage,
   getCroppedImageWithBleed,
@@ -25,14 +29,6 @@ const MOCKUP = {
   src: "/images/mockups/mockup1.png",
   ratio: 1086 / 1448,
   zone: { left: 50, top: 3, width: 47, height: 62 },
-};
-
-// Mockup ya diseñado (cuadro + pared en una sola imagen) para la columna
-// derecha de la primera pantalla — sin recorte ni superposición por
-// código, solo se muestra tal cual.
-const EXAMPLE_MOCKUP = {
-  src: "/images/mockups/icon1.png",
-  ratio: 1086 / 1448,
 };
 
 // Fondo de ambiente para la pantalla de EDICIÓN (zoom/posición): repisa de
@@ -83,6 +79,78 @@ function getMockupOverlayStyle(sizeId, sizeRatio) {
   return getFramePlacement(MOCKUP, sizeId, sizeRatio, 0.78);
 }
 
+// Círculo indicador de paso, estilo tomado del componente Stepper de
+// reactbits (StepIndicator): número mientras el paso no se completó,
+// checkmark que se "dibuja" con motion/react cuando se completa. Colores
+// ajustados al morado de marca de Mystery (--accent) en vez del morado
+// genérico del ejemplo original (#5227ff).
+function StepIndicator({ stepNumber, isDone, isCurrent }) {
+  return (
+    <span
+      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold transition-colors sm:h-7 sm:w-7 ${
+        isDone
+          ? "bg-accent text-white"
+          : isCurrent
+          ? "border-2 border-accent text-accent-soft"
+          : "border border-white/15 text-zinc-500"
+      }`}
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        {isDone ? (
+          <motion.svg
+            key="check"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="h-3.5 w-3.5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            <motion.path
+              d="M5 13l4 4L19 7"
+              stroke="currentColor"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.35, ease: "easeInOut", delay: 0.1 }}
+            />
+          </motion.svg>
+        ) : (
+          <motion.span
+            key="number"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            {stepNumber}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
+  );
+}
+
+// Línea conectora entre círculos, estilo StepConnector de reactbits: una
+// base tenue (bg-white/10) con una capa morada encima que se "llena" con
+// una animación de scaleX cuando el paso anterior se completa, en vez de
+// simplemente cambiar de color de golpe.
+function StepConnector({ isDone }) {
+  return (
+    <span className="relative mx-2 mb-4 h-px flex-1 overflow-hidden bg-white/10 sm:mx-3">
+      <motion.span
+        className="absolute inset-0 origin-left bg-accent"
+        initial={false}
+        animate={{ scaleX: isDone ? 1 : 0 }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
+      />
+    </span>
+  );
+}
+
 function ProgressSteps({ current }) {
   return (
     <ol className="mx-auto mb-4 flex w-full max-w-md items-center sm:mb-6">
@@ -93,17 +161,7 @@ function ProgressSteps({ current }) {
         return (
           <li key={step} className="flex flex-1 items-center last:flex-none">
             <div className="flex flex-col items-center gap-1.5">
-              <span
-                className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold transition-colors sm:h-7 sm:w-7 ${
-                  isDone
-                    ? "bg-accent text-white"
-                    : isCurrent
-                    ? "border-2 border-accent text-accent-soft"
-                    : "border border-white/15 text-zinc-500"
-                }`}
-              >
-                {isDone ? "✓" : stepNumber}
-              </span>
+              <StepIndicator stepNumber={stepNumber} isDone={isDone} isCurrent={isCurrent} />
               <span
                 className={`whitespace-nowrap text-[11px] sm:text-xs ${
                   isCurrent ? "font-medium text-zinc-200" : "text-zinc-500"
@@ -112,13 +170,7 @@ function ProgressSteps({ current }) {
                 {step}
               </span>
             </div>
-            {stepNumber !== STEPS.length && (
-              <span
-                className={`mx-2 mb-4 h-px flex-1 sm:mx-3 ${
-                  isDone ? "bg-accent" : "bg-white/10"
-                }`}
-              />
-            )}
+            {stepNumber !== STEPS.length && <StepConnector isDone={isDone} />}
           </li>
         );
       })}
@@ -378,14 +430,48 @@ export default function CrearPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-4 sm:px-6 sm:py-10">
-      <div className="mb-2 text-center sm:mb-3">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
-          Crea tu cuadro
-        </h1>
-        <p className="mt-2 text-sm text-zinc-400 sm:text-base">
-          En menos de un minuto podrás ver cómo se verá tu cuadro antes de comprarlo.
-        </p>
-      </div>
+      {/* Cabecera de la primera pantalla (subir foto): texto tipo máquina
+          de escribir + DriftWall en vez del título estático + el mockup
+          lateral fijo que había antes — solo en este paso, los pasos 2/3
+          conservan el título simple original. */}
+      {!imageSrc && !readyOrder ? (
+        <div className="mb-6 grid items-center gap-6 sm:mb-8 sm:gap-8 lg:grid-cols-2">
+          <div className="flex flex-col items-center gap-1.5 text-center lg:items-start lg:text-left">
+            <Link
+              href="/"
+              className="mb-1 inline-flex items-center gap-1 self-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-200 lg:self-start"
+            >
+              ← Volver atrás
+            </Link>
+            <TextType
+              as="h1"
+              text="Cuadros personalizados"
+              loop={false}
+              typingSpeed={45}
+              cursorCharacter="|"
+              cursorClassName="text-accent"
+              cursorBlinkDuration={0.6}
+              className="text-2xl font-bold tracking-tight text-accent-soft sm:text-3xl md:text-4xl"
+            />
+            <p className="text-sm font-medium text-zinc-300 sm:text-base">
+              Tu cuadro en 30 segundos
+            </p>
+            <p className="text-sm text-zinc-500 sm:text-base">
+              Sigue los pasos de abajo
+            </p>
+          </div>
+          <RecentesDriftWall />
+        </div>
+      ) : (
+        <div className="mb-2 text-center sm:mb-3">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
+            Crea tu cuadro
+          </h1>
+          <p className="mt-2 text-sm text-zinc-400 sm:text-base">
+            En menos de un minuto podrás ver cómo se verá tu cuadro antes de comprarlo.
+          </p>
+        </div>
+      )}
 
       <ProgressSteps current={readyOrder ? 3 : imageSrc ? 2 : 1} />
 
@@ -472,12 +558,11 @@ export default function CrearPage() {
         </div>
       ) : !imageSrc ? (
         <div className="flex flex-col gap-8">
-          {/* Orden en el DOM = orden visual en móvil (grid sin columnas
-              apila en el mismo orden del código): la caja de carga va
-              primero, el mockup después, para no obligar a pasar la
-              imagen grande antes de encontrar el botón de subir. */}
-          <div className="grid gap-6 sm:gap-8 lg:grid-cols-[45fr_55fr] lg:items-start">
-            {/* Columna izquierda: carga */}
+          {/* La caja de carga ahora ocupa todo el ancho: el mockup lateral
+              estático que iba a su derecha se quitó (ver TextType +
+              RecentesDriftWall en la cabecera de esta pantalla, más
+              arriba, que ya cumplen ese rol visual). */}
+          <div className="mx-auto grid w-full max-w-xl gap-6 sm:gap-8">
             <div className="flex flex-col gap-4">
               <div
                 onDragOver={(e) => {
@@ -539,40 +624,6 @@ export default function CrearPage() {
                   ⭐⭐⭐⭐⭐
                 </span>{" "}
                 4.9
-              </p>
-            </div>
-
-            {/* Columna derecha: mockup grande de referencia con un cuadro
-                de ejemplo ya colocado — más protagonista que la caja de
-                carga (55% del ancho en desktop + max-w mayor). */}
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-center text-sm font-medium text-zinc-200">
-                Más de 1.000 hogares ya tienen un Mystery
-              </p>
-              <div
-                className="group relative w-full max-w-[200px] overflow-hidden rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] sm:max-w-md"
-                style={{ aspectRatio: EXAMPLE_MOCKUP.ratio }}
-              >
-                {/* Mockup ya diseñado (cuadro + pared en una sola imagen),
-                    sin recorte ni superposición por código: evita los
-                    artefactos de borde que generaba el composite
-                    programático anterior. */}
-                <div className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-105">
-                  <Image
-                    src={EXAMPLE_MOCKUP.src}
-                    alt="Ejemplo de cuadro personalizado ya colgado en la pared"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-
-                {/* Etiqueta flotante: deja claro que es una simulación. */}
-                <span className="absolute left-3 top-3 rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-medium text-white/80 backdrop-blur-sm">
-                  Vista previa
-                </span>
-              </div>
-              <p className="text-center text-xs text-zinc-600">
-                Sube una foto para reemplazar este ejemplo.
               </p>
             </div>
           </div>

@@ -94,42 +94,104 @@ async function skydropxFetch(path, options = {}) {
 // provider_name según el endpoint.
 const COD_CARRIERS = ["servientrega", "interrapidisimo", "interrapidísimo"];
 
-// Dirección de origen: comprobado en vivo que la API de cotizaciones NO
-// usa la dirección default de la cuenta ("CUADROS MYSTERY") aunque esté
-// marcada como predeterminada en el dashboard — exige address_from
-// completo en cada request (country_code/postal_code/area_level1/
-// area_level2 en blanco produce 422). Origen real confirmado: Bogotá,
-// código postal 110141. Bogotá no es un departamento como tal, así que se
-// usa "Bogotá D.C." como area_level1 (mismo valor que ofrece el selector
-// de departamento en el checkout) y "Bogotá" como area_level2 (ciudad).
-// Si más adelante la API pide un id de dirección explícito en vez de
-// estos campos, definí SKYDROPX_ORIGIN_ADDRESS_ID en .env.local — ese id
-// tiene prioridad sobre los campos fijos de abajo.
+// Confirmado por soporte de Skydropx: la cuenta SÍ soporta envíos
+// domésticos Colombia→Colombia con contraentrega — los "no existe"
+// anteriores eran de FORMATO (postal_code debe ser el código DANE de 6
+// dígitos, area_level1/2 el nombre completo del departamento/municipio),
+// no de cobertura. El 110221 que dio soporte como ejemplo genérico de
+// Bogotá también fue rechazado ("no existe") al probarlo contra el
+// endpoint de cotización — reemplazado por el código postal OFICIAL real
+// de la dirección de origen (CUADROS MYSTERY), obtenido directamente del
+// visor gubernamental visor.codigopostal.gov.co: 110131.
+const ORIGIN = {
+  name: "CUADROS MYSTERY",
+  phone: "3202646716",
+  street1: "Cra. 8c #167D - 05",
+  areaLevel1: "Bogota D.C.",
+  areaLevel2: "Bogota",
+  postalCode: "110131",
+  country: "CO",
+};
+
+// El ejemplo de payload que dio soporte usa nombres de área SIN tildes
+// ("Bogota D.C.", "Medellin") — para no repetir el mismo tipo de error de
+// formato que tuvimos con el código postal, se normalizan los nombres de
+// departamento/ciudad/barrio que vienen del formulario (que sí muestran
+// tildes en la UI, ej. "Bogotá D.C.") quitándoles los acentos antes de
+// enviarlos a Skydropx.
+function normalizeAreaName(name) {
+  return String(name || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+// Confirmado por soporte: el teléfono debe ser EXACTAMENTE 10 dígitos,
+// sin +57 ni espacios/guiones. El campo de celular del checkout no debería
+// traer el prefijo (va aparte en phonePrefix), pero por si el cliente lo
+// escribe igual dentro del campo, se limpia todo lo que no sea dígito y se
+// quita un +57/57 inicial si quedó de 12 dígitos.
+function normalizePhone(rawPhone) {
+  let digits = String(rawPhone || "").replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("57")) {
+    digits = digits.slice(2);
+  }
+  if (digits.length !== 10) {
+    throw new Error(
+      `Teléfono de destino inválido para Skydropx (se esperan 10 dígitos): "${rawPhone}"`
+    );
+  }
+  return digits;
+}
+
+// Confirmado por soporte: declared_value debe estar entre $10.000 y
+// $5.000.000 COP. Nuestros precios (SIZES en app/lib/order.js) ya
+// califican siempre, pero se deja el límite explícito como salvaguarda
+// por si algún día cambian los precios fuera de ese rango.
+const MIN_DECLARED_VALUE_COP = 10000;
+const MAX_DECLARED_VALUE_COP = 5000000;
+function getDeclaredValue(priceCOP) {
+  const clamped = Math.min(
+    Math.max(priceCOP, MIN_DECLARED_VALUE_COP),
+    MAX_DECLARED_VALUE_COP
+  );
+  if (clamped !== priceCOP) {
+    console.warn(
+      `[skydropx] declared_value fuera de rango permitido ($10.000-$5.000.000), se ajustó de ${priceCOP} a ${clamped}.`
+    );
+  }
+  return clamped;
+}
+
+// Dirección de origen para la COTIZACIÓN (usa country_code, distinto del
+// nombre "country" que espera el endpoint de creación de guía — ver
+// createShipment más abajo). Si en algún momento la API pide un id de
+// dirección explícito en vez de estos campos, definí
+// SKYDROPX_ORIGIN_ADDRESS_ID en .env.local — ese id tiene prioridad.
 function buildOriginAddress() {
   const id = process.env.SKYDROPX_ORIGIN_ADDRESS_ID;
   if (id) return { id };
 
   return {
-    country_code: "CO",
-    postal_code: "110141",
-    area_level1: "Bogotá D.C.",
-    area_level2: "Bogotá",
+    country_code: ORIGIN.country,
+    postal_code: ORIGIN.postalCode,
+    area_level1: ORIGIN.areaLevel1,
+    area_level2: ORIGIN.areaLevel2,
   };
 }
 
 // El checkout ya captura departamento (selector con los 32 departamentos
 // de Colombia + Bogotá D.C., requerido) y código postal (texto libre,
-// opcional — Skydropx puede cotizar con area_level1/area_level2 aunque
-// postal_code venga vacío). Si de todos modos alguna dirección no cotiza
-// bien, esto se sigue degradando de forma segura a "sin guía automática"
-// (ver createCodShipment más abajo), nunca bloquea el pedido.
+// opcional). Si el cliente deja el código postal vacío, la cotización
+// puede fallar igual que fallaba con address_from vacío — eso se degrada
+// de forma segura a "sin guía automática" (ver createCodShipment más
+// abajo), nunca bloquea el pedido.
 function buildDestinationAddress(customer) {
   return {
     country_code: "CO",
     postal_code: customer.postalCode || "",
-    area_level1: customer.department || "",
-    area_level2: customer.city,
-    area_level3: customer.neighborhood,
+    area_level1: normalizeAreaName(customer.department || ""),
+    area_level2: normalizeAreaName(customer.city),
+    area_level3: normalizeAreaName(customer.neighborhood),
   };
 }
 
@@ -162,7 +224,7 @@ async function createQuotation({ order, customer }) {
           height: packageCm.height,
           // Requerido por la API ("declared_amount es obligatorio") — valor
           // asegurado del paquete, usamos el precio de venta del cuadro.
-          declared_amount: order.priceCOP,
+          declared_amount: getDeclaredValue(order.priceCOP),
         },
       },
     }),
@@ -223,41 +285,43 @@ function pickCheapestCodRate(rates) {
   });
 }
 
-async function createShipment({ rate, order, customer }) {
-  // Campos de contraentrega: el nombre exacto de este campo NO está
-  // confirmado (no hay documentación pública accesible que lo detalle) —
-  // se envían varias variantes comunes a la vez (inofensivo: una API REST
-  // normalmente ignora claves que no reconoce) como mejor esfuerzo.
-  // IMPORTANTE: verificar manualmente en el dashboard de Skydropx que la
-  // primera guía de prueba realmente quedó marcada como contraentrega por
-  // el monto correcto antes de confiar en esto para pedidos reales.
-  const codAmount = order.priceCOP;
+// Confirmado por soporte de Skydropx: el payload de creación de guía va
+// PLANO (sin envolver en {shipment: {...}}), con is_cod: true e
+// include_shipping_cost: true como los campos que realmente marcan el
+// envío como contraentrega — los cod/cod_amount/cash_on_delivery que se
+// probaban antes por mejor esfuerzo quedan reemplazados por estos, ya
+// confirmados. address_from/address_to usan "country" (no "country_code"
+// como en la cotización) según el ejemplo que dio soporte.
+async function createShipment({ rate, order, customer, reference }) {
+  const declaredValue = getDeclaredValue(order.priceCOP);
+  const destinationPhone = normalizePhone(customer.phone);
 
   const res = await skydropxFetch("/api/v1/shipments", {
     method: "POST",
     body: JSON.stringify({
-      shipment: {
-        rate_id: rate.id,
-        cod: true,
-        cod_amount: codAmount,
-        cash_on_delivery: { amount: codAmount, currency: "COP" },
-        address_from: {
-          ...buildOriginAddress(),
-          name: "CUADROS MYSTERY",
-        },
-        address_to: {
-          ...buildDestinationAddress(customer),
-          name: customer.fullName,
-          phone: `${customer.phonePrefix}${customer.phone}`,
-          email: customer.email,
-          street1: customer.street,
-          reference:
-            customer.housingType === "apartamento"
-              ? [customer.buildingName, customer.tower, customer.apartmentNumber]
-                  .filter(Boolean)
-                  .join(" ")
-              : customer.additionalInstructions || "",
-        },
+      rate_id: rate.id,
+      order_number: reference,
+      declared_value: declaredValue,
+      is_cod: true,
+      include_shipping_cost: true,
+      address_from: {
+        name: ORIGIN.name,
+        phone: ORIGIN.phone,
+        street1: ORIGIN.street1,
+        area_level1: ORIGIN.areaLevel1,
+        area_level2: ORIGIN.areaLevel2,
+        postal_code: ORIGIN.postalCode,
+        country: ORIGIN.country,
+      },
+      address_to: {
+        name: customer.fullName,
+        email: customer.email,
+        phone: destinationPhone,
+        street1: customer.street,
+        area_level1: normalizeAreaName(customer.department),
+        area_level2: normalizeAreaName(customer.city),
+        postal_code: customer.postalCode || "",
+        country: "CO",
       },
     }),
   });
@@ -282,7 +346,7 @@ async function createShipment({ rate, order, customer }) {
 // se captura afuera, en el endpoint que llama a esta función (ver
 // app/api/confirm-cod-order/route.js), donde el pedido sigue su curso sin
 // número de guía automático si esto falla.
-export async function createCodShipment({ order, customer }) {
+export async function createCodShipment({ order, customer, reference }) {
   const quotationId = await createQuotation({ order, customer });
   const rates = await pollQuotationRates(quotationId);
 
@@ -293,5 +357,5 @@ export async function createCodShipment({ order, customer }) {
     );
   }
 
-  return createShipment({ rate: bestRate, order, customer });
+  return createShipment({ rate: bestRate, order, customer, reference });
 }

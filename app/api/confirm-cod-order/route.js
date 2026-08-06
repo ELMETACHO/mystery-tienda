@@ -52,7 +52,11 @@ export async function POST(request) {
   let carrierName = null;
   if (SKYDROPX_COD_ENABLED) {
     try {
-      const shipment = await createCodShipment({ order, customer });
+      const shipment = await createCodShipment({
+        order,
+        customer,
+        reference: transaction.reference,
+      });
       trackingNumber = shipment.trackingNumber || null;
       carrierName = shipment.carrierName || null;
       console.log(
