@@ -449,38 +449,56 @@ export default function CrearPage() {
     router.push("/checkout");
   };
 
+  // Bloque de texto (título + subtítulos) de la primera pantalla — se
+  // renderiza en dos posiciones posibles según el viewport (nunca las
+  // dos a la vez): arriba de todo en móvil, o junto al DriftWall en
+  // desktop (ver más abajo). El DriftWall en sí NO se mueve, solo este
+  // texto cambia de lugar.
+  const uploadTitleBlock = (
+    <div className="flex flex-col items-center gap-1.5 text-center lg:items-start lg:text-left">
+      <Link
+        href="/"
+        className="mb-1 inline-flex items-center gap-1 self-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-200 lg:self-start"
+      >
+        ← Volver atrás
+      </Link>
+      <TextType
+        as="h1"
+        text="Cuadros personalizados"
+        loop={false}
+        typingSpeed={45}
+        cursorCharacter="|"
+        cursorClassName="text-accent"
+        cursorBlinkDuration={0.6}
+        className="text-2xl font-bold tracking-tight text-accent-soft sm:text-3xl md:text-4xl"
+      />
+      <p className="text-sm font-medium text-zinc-300 sm:text-base">
+        Tu cuadro en 30 segundos
+      </p>
+      <p className="text-sm text-zinc-500 sm:text-base">Sigue los pasos de abajo</p>
+    </div>
+  );
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-4 sm:px-6 sm:py-10">
+      {/* En móvil, el título/subtítulos son lo primero que ve el cliente —
+          por encima incluso del indicador de pasos. En desktop este bloque
+          NO se duplica: se muestra junto al DriftWall más abajo (ver
+          mobileOrderHeader), así que acá solo se renderiza cuando
+          isMobile es true. */}
+      {isUploadScreen && isMobile && (
+        <div className="mb-6">{uploadTitleBlock}</div>
+      )}
+
       {/* Cabecera de la primera pantalla (subir foto): texto tipo máquina
           de escribir + DriftWall en vez del título estático + el mockup
           lateral fijo que había antes — solo en este paso, los pasos 2/3
-          conservan el título simple original. */}
+          conservan el título simple original. En móvil solo se ve el
+          DriftWall acá (el texto ya se mostró arriba); en desktop se ven
+          ambos lado a lado, como siempre. */}
       {isUploadScreen ? (
         <div className={`mb-6 grid items-center gap-6 sm:mb-8 sm:gap-8 lg:grid-cols-2 ${mobileOrderHeader}`}>
-          <div className="flex flex-col items-center gap-1.5 text-center lg:items-start lg:text-left">
-            <Link
-              href="/"
-              className="mb-1 inline-flex items-center gap-1 self-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-200 lg:self-start"
-            >
-              ← Volver atrás
-            </Link>
-            <TextType
-              as="h1"
-              text="Cuadros personalizados"
-              loop={false}
-              typingSpeed={45}
-              cursorCharacter="|"
-              cursorClassName="text-accent"
-              cursorBlinkDuration={0.6}
-              className="text-2xl font-bold tracking-tight text-accent-soft sm:text-3xl md:text-4xl"
-            />
-            <p className="text-sm font-medium text-zinc-300 sm:text-base">
-              Tu cuadro en 30 segundos
-            </p>
-            <p className="text-sm text-zinc-500 sm:text-base">
-              Sigue los pasos de abajo
-            </p>
-          </div>
+          {!isMobile && uploadTitleBlock}
           <RecentesDriftWall />
         </div>
       ) : (
