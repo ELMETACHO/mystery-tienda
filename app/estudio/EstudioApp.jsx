@@ -3,8 +3,9 @@
 import { useCallback, useMemo, useState } from "react";
 import Image from "next/image";
 import Cropper from "react-easy-crop";
-import { getCroppedImage, getDefaultCropArea } from "../crear/cropImage";
+import { getCroppedImage, getCroppedImageWithBleed, getDefaultCropArea } from "../crear/cropImage";
 import { ESTUDIO_CATEGORIES } from "../lib/estudioCategories";
+import StepsIndicator from "../components/StepsIndicator";
 
 // Fijo siempre a 40x50 (ver instrucción): no hay selector de tamaño acá,
 // a diferencia de /crear.
@@ -18,9 +19,10 @@ const EXPORT_HEIGHT = 1350;
 // fondo las sube el diseñador libremente (sin calibrar una "zone" por
 // imagen, como sí se hace con los mockups propios de /crear), se usa un
 // rectángulo centrado de tamaño fijo en vez de una posición calibrada por
-// imagen. Si hace falta más precisión por mockup, el siguiente paso
-// natural sería agregar controles de posición/tamaño por imagen.
+// imagen.
 const DESIGN_WIDTH_RATIO = 0.58; // % del ancho del canvas de exportación
+
+const STEPS = ["Subir diseño", "Fondo y ajuste", "Categoría", "Enviar"];
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -33,25 +35,46 @@ function loadImage(src) {
 }
 
 export default function EstudioApp({ mockups }) {
-  const [selectedMockup, setSelectedMockup] = useState(mockups[0] || null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
   const [imageSrc, setImageSrc] = useState(null);
-  const [error, setError] = useState("");
+  const [imageDimensions, setImageDimensions] = useState(null);
+  const [originalFileMeta, setOriginalFileMeta] = useState(null); // { name, type }
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [error, setError] = useState("");
 
+  const [selectedMockup, setSelectedMockup] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-  const [imageDimensions, setImageDimensions] = useState(null);
+  const [mockupConfirmed, setMockupConfirmed] = useState(false);
+
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   const [isExporting, setIsExporting] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
   const mockupSrc = selectedMockup ? `/images/mockups-estudio/${selectedMockup}` : null;
 
+  // Flujo secuencial: cada paso solo se muestra cuando el anterior está
+  // resuelto — nada de formulario largo con todo visible de una.
+  const step = !imageSrc ? 1 : !mockupConfirmed ? 2 : !selectedCategory ? 3 : 4;
+
   const onCropComplete = useCallback((_area, pixels) => {
     setCroppedAreaPixels(pixels);
   }, []);
+
+  const resetAll = () => {
+    setImageSrc(null);
+    setImageDimensions(null);
+    setOriginalFileMeta(null);
+    setSelectedMockup(null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
+    setMockupConfirmed(false);
+    setSelectedCategory(null);
+    setUploadSuccess(false);
+    setError("");
+  };
 
   const handleFile = useCallback(async (file) => {
     if (!file) return;
@@ -80,9 +103,13 @@ export default function EstudioApp({ mockups }) {
 
       setImageSrc(dataUrl);
       setImageDimensions(dimensions);
+      setOriginalFileMeta({ name: file.name, type: file.type });
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setCroppedAreaPixels(null);
+      setSelectedMockup(null);
+      setMockupConfirmed(false);
+      setSelectedCategory(null);
       setUploadSuccess(false);
     } catch (err) {
       setError(err.message || "No se pudo procesar el archivo.");
@@ -148,12 +175,46 @@ export default function EstudioApp({ mockups }) {
 
       const finalDataUrl = canvas.toDataURL("image/png");
       const imageBase64 = finalDataUrl.split(",")[1];
-      const filename = `mystery-mockup-${Date.now()}.png`;
+      const timestamp = Date.now();
+      const filename = `mystery-mockup-${timestamp}.png`;
+
+      // Imagen para "Original (Portafolio)": mismo recorte/zoom que el
+      // mockup (finalCrop, ya en coordenadas de la imagen a resolución
+      // completa — react-easy-crop devuelve croppedAreaPixels en el
+      // espacio de píxeles nativo de la imagen original, no del canvas en
+      // pantalla), pero SIN recomponer sobre ningún fondo, y con 1cm de
+      // sangrado por lado agregado — misma función y misma lógica de
+      // proporción (pxPerCm sobre el ancho de referencia 40cm) que ya usa
+      // /crear para los pedidos de clientes.
+      const widthCm = 40;
+      const pxPerCm = finalCrop.width / widthCm;
+      const bleedPx = Math.round(pxPerCm * 1);
+      const originalWithBleedDataUrl = await getCroppedImageWithBleed(imageSrc, finalCrop, bleedPx);
+      const originalImageBase64 = originalWithBleedDataUrl.split(",")[1];
+
+      // getCroppedImageWithBleed siempre exporta PNG (ver cropImage.js),
+      // así que el archivo final es PNG sin importar el formato que subió
+      // el diseñador — el nombre refleja eso.
+      const originalExtension = ".png";
+      const safeBaseName = (originalFileMeta.name.includes(".")
+        ? originalFileMeta.name.slice(0, originalFileMeta.name.lastIndexOf("."))
+        : originalFileMeta.name
+      )
+        .replace(/[^a-zA-Z0-9-_ ]/g, "_")
+        .trim() || "diseno";
+      const originalFilename = `${safeBaseName}-original-${timestamp}${originalExtension}`;
 
       const res = await fetch("/api/estudio-upload-drive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64, filename, categoryId: selectedCategory }),
+        body: JSON.stringify({
+          imageBase64,
+          filename,
+          originalImageBase64,
+          originalFilename,
+          originalMimeType: "image/png",
+          categoryId: selectedCategory,
+        }),
       });
 
       if (!res.ok) {
@@ -171,141 +232,99 @@ export default function EstudioApp({ mockups }) {
   };
 
   const previewAspect = useMemo(() => EXPORT_WIDTH / EXPORT_HEIGHT, []);
+  const selectedCategoryLabel = ESTUDIO_CATEGORIES.find((c) => c.id === selectedCategory)?.label;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 sm:py-10">
-      <div>
+    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
+      <div className="text-center">
         <h1 className="text-2xl font-bold tracking-tight">Estudio de mockups</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Elige un fondo, sube tu diseño, ajústalo y envíalo a Drive listo para Instagram.
-        </p>
+        <p className="mt-1 text-sm text-zinc-400">Sube, ajusta y envía a Drive en 4 pasos.</p>
       </div>
 
-      <div>
-        <h2 className="mb-3 text-base font-semibold text-zinc-100">
-          1. Elige una categoría <span className="text-red-400">*</span>
-        </h2>
-        <div className="flex flex-wrap gap-2.5">
-          {ESTUDIO_CATEGORIES.map((category) => {
-            const isSelected = category.id === selectedCategory;
-            return (
-              <button
-                key={category.id}
-                type="button"
-                onClick={() => {
-                  setSelectedCategory(category.id);
-                  setUploadSuccess(false);
-                }}
-                className={`rounded-full border-2 px-5 py-2.5 text-sm font-semibold transition-colors ${
-                  isSelected
-                    ? "border-accent bg-accent text-white shadow-[0_0_20px_rgba(168,85,247,0.5)]"
-                    : "border-white/15 bg-white/5 text-zinc-300 hover:border-white/30"
-                }`}
-              >
-                {category.label}
-              </button>
-            );
-          })}
-        </div>
-        {!selectedCategory && (
-          <p className="mt-2 text-xs text-zinc-500">Obligatorio antes de poder enviar a Drive.</p>
-        )}
-      </div>
+      <StepsIndicator steps={STEPS} current={step} />
 
-      {mockups.length === 0 ? (
-        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
-          Todavía no hay imágenes en public/images/mockups-estudio/. Sube ahí los
-          fondos (paredes/ambientes) y recarga esta página.
-        </p>
-      ) : (
-        <div>
-          <h2 className="mb-3 text-sm font-medium text-zinc-300">2. Elige un fondo</h2>
-          <div className="flex gap-3 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible">
-            {mockups.map((file) => {
-              const isSelected = file === selectedMockup;
-              return (
-                <button
-                  key={file}
-                  type="button"
-                  onClick={() => {
-                    setSelectedMockup(file);
-                    setUploadSuccess(false);
-                  }}
-                  className={`relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border-2 transition-colors sm:h-28 sm:w-28 ${
-                    isSelected ? "border-accent" : "border-white/10 hover:border-white/30"
-                  }`}
-                >
-                  <Image
-                    src={`/images/mockups-estudio/${file}`}
-                    alt={file}
-                    fill
-                    sizes="112px"
-                    className="object-cover"
-                  />
-                </button>
-              );
-            })}
-          </div>
+      {step > 1 && (
+        <button
+          type="button"
+          onClick={resetAll}
+          className="self-center text-xs text-zinc-500 underline underline-offset-4 hover:text-zinc-300"
+        >
+          Empezar de nuevo
+        </button>
+      )}
+
+      {error && <p className="text-center text-sm text-red-400">{error}</p>}
+
+      {/* PASO 1: subir diseño — lo único visible al inicio. */}
+      {step === 1 && (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-12 text-center">
+          <input
+            id="estudio-file-upload"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="absolute h-px w-px overflow-hidden opacity-0 pointer-events-none"
+            tabIndex={-1}
+            onChange={(e) => handleFile(e.target.files?.[0])}
+          />
+          <p className="text-lg font-medium text-zinc-100">Sube tu diseño</p>
+          <p className="text-sm text-zinc-400">PNG, JPG o WEBP</p>
+          <label
+            htmlFor="estudio-file-upload"
+            className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-soft"
+          >
+            {isProcessingFile ? "Procesando..." : "Elegir diseño"}
+          </label>
         </div>
       )}
 
-      <div>
-        <h2 className="mb-3 text-sm font-medium text-zinc-300">3. Sube tu diseño</h2>
-        <input
-          id="estudio-file-upload"
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          className="absolute h-px w-px overflow-hidden opacity-0 pointer-events-none"
-          tabIndex={-1}
-          onChange={(e) => handleFile(e.target.files?.[0])}
-        />
-        <label
-          htmlFor="estudio-file-upload"
-          className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-soft"
-        >
-          {isProcessingFile ? "Procesando..." : imageSrc ? "Cambiar diseño" : "Elegir diseño"}
-        </label>
-        {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
-      </div>
-
-      {imageSrc && (
-        <div>
-          <h2 className="mb-3 text-sm font-medium text-zinc-300">4. Ajusta el diseño (40x50)</h2>
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-            <div className="relative aspect-[40/50] w-full max-w-sm overflow-hidden rounded-xl bg-black">
-              <Cropper
-                image={imageSrc}
-                crop={crop}
-                zoom={zoom}
-                aspect={DESIGN_RATIO}
-                cropShape="rect"
-                showGrid={false}
-                objectFit="cover"
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
-              />
-            </div>
-
-            <div className="flex flex-col gap-4">
+      {/* PASO 2: fondo/mockup + ajuste de zoom/posición. */}
+      {step === 2 && (
+        <div className="flex flex-col gap-6">
+          {mockups.length === 0 ? (
+            <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+              Todavía no hay imágenes en public/images/mockups-estudio/. Sube ahí los
+              fondos (paredes/ambientes) y recarga esta página.
+            </p>
+          ) : (
+            <>
               <div>
-                <p className="mb-2 text-xs text-zinc-400">Zoom</p>
-                <input
-                  type="range"
-                  min={1}
-                  max={3}
-                  step={0.01}
-                  value={zoom}
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                  className="w-full"
-                />
+                <h2 className="mb-3 text-sm font-medium text-zinc-300">Elige un fondo</h2>
+                <div className="flex gap-3 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible">
+                  {mockups.map((file) => {
+                    const isSelected = file === selectedMockup;
+                    return (
+                      <button
+                        key={file}
+                        type="button"
+                        onClick={() => setSelectedMockup(file)}
+                        className={`relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border-2 transition-colors sm:h-28 sm:w-28 ${
+                          isSelected ? "border-accent" : "border-white/10 hover:border-white/30"
+                        }`}
+                      >
+                        <Image
+                          src={`/images/mockups-estudio/${file}`}
+                          alt={file}
+                          fill
+                          sizes="112px"
+                          className="object-cover"
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {mockupSrc && (
-                <div>
-                  <p className="mb-2 text-xs text-zinc-400">Vista previa del fondo</p>
+              {selectedMockup && (
+                <div className="flex flex-col items-center gap-4">
+                  {/* Única vista: el mockup agrandado, con el área de
+                      recorte interactivo (react-easy-crop) posicionada
+                      directamente encima, en el mismo rectángulo donde
+                      luego se compone el diseño final — no hay un
+                      componente de ajuste aparte. Esto también evita
+                      recalcular/regenerar una vista previa duplicada por
+                      separado (causa probable del delay notado antes). */}
                   <div
-                    className="relative w-full overflow-hidden rounded-xl border border-white/10"
+                    className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-white/10"
                     style={{ aspectRatio: previewAspect }}
                   >
                     <Image src={mockupSrc} alt="Fondo elegido" fill className="object-cover" />
@@ -319,34 +338,106 @@ export default function EstudioApp({ mockups }) {
                         transform: "translateY(-50%)",
                       }}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={imageSrc}
-                        alt="Vista previa del diseño"
-                        className="h-full w-full object-cover"
+                      <Cropper
+                        image={imageSrc}
+                        crop={crop}
+                        zoom={zoom}
+                        aspect={DESIGN_RATIO}
+                        cropShape="rect"
+                        showGrid={false}
+                        objectFit="cover"
+                        onCropChange={setCrop}
+                        onZoomChange={setZoom}
+                        onCropComplete={onCropComplete}
                       />
                     </div>
                   </div>
+
+                  <div className="w-full max-w-xs">
+                    <p className="mb-2 text-center text-xs text-zinc-400">Zoom</p>
+                    <input
+                      type="range"
+                      min={1}
+                      max={3}
+                      step={0.01}
+                      value={zoom}
+                      onChange={(e) => setZoom(Number(e.target.value))}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setMockupConfirmed(true)}
+                    className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent-soft"
+                  >
+                    Continuar
+                  </button>
                 </div>
               )}
+            </>
+          )}
+        </div>
+      )}
 
+      {/* PASO 3: categoría. */}
+      {step === 3 && (
+        <div>
+          <h2 className="mb-3 text-center text-base font-semibold text-zinc-100">
+            Elige una categoría
+          </h2>
+          <div className="flex flex-wrap justify-center gap-2.5">
+            {ESTUDIO_CATEGORIES.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => setSelectedCategory(category.id)}
+                className="rounded-full border-2 border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-zinc-300 transition-colors hover:border-accent hover:text-white"
+              >
+                {category.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* PASO 4: confirmar y enviar. */}
+      {step === 4 && (
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-10 text-center">
+          <div className="relative aspect-[40/50] w-full max-w-[180px] overflow-hidden rounded-lg border border-white/10">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imageSrc} alt="Diseño elegido" className="h-full w-full object-cover" />
+          </div>
+          <p className="text-sm text-zinc-400">
+            Categoría: <span className="font-medium text-zinc-200">{selectedCategoryLabel}</span>
+          </p>
+
+          <button
+            type="button"
+            onClick={handleSendToDrive}
+            disabled={!canExport || isExporting}
+            className="rounded-full bg-accent px-8 py-3.5 text-sm font-medium text-white transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {isExporting ? "Enviando..." : "Enviar a Drive"}
+          </button>
+
+          {uploadSuccess ? (
+            <>
+              <p className="text-sm font-medium text-emerald-400">✔ Enviado a Drive</p>
               <button
                 type="button"
-                onClick={handleSendToDrive}
-                disabled={!canExport || isExporting}
-                className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={resetAll}
+                className="text-xs text-zinc-500 underline underline-offset-4 hover:text-zinc-300"
               >
-                {isExporting ? "Enviando..." : "Enviar a Drive"}
+                Subir otro diseño
               </button>
-              {uploadSuccess ? (
-                <p className="text-sm font-medium text-emerald-400">✔ Enviado a Drive</p>
-              ) : (
-                <p className="text-xs text-zinc-500">
-                  Se genera en PNG, 1080x1350 (4:5), y se sube directo a la carpeta de Drive.
-                </p>
-              )}
-            </div>
-          </div>
+            </>
+          ) : (
+            <p className="text-xs text-zinc-500">
+              Sube el mockup (PNG 1080x1350) a "Mockups (Instagram)" y la imagen original en alta
+              calidad a "Original (Portafolio)", dentro de la categoría elegida.
+            </p>
+          )}
         </div>
       )}
     </div>

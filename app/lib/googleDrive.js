@@ -32,6 +32,45 @@ function getDriveClient() {
   return google.drive({ version: "v3", auth: getOAuthClient() });
 }
 
+// Busca una subcarpeta por NOMBRE dentro de una carpeta padre; si no
+// existe, la crea. Así solo hace falta conocer el ID de la carpeta de
+// categoría (nivel superior) — las subcarpetas "Mockups (Instagram)" /
+// "Original (Portafolio)" se resuelven solas la primera vez que se sube
+// algo a cada categoría.
+export async function findOrCreateFolder({ name, parentFolderId }) {
+  const drive = getDriveClient();
+
+  // Escapa comillas simples dentro del nombre para no romper la query de
+  // búsqueda de Drive (usa una sintaxis tipo SQL con comillas simples).
+  const escapedName = name.replace(/'/g, "\\'");
+  const query = [
+    `name='${escapedName}'`,
+    `'${parentFolderId}' in parents`,
+    "mimeType='application/vnd.google-apps.folder'",
+    "trashed=false",
+  ].join(" and ");
+
+  const listRes = await drive.files.list({
+    q: query,
+    fields: "files(id, name)",
+    pageSize: 1,
+  });
+
+  const existing = listRes.data.files?.[0];
+  if (existing) return existing.id;
+
+  const createRes = await drive.files.create({
+    requestBody: {
+      name,
+      mimeType: "application/vnd.google-apps.folder",
+      parents: [parentFolderId],
+    },
+    fields: "id",
+  });
+
+  return createRes.data.id;
+}
+
 // Sube un archivo a una carpeta específica de Drive (por su ID) y
 // devuelve el id/enlace del archivo creado. El archivo queda de
 // propiedad de la cuenta real dueña del refresh token, así que cuenta
