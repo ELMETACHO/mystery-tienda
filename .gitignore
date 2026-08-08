@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# credenciales (cuenta de servicio de Google Drive, etc.) — nunca deben
+# subirse al repo.
+/credentials/
+
 # vercel
 .vercel
 

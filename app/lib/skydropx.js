@@ -94,35 +94,31 @@ async function skydropxFetch(path, options = {}) {
 // provider_name según el endpoint.
 const COD_CARRIERS = ["servientrega", "interrapidisimo", "interrapidísimo"];
 
-// Confirmado por soporte de Skydropx: la cuenta SÍ soporta envíos
-// domésticos Colombia→Colombia con contraentrega — los "no existe"
-// anteriores eran de FORMATO (postal_code debe ser el código DANE de 6
-// dígitos, area_level1/2 el nombre completo del departamento/municipio),
-// no de cobertura. El 110221 que dio soporte como ejemplo genérico de
-// Bogotá también fue rechazado ("no existe") al probarlo contra el
-// endpoint de cotización — reemplazado por el código postal OFICIAL real
-// de la dirección de origen (CUADROS MYSTERY), obtenido directamente del
-// visor gubernamental visor.codigopostal.gov.co: 110131.
+// Causa raíz confirmada DIRECTAMENTE por soporte de Skydropx: ni el
+// 110221 (su propio ejemplo genérico) ni el 110131 (código DANE oficial
+// del visor gubernamental) coinciden con el catálogo INTERNO que
+// Skydropx usa para Bogotá — no era un problema de formato en general,
+// sino específicamente ese código postal. El código correcto para
+// Bogotá D.C. en su sistema es 111611. Soporte también confirmó un
+// payload de ejemplo que SÍ funciona en producción: area_level1/2 van en
+// MAYÚSCULAS y CON tilde ("BOGOTÁ D.C."), al revés de lo que se había
+// asumido antes (se probó quitar tildes, que no era la causa real del
+// error).
 const ORIGIN = {
   name: "CUADROS MYSTERY",
   phone: "3202646716",
   street1: "Cra. 8c #167D - 05",
-  areaLevel1: "Bogota D.C.",
-  areaLevel2: "Bogota",
-  postalCode: "110131",
+  areaLevel1: "BOGOTÁ D.C.",
+  areaLevel2: "BOGOTÁ D.C.",
+  postalCode: "111611",
   country: "CO",
 };
 
-// El ejemplo de payload que dio soporte usa nombres de área SIN tildes
-// ("Bogota D.C.", "Medellin") — para no repetir el mismo tipo de error de
-// formato que tuvimos con el código postal, se normalizan los nombres de
-// departamento/ciudad/barrio que vienen del formulario (que sí muestran
-// tildes en la UI, ej. "Bogotá D.C.") quitándoles los acentos antes de
-// enviarlos a Skydropx.
+// Confirmado por soporte junto con el payload de ejemplo: area_level1/2
+// van en mayúsculas (con tilde, no sin ella). Se aplica a los nombres de
+// departamento/ciudad/barrio que vienen del formulario de checkout.
 function normalizeAreaName(name) {
-  return String(name || "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
+  return String(name || "").toUpperCase();
 }
 
 // Confirmado por soporte: el teléfono debe ser EXACTAMENTE 10 dígitos,
@@ -176,6 +172,7 @@ function buildOriginAddress() {
     postal_code: ORIGIN.postalCode,
     area_level1: ORIGIN.areaLevel1,
     area_level2: ORIGIN.areaLevel2,
+    street1: ORIGIN.street1,
   };
 }
 
@@ -222,8 +219,14 @@ async function createQuotation({ order, customer }) {
           length: packageCm.length,
           width: packageCm.width,
           height: packageCm.height,
+          // mass_unit/distance_unit: confirmados por soporte en el payload
+          // de ejemplo que funciona en producción.
+          mass_unit: "kg",
+          distance_unit: "cm",
           // Requerido por la API ("declared_amount es obligatorio") — valor
           // asegurado del paquete, usamos el precio de venta del cuadro.
+          // (No aparece en el ejemplo de soporte, pero SÍ lo confirmamos
+          // nosotros mismos en vivo como campo obligatorio — se mantiene.)
           declared_amount: getDeclaredValue(order.priceCOP),
         },
       },
