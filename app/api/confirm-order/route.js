@@ -1,6 +1,7 @@
 import { fetchWompiTransaction } from "../../lib/wompi";
 import { sendOrderEmails } from "../../lib/email";
 import { recordOrderAndCheckReturning } from "../../lib/loyalty";
+import { processCatalogProductPurchase } from "../../lib/catalogPurchase";
 
 export async function POST(request) {
   const { transactionId, order, customer } = await request.json();
@@ -37,8 +38,20 @@ export async function POST(request) {
     amountCOP: order.priceCOP,
   });
 
+  // Si el pedido viene de /producto/[id] (catálogo), incrementa el
+  // contador de ventas de ese producto y trae el archivo real de
+  // "Original (Portafolio)" desde Drive para adjuntarlo — no hace nada
+  // para pedidos normales de /crear (sin order.productId).
+  const { printImageBase64 } = await processCatalogProductPurchase(order);
+
   try {
-    await sendOrderEmails({ order, customer, transaction, isReturningCustomer });
+    await sendOrderEmails({
+      order,
+      customer,
+      transaction,
+      isReturningCustomer,
+      printImageBase64Override: printImageBase64,
+    });
   } catch (err) {
     console.error(err);
     return Response.json(

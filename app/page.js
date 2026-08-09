@@ -1,21 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { formatCOP } from "./lib/order";
-import RecentesDriftWall from "./components/RecentesDriftWall";
+import { getBestSellingProducts, getRecentProducts } from "./lib/catalog";
+import { ESTUDIO_CATEGORIES } from "./lib/estudioCategories";
 import FoldText from "./components/FoldText";
 
-// Contenido de ejemplo: el catálogo real todavía no existe. Estas fotos
-// (public/images/catalogo/) y sus títulos/precios se usan solo como
-// placeholder visual para "Más vendidos" — reemplazar por productos
-// reales cuando haya catálogo. "Recientes" ahora usa el efecto DriftWall
-// (ver app/components/RecentesDriftWall.jsx) en vez de tarjetas de
-// producto.
-const MAS_VENDIDOS = [
-  { src: "/images/catalogo/IMG_7339.PNG", titulo: "Cuadro personalizado 40x50", precioDesde: 80000 },
-  { src: "/images/catalogo/IMG_7340.JPG", titulo: "Cuadro personalizado 50x70", precioDesde: 80000 },
-  { src: "/images/catalogo/IMG_7341.JPG", titulo: "Cuadro personalizado 30x40", precioDesde: 80000 },
-  { src: "/images/catalogo/IMG_7342.PNG", titulo: "Cuadro personalizado 40x50", precioDesde: 80000 },
-];
+// Esta página lee el catálogo real (Redis) en cada visita — nunca debe
+// quedar cacheada mostrando productos viejos/borrados.
+export const dynamic = "force-dynamic";
 
 // Fotos de aproximación (catálogo real pendiente) para las tarjetas de
 // categoría emocional — reemplazar por fotografía curada por categoría.
@@ -165,35 +157,49 @@ const TESTIMONIOS = [
   },
 ];
 
-// Tarjeta de producto para "Recientes" / "Más vendidos": son ejemplos de
-// catálogo, no personalizaciones nuevas, por eso el botón dice "Comprar
-// ahora". Queda siempre visible en móvil, y en desktop aparece / se
-// resalta con el hover de la tarjeta (patrón group-hover ya usado en el
-// resto del proyecto).
+function categoryLabel(categoryId) {
+  return ESTUDIO_CATEGORIES.find((c) => c.id === categoryId)?.label || "Diseño";
+}
+
+// Tarjeta de producto para "Recientes" / "Más vendidos", ahora con datos
+// reales del catálogo (Redis, vía /estudio) — antes eran ejemplos
+// estáticos. La imagen es el link de miniatura pública de Drive, y
+// "Comprar ahora" lleva a la página de detalle/checkout de ESE producto
+// puntual (/producto/[id]), no al editor genérico.
 function ProductGrid({ items }) {
+  if (items.length === 0) {
+    return (
+      <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-zinc-500">
+        Todavía no hay productos en el catálogo. Vuelve pronto.
+      </p>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-      {items.map((item, i) => (
+      {items.map((item) => (
         <div
-          key={item.src + i}
+          key={item.id}
           className="group flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5"
         >
           <div className="relative aspect-square overflow-hidden">
             <Image
-              src={item.src}
-              alt={item.titulo}
+              src={item.thumbnailUrl}
+              alt={categoryLabel(item.category)}
               fill
               sizes="(min-width: 640px) 25vw, 50vw"
               className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
             />
           </div>
           <div className="flex flex-1 flex-col gap-1 p-3">
-            <h3 className="text-sm font-medium text-zinc-200">{item.titulo}</h3>
+            <h3 className="text-sm font-medium text-zinc-200">
+              Cuadro {categoryLabel(item.category)} · {item.size}
+            </h3>
             <p className="text-sm font-semibold text-accent-soft">
-              Desde {formatCOP(item.precioDesde)}
+              {formatCOP(item.priceCOP)}
             </p>
             <Link
-              href="/crear"
+              href={`/producto/${item.id}`}
               className="mt-2 w-full rounded-full bg-accent px-4 py-2 text-center text-xs font-medium text-white opacity-100 transition-all duration-200 hover:bg-accent-soft sm:translate-y-1 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100"
             >
               Comprar ahora
@@ -205,7 +211,12 @@ function ProductGrid({ items }) {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const [recientes, masVendidos] = await Promise.all([
+    getRecentProducts(8),
+    getBestSellingProducts(8),
+  ]);
+
   return (
     <div className="flex flex-1 flex-col">
       {/* 1. NAVBAR FIJA */}
@@ -307,24 +318,27 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 3. RECIENTES */}
+        {/* 3. RECIENTES — productos reales del catálogo (Redis), más
+            nuevos primero. */}
         <section id="recientes" className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <div className="mb-4">
               <h2 className="text-lg font-semibold sm:text-xl">Recientes</h2>
             </div>
-            <RecentesDriftWall />
+            <ProductGrid items={recientes} />
           </div>
         </section>
 
-        {/* 4. MÁS VENDIDOS */}
+        {/* 4. MÁS VENDIDOS — por salesCount descendente. Sin ventas
+            reales todavía, todos empatan en 0 y el desempate por fecha
+            hace que coincida con "Recientes" (esperado, ver
+            getBestSellingProducts en app/lib/catalog.js). */}
         <section id="mas-vendidos" className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <div className="mb-4 flex items-end justify-between">
               <h2 className="text-lg font-semibold sm:text-xl">Más vendidos</h2>
-              <span className="text-xs text-zinc-500">Ejemplos de catálogo</span>
             </div>
-            <ProductGrid items={MAS_VENDIDOS} />
+            <ProductGrid items={masVendidos} />
           </div>
         </section>
 

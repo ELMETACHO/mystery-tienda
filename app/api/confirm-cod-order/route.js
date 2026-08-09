@@ -3,6 +3,7 @@ import { sendOrderEmails } from "../../lib/email";
 import { recordOrderAndCheckReturning } from "../../lib/loyalty";
 import { COD_DEPOSIT_COP } from "../../lib/order";
 import { createCodShipment } from "../../lib/skydropx";
+import { processCatalogProductPurchase } from "../../lib/catalogPurchase";
 
 // Confirma un pedido "Pago contraentrega": el cliente paga un anticipo
 // fijo (COD_DEPOSIT_COP) por Wompi para cubrir costos de producción, y el
@@ -79,6 +80,12 @@ export async function POST(request) {
     carrierName,
   });
 
+  // Si el pedido viene de /producto/[id] (catálogo), incrementa el
+  // contador de ventas de ese producto y trae el archivo real de
+  // "Original (Portafolio)" desde Drive para adjuntarlo — no hace nada
+  // para pedidos normales de /crear (sin order.productId).
+  const { printImageBase64 } = await processCatalogProductPurchase(order);
+
   try {
     await sendOrderEmails({
       order,
@@ -90,6 +97,7 @@ export async function POST(request) {
       carrierName,
       anticipoPagado,
       saldoPendiente,
+      printImageBase64Override: printImageBase64,
     });
   } catch (err) {
     console.error("[confirm-cod-order] Falló el envío de correos:", err);

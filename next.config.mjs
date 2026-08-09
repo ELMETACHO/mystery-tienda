@@ -4,6 +4,11 @@ const nextConfig = {
   // (vía IP LAN) para probar con Eruda. Recordar quitar junto con Eruda antes
   // de producción, o mantenerlo acotado si se conserva para futuras pruebas.
   allowedDevOrigins: ["192.168.2.8"],
+  images: {
+    // Miniaturas de productos del catálogo (/estudio → Drive → Home /
+    // /producto/[id]) vienen de drive.google.com/thumbnail.
+    remotePatterns: [{ protocol: "https", hostname: "drive.google.com" }],
+  },
 };
 
 export default nextConfig;

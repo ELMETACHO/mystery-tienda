@@ -61,7 +61,10 @@ async function putToDriveSession(sessionUrl, blob, label) {
     throw new Error(`Drive rechazó la subida de "${label}" (status ${res.status}).`);
   }
 
-  return res;
+  // Drive devuelve {id, name, mimeType} al completar el PUT resumable —
+  // el id del archivo es lo que necesitamos para hacerlo público y
+  // registrar el producto en el catálogo.
+  return res.json();
 }
 
 function loadImage(src) {
@@ -272,10 +275,36 @@ export default function EstudioApp({ mockups }) {
         dataUrlToBlob(originalWithBleedDataUrl),
       ]);
 
-      await Promise.all([
+      // mockupFile / originalFile: cada uno es el {id, name, mimeType}
+      // que devuelve Drive al completar SU PROPIO PUT — no se mezclan
+      // entre sí, así que originalFile.id siempre corresponde al archivo
+      // de "Original (Portafolio)" (la imagen que subió el diseñador,
+      // recortada a resolución completa + sangrado), nunca al mockup.
+      const [mockupFile, originalFile] = await Promise.all([
         putToDriveSession(mockupUploadUrl, mockupBlob, "mockup"),
         putToDriveSession(originalUploadUrl, originalBlob, "original"),
       ]);
+
+      // Paso 3: registrar el producto en el catálogo (Redis) — hace
+      // público el mockup en Drive (para el link de miniatura) y guarda
+      // el registro, todo automático, sin pasos extra para el diseñador.
+      const registerRes = await fetch("/api/estudio-register-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categoryId: selectedCategory,
+          mockupFileId: mockupFile.id,
+          originalFileId: originalFile.id,
+        }),
+      });
+
+      if (!registerRes.ok) {
+        const data = await registerRes.json().catch(() => ({}));
+        throw new Error(
+          data.error ||
+            "Los archivos se subieron a Drive pero no se pudo registrar el producto en el catálogo"
+        );
+      }
 
       setUploadSuccess(true);
     } catch (err) {
@@ -478,7 +507,7 @@ export default function EstudioApp({ mockups }) {
 
           {uploadSuccess ? (
             <>
-              <p className="text-sm font-medium text-emerald-400">✔ Enviado a Drive</p>
+              <p className="text-sm font-medium text-emerald-400">✔ Producto agregado al catálogo</p>
               <button
                 type="button"
                 onClick={resetAll}

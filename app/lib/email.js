@@ -353,6 +353,12 @@ export async function sendOrderEmails({
   carrierName,
   anticipoPagado,
   saldoPendiente,
+  // Para pedidos de /producto/[id] (catálogo): el llamador ya descargó el
+  // archivo real de "Original (Portafolio)" desde Drive server-side (ver
+  // app/lib/catalogPurchase.js) — ese buffer, ya en base64, tiene
+  // prioridad sobre order.printImage (que para estos pedidos es solo la
+  // miniatura pública del mockup, no el archivo de imprenta real).
+  printImageBase64Override,
 }) {
   // El fabricante recibe la versión CON sangrado de producción
   // (order.printImage); si por algún motivo no viene (pedidos guardados
@@ -362,7 +368,10 @@ export async function sendOrderEmails({
   // imagen del cuadro. extractImageBase64 valida el formato antes de
   // adjuntar, así que un dato corrupto o ausente simplemente no se adjunta
   // en vez de mandar un PNG roto.
-  const printBase64 = extractImageBase64(order.printImage) || extractImageBase64(order.croppedImage);
+  const printBase64 =
+    printImageBase64Override ||
+    extractImageBase64(order.printImage) ||
+    extractImageBase64(order.croppedImage);
   if (!printBase64) {
     console.error(
       "[email] order.printImage/croppedImage no es un data URL de imagen válido — no se adjuntará ningún archivo al correo del fabricante."

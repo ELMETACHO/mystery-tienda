@@ -130,6 +130,33 @@ export async function createResumableUploadSession({ filename, mimeType, folderI
   return sessionUrl;
 }
 
+// Da permiso "cualquiera con el enlace puede ver" (role: reader, type:
+// anyone) a un archivo — necesario para que el link de miniatura
+// (https://drive.google.com/thumbnail?id=ID&sz=w1000) sirva la imagen
+// públicamente en el sitio sin que cada visitante necesite estar
+// autenticado con la cuenta de Google dueña del archivo.
+export async function makeFilePublic(fileId) {
+  const drive = getDriveClient();
+  await drive.permissions.create({
+    fileId,
+    requestBody: { role: "reader", type: "anyone" },
+  });
+}
+
+// Descarga el contenido de un archivo de Drive usando nuestras propias
+// credenciales OAuth2 (server-only) — para el archivo de "Original
+// (Portafolio)" de un producto del catálogo, que NUNCA se hace público
+// (a diferencia del mockup): solo nuestro servidor puede leerlo, para
+// adjuntarlo al correo del fabricante al confirmar una compra.
+export async function downloadFileBuffer(fileId) {
+  const drive = getDriveClient();
+  const res = await drive.files.get(
+    { fileId, alt: "media" },
+    { responseType: "arraybuffer" }
+  );
+  return Buffer.from(res.data);
+}
+
 // Sube un archivo a una carpeta específica de Drive (por su ID) y
 // devuelve el id/enlace del archivo creado. El archivo queda de
 // propiedad de la cuenta real dueña del refresh token, así que cuenta
