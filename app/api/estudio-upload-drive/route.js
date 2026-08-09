@@ -1,14 +1,14 @@
 import { cookies } from "next/headers";
 import { ESTUDIO_COOKIE_NAME, getEstudioSessionToken } from "../../lib/estudioAuth";
 import { getCategoryFolderId } from "../../lib/estudioCategories";
-import { findOrCreateFolder, uploadFileToDriveFolder } from "../../lib/googleDrive";
+import { createResumableUploadSession, findOrCreateFolder } from "../../lib/googleDrive";
 
 const MOCKUPS_SUBFOLDER_NAME = "Mockups (Instagram)";
 const ORIGINAL_SUBFOLDER_NAME = "Original (Portafolio)";
 
 // Protegido con la misma cookie de sesión que /estudio — evita que
-// cualquiera con la URL del endpoint pueda subir archivos a la carpeta
-// de Drive sin haber pasado por la pantalla de contraseña.
+// cualquiera con la URL del endpoint pueda generar sesiones de subida a
+// la carpeta de Drive sin haber pasado por la pantalla de contraseña.
 async function isAuthenticated() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get(ESTUDIO_COOKIE_NAME)?.value;
@@ -16,27 +16,25 @@ async function isAuthenticated() {
   return Boolean(expectedToken) && sessionCookie === expectedToken;
 }
 
+// Este endpoint YA NO recibe los bytes de las imágenes (eso causaba
+// FUNCTION_PAYLOAD_TOO_LARGE en Vercel con imágenes de alta resolución).
+// Solo recibe metadata (nombre + tipo de cada archivo) y devuelve dos
+// URLs de sesión de "resumable upload" de Drive — el navegador sube el
+// mockup y la imagen de portafolio DIRECTAMENTE a Google con esas URLs,
+// sin que el archivo pase por esta función.
 export async function POST(request) {
   if (!(await isAuthenticated())) {
     return Response.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const {
-    imageBase64, // mockup compuesto (diseño + fondo)
-    filename, // nombre del mockup
-    originalImageBase64, // imagen original tal cual la subió el diseñador
-    originalFilename,
-    originalMimeType,
-    categoryId,
-  } = await request.json().catch(() => ({}));
+  const { categoryId, mockup, original } = await request.json().catch(() => ({}));
 
   if (
-    !imageBase64 ||
-    !filename ||
     !categoryId ||
-    !originalImageBase64 ||
-    !originalFilename ||
-    !originalMimeType
+    !mockup?.filename ||
+    !mockup?.mimeType ||
+    !original?.filename ||
+    !original?.mimeType
   ) {
     return Response.json({ error: "Datos incompletos" }, { status: 400 });
   }
@@ -49,6 +47,14 @@ export async function POST(request) {
     return Response.json({ error: "Categoría inválida" }, { status: 400 });
   }
 
+  // Origin real del navegador que llamó a este endpoint (fetch() lo manda
+  // automáticamente en peticiones POST, sea same-origin o no) — se
+  // reenvía a Drive al iniciar cada sesión resumable para que la URL de
+  // sesión quede habilitada por CORS para ESE origen exacto. Sin esto,
+  // Drive no sabe qué origen autorizar y el PUT directo del navegador
+  // falla con un CORS "Failed to fetch" silencioso (ver googleDrive.js).
+  const origin = request.headers.get("origin") || new URL(request.url).origin;
+
   try {
     // Las subcarpetas "Mockups (Instagram)" / "Original (Portafolio)" se
     // buscan por nombre dentro de la carpeta de categoría; si es la
@@ -58,32 +64,24 @@ export async function POST(request) {
       findOrCreateFolder({ name: ORIGINAL_SUBFOLDER_NAME, parentFolderId: categoryFolderId }),
     ]);
 
-    const [mockupFile, originalFile] = await Promise.all([
-      uploadFileToDriveFolder({
-        buffer: Buffer.from(imageBase64, "base64"),
-        filename,
-        mimeType: "image/png",
+    const [mockupUploadUrl, originalUploadUrl] = await Promise.all([
+      createResumableUploadSession({
+        filename: mockup.filename,
+        mimeType: mockup.mimeType,
         folderId: mockupsFolderId,
+        origin,
       }),
-      // Imagen original SIN recomprimir: el buffer viene directo del
-      // dataURL que generó el navegador al leer el archivo original
-      // (FileReader.readAsDataURL), que preserva los bytes tal cual los
-      // subió el diseñador — no pasa por el <canvas> del mockup.
-      uploadFileToDriveFolder({
-        buffer: Buffer.from(originalImageBase64, "base64"),
-        filename: originalFilename,
-        mimeType: originalMimeType,
+      createResumableUploadSession({
+        filename: original.filename,
+        mimeType: original.mimeType,
         folderId: originalFolderId,
+        origin,
       }),
     ]);
 
-    return Response.json({
-      ok: true,
-      mockup: { fileId: mockupFile.id, webViewLink: mockupFile.webViewLink },
-      original: { fileId: originalFile.id, webViewLink: originalFile.webViewLink },
-    });
+    return Response.json({ ok: true, mockupUploadUrl, originalUploadUrl });
   } catch (err) {
-    console.error("[estudio-upload-drive] Falló la subida a Drive:", err);
-    return Response.json({ error: "No se pudo subir el archivo a Drive" }, { status: 502 });
+    console.error("[estudio-upload-drive] Falló la creación de la sesión de subida:", err);
+    return Response.json({ error: "No se pudo preparar la subida a Drive" }, { status: 502 });
   }
 }

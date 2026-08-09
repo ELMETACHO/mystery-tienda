@@ -24,6 +24,46 @@ const DESIGN_WIDTH_RATIO = 0.58; // % del ancho del canvas de exportación
 
 const STEPS = ["Subir diseño", "Fondo y ajuste", "Categoría", "Enviar"];
 
+// Convierte un dataURL (base64) a Blob sin pasarlo por nuestro servidor
+// — fetch() sobre un data: URL se resuelve localmente en el navegador,
+// no hace ninguna petición de red.
+function dataUrlToBlob(dataUrl) {
+  return fetch(dataUrl).then((res) => res.blob());
+}
+
+// PUT directo del navegador a la URL de sesión resumable de Drive, con
+// diagnóstico explícito: un fetch() que nunca llega a tener respuesta
+// (típico de un bloqueo CORS) lanza un TypeError genérico sin status ni
+// headers que inspeccionar — se distingue de un error HTTP real (Drive
+// respondió, pero con un status de error) para no confundir ambos casos
+// en los logs.
+async function putToDriveSession(sessionUrl, blob, label) {
+  let res;
+  try {
+    res = await fetch(sessionUrl, {
+      method: "PUT",
+      headers: { "Content-Type": "image/png" },
+      body: blob,
+    });
+  } catch (networkErr) {
+    console.error(
+      `[estudio] PUT a Drive (${label}) falló sin respuesta — típico de un bloqueo CORS o de red:`,
+      { name: networkErr.name, message: networkErr.message, sessionUrl }
+    );
+    throw new Error(
+      `No se pudo conectar con Drive para subir "${label}" (posible bloqueo CORS). Revisa la consola del navegador.`
+    );
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    console.error(`[estudio] Drive respondió con error al subir "${label}":`, res.status, text);
+    throw new Error(`Drive rechazó la subida de "${label}" (status ${res.status}).`);
+  }
+
+  return res;
+}
+
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
@@ -174,7 +214,6 @@ export default function EstudioApp({ mockups }) {
       ctx.restore();
 
       const finalDataUrl = canvas.toDataURL("image/png");
-      const imageBase64 = finalDataUrl.split(",")[1];
       const timestamp = Date.now();
       const filename = `mystery-mockup-${timestamp}.png`;
 
@@ -190,7 +229,6 @@ export default function EstudioApp({ mockups }) {
       const pxPerCm = finalCrop.width / widthCm;
       const bleedPx = Math.round(pxPerCm * 1);
       const originalWithBleedDataUrl = await getCroppedImageWithBleed(imageSrc, finalCrop, bleedPx);
-      const originalImageBase64 = originalWithBleedDataUrl.split(",")[1];
 
       // getCroppedImageWithBleed siempre exporta PNG (ver cropImage.js),
       // así que el archivo final es PNG sin importar el formato que subió
@@ -204,23 +242,40 @@ export default function EstudioApp({ mockups }) {
         .trim() || "diseno";
       const originalFilename = `${safeBaseName}-original-${timestamp}${originalExtension}`;
 
-      const res = await fetch("/api/estudio-upload-drive", {
+      // Paso 1: pedirle al servidor solo METADATA (nombre + tipo de cada
+      // archivo) — nunca los bytes de la imagen, así se evita el
+      // FUNCTION_PAYLOAD_TOO_LARGE de Vercel con imágenes de alta
+      // resolución. El servidor devuelve dos URLs de sesión de Drive
+      // (resumable upload), ya autorizadas para esa subida puntual.
+      const sessionRes = await fetch("/api/estudio-upload-drive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageBase64,
-          filename,
-          originalImageBase64,
-          originalFilename,
-          originalMimeType: "image/png",
           categoryId: selectedCategory,
+          mockup: { filename, mimeType: "image/png" },
+          original: { filename: originalFilename, mimeType: "image/png" },
         }),
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "No se pudo subir el archivo a Drive");
+      if (!sessionRes.ok) {
+        const data = await sessionRes.json().catch(() => ({}));
+        throw new Error(data.error || "No se pudo preparar la subida a Drive");
       }
+
+      const { mockupUploadUrl, originalUploadUrl } = await sessionRes.json();
+
+      // Paso 2: el navegador sube los archivos pesados DIRECTAMENTE a
+      // Google con esas URLs de sesión — nunca pasan por nuestro
+      // servidor/Vercel.
+      const [mockupBlob, originalBlob] = await Promise.all([
+        dataUrlToBlob(finalDataUrl),
+        dataUrlToBlob(originalWithBleedDataUrl),
+      ]);
+
+      await Promise.all([
+        putToDriveSession(mockupUploadUrl, mockupBlob, "mockup"),
+        putToDriveSession(originalUploadUrl, originalBlob, "original"),
+      ]);
 
       setUploadSuccess(true);
     } catch (err) {

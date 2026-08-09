@@ -71,10 +71,73 @@ export async function findOrCreateFolder({ name, parentFolderId }) {
   return createRes.data.id;
 }
 
+// Inicia una sesión de "resumable upload" de la API de Drive y devuelve
+// la URL de sesión autorizada — el navegador hace el PUT pesado
+// DIRECTAMENTE contra esa URL, sin pasar el archivo por nuestra función
+// serverless. Esto evita el FUNCTION_PAYLOAD_TOO_LARGE de Vercel con
+// imágenes de alta resolución (mockup + portafolio con sangrado), ya que
+// el body que sí pasa por nuestro servidor es solo el metadata JSON
+// (nombre + carpeta), no los bytes de la imagen.
+//
+// Flujo (ver https://developers.google.com/workspace/drive/api/guides/manage-uploads#resumable):
+// 1. POST a .../upload/drive/v3/files?uploadType=resumable con el
+//    metadata (name, parents) y el header X-Upload-Content-Type.
+// 2. Drive responde 200 con un header "Location" — esa URL YA lleva la
+//    autorización de esta subida específica: el navegador no necesita
+//    (ni debe recibir) nuestro access token real para usarla.
+// 3. El navegador hace PUT directo del archivo a esa URL de sesión.
+//
+// CORS: Google decide el Access-Control-Allow-Origin de la URL de sesión
+// (paso 3) según el header Origin que haya visto en ESTE POST de inicio
+// (paso 1) — no según el Origin que mande el navegador en el PUT
+// posterior. Como este POST lo hace nuestro servidor (Node), nunca lleva
+// Origin por sí solo, así que Drive no habilitaba CORS para el dominio
+// real del navegador y el PUT directo fallaba con "Failed to fetch"
+// (bloqueo CORS silencioso, sin respuesta que inspeccionar). El fix es
+// reenviar acá el Origin real que trajo la petición del navegador a
+// nuestro propio endpoint (ver origin más abajo y route.js).
+export async function createResumableUploadSession({ filename, mimeType, folderId, origin }) {
+  const oauth2Client = getOAuthClient();
+  const { token } = await oauth2Client.getAccessToken();
+  if (!token) {
+    throw new Error("No se pudo obtener un access token de Google.");
+  }
+
+  const res = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": mimeType,
+      ...(origin ? { Origin: origin } : {}),
+    },
+    body: JSON.stringify({
+      name: filename,
+      parents: [folderId],
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`No se pudo iniciar la subida resumable a Drive (${res.status}): ${text}`);
+  }
+
+  const sessionUrl = res.headers.get("location");
+  if (!sessionUrl) {
+    throw new Error("Drive no devolvió una URL de sesión de subida (header Location ausente).");
+  }
+
+  return sessionUrl;
+}
+
 // Sube un archivo a una carpeta específica de Drive (por su ID) y
 // devuelve el id/enlace del archivo creado. El archivo queda de
 // propiedad de la cuenta real dueña del refresh token, así que cuenta
 // contra su cuota normal — sin necesidad de Unidad compartida.
+//
+// NOTA: ya no se usa desde /estudio (ver createResumableUploadSession
+// arriba) por el límite de payload de Vercel, pero se deja disponible
+// por si hace falta subir algo pequeño server-side en el futuro.
 export async function uploadFileToDriveFolder({ buffer, filename, mimeType, folderId }) {
   const drive = getDriveClient();
 
