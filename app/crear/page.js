@@ -36,6 +36,13 @@ const MOCKUP = {
 // repisa donde debe vivir el marco — calibrada a ojo mirando la foto
 // (planta a la izquierda hasta ~20% del ancho, repisa empieza ~y=77%):
 // si se ve desalineada, son los valores a ajustar.
+//
+// (Se probaron 3 fondos tipo flat-lay — femenino.png/Masculino.png/
+// neutro.png, con selección aleatoria por sesión — pero sus objetos
+// decorativos quedaban demasiado cerca del centro y forzaban una zona
+// despejada muy chica, achicando el marco. Se revirtió a este único
+// fondo; los 3 archivos quedan en /public/images/mockups/ sin usarse por
+// ahora, sin borrar.)
 const EDIT_BACKGROUND = {
   src: "/images/mockups/icon2.png",
   ratio: 1122 / 1402,
