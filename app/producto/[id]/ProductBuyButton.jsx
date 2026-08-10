@@ -7,8 +7,11 @@ import { saveOrder } from "../../lib/order";
 // Reutiliza exactamente el mismo mecanismo que /crear (saveOrder +
 // router.push a /checkout) — la diferencia es que acá el "readyOrder" se
 // arma directo desde un producto del catálogo, sin pasar por el editor
-// (subir/ajustar) porque el diseño ya viene listo.
-export default function ProductBuyButton({ product, sizeLabel }) {
+// (subir/ajustar) porque el diseño ya viene listo. El tamaño ya no es
+// fijo por producto: lo elige el comprador (ver ProductSizeSelector),
+// así que sizeId/sizeLabel/priceCOP llegan como props en vez de leerse
+// de product.size/product.priceCOP.
+export default function ProductBuyButton({ product, sizeId, sizeLabel, priceCOP }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -16,18 +19,23 @@ export default function ProductBuyButton({ product, sizeLabel }) {
     setIsLoading(true);
     try {
       await saveOrder({
-        sizeId: product.size,
+        sizeId,
         sizeLabel,
-        priceCOP: product.priceCOP,
+        priceCOP,
         // El mockup público de Drive es lo único con URL accesible sin
-        // autenticación — se usa tanto para la vista del cliente
-        // (croppedImage) como para el adjunto del fabricante (printImage).
-        // PENDIENTE: el archivo real de "Original (Portafolio)" (mayor
-        // calidad, con sangrado) no es público — para usarlo en el correo
-        // del fabricante hace falta traerlo server-side con las
-        // credenciales OAuth2 en /api/confirm-order, no solo linkearlo.
+        // autenticación desde el navegador — se usa para la vista del
+        // cliente en /checkout y /checkout/confirmacion (croppedImage).
+        // El archivo real de impresión (recorte + sangrado, para el
+        // tamaño elegido) NO es público: se resuelve server-side en
+        // /api/confirm-order (ver app/lib/catalogPurchase.js), que
+        // vuelve a leer el producto real de Redis y descarga con OAuth2
+        // el archivo de printFileIds correspondiente a order.sizeId —
+        // nunca se confía en un fileId enviado desde el cliente.
+        // printFileId acá es solo una referencia informativa (trazar a
+        // qué archivo real corresponde este pedido), no se usa para
+        // adjuntar nada directamente.
         croppedImage: product.thumbnailUrl,
-        printImage: product.thumbnailUrl,
+        printFileId: product.printFileIds?.[sizeId] || null,
         isLowResolution: false,
         productId: product.id,
       });

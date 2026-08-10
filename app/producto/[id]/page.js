@@ -2,9 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCatalogProductById } from "../../lib/catalog";
-import { SIZES, formatCOP } from "../../lib/order";
 import { ESTUDIO_CATEGORIES } from "../../lib/estudioCategories";
-import ProductBuyButton from "./ProductBuyButton";
+import ProductSizeSelector from "./ProductSizeSelector";
 
 function categoryLabel(categoryId) {
   return ESTUDIO_CATEGORIES.find((c) => c.id === categoryId)?.label || "Diseño";
@@ -17,11 +16,6 @@ export default async function ProductPage({ params }) {
   if (!product) {
     notFound();
   }
-
-  // Los productos de /estudio siempre son 40x50 (ver EstudioApp.jsx) —
-  // se toma el label/ratio reales de SIZES en vez de hardcodearlos, para
-  // no desincronizarse si esos valores cambian.
-  const size = SIZES.find((s) => s.id === product.size) || SIZES.find((s) => s.id === "40x50");
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-16">
@@ -48,11 +42,9 @@ export default async function ProductPage({ params }) {
           {categoryLabel(product.category)}
         </span>
         <h1 className="text-2xl font-bold tracking-tight">Cuadro personalizado</h1>
-        <p className="text-sm text-zinc-400">Tamaño {size.label}</p>
-        <p className="mt-2 text-3xl font-bold text-accent-soft">{formatCOP(product.priceCOP)}</p>
       </div>
 
-      <ProductBuyButton product={product} sizeLabel={size.label} />
+      <ProductSizeSelector product={product} />
 
       <p className="text-center text-xs text-zinc-500">
         Diseño listo — sin necesidad de subir ni ajustar imagen. Solo falta decirnos dónde

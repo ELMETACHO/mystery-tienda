@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
 import Image from "next/image";
 import Cropper from "react-easy-crop";
 import { getCroppedImage, getCroppedImageWithBleed, getDefaultCropArea } from "../crear/cropImage";
 import { ESTUDIO_CATEGORIES } from "../lib/estudioCategories";
+import { SIZES } from "../lib/order";
 import StepsIndicator from "../components/StepsIndicator";
 
 // Fijo siempre a 40x50 (ver instrucción): no hay selector de tamaño acá,
@@ -67,6 +69,83 @@ async function putToDriveSession(sessionUrl, blob, label) {
   return res.json();
 }
 
+const MIME_EXTENSIONS = {
+  "image/png": ".png",
+  "image/jpeg": ".jpg",
+  "image/webp": ".webp",
+};
+
+// Recalcula el rectángulo de recorte (en píxeles de la imagen a
+// resolución completa) para OTRA proporción, reusando el mismo
+// crop/zoom que el diseñador ya ajustó — sin esto, cada tamaño de
+// impresión (30x40/40x50/50x70) recortaría una parte distinta de la
+// composición sin que nadie la haya visto/aprobado.
+//
+// react-easy-crop no exporta su matemática interna de recorte (solo el
+// componente), así que en vez de reimplementarla a mano (riesgo de
+// bugs sutiles), se monta el MISMO componente real fuera de pantalla,
+// con el mismo tamaño de contenedor que el que el diseñador usó, y se
+// lee el resultado que él mismo ya calcula internamente vía
+// onCropComplete. Es una técnica algo inusual, pero evita duplicar
+// lógica no documentada de un paquete de terceros.
+function captureCropPixelsForAspect({ imageSrc, crop, zoom, aspect, width, height }) {
+  return new Promise((resolve, reject) => {
+    const host = document.createElement("div");
+    host.style.position = "fixed";
+    host.style.left = "-99999px";
+    host.style.top = "0px";
+    host.style.width = `${width}px`;
+    host.style.height = `${height}px`;
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    let settled = false;
+    let unmounted = false;
+    // root.unmount() debe diferirse al siguiente tick: onCropComplete se
+    // dispara DESDE DENTRO del commit de esta misma raíz oculta, así que
+    // desmontarla sincrónicamente ahí mismo hace que React se queje
+    // ("Attempted to synchronously unmount a root while React was
+    // already rendering") — todavía no terminó de procesar el commit
+    // que disparó este callback.
+    const scheduleCleanup = () => {
+      if (unmounted) return;
+      unmounted = true;
+      setTimeout(() => {
+        root.unmount();
+        host.remove();
+      }, 0);
+    };
+
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      scheduleCleanup();
+      reject(new Error(`No se pudo calcular el recorte para la proporción ${aspect}`));
+    }, 8000);
+
+    root.render(
+      <Cropper
+        image={imageSrc}
+        crop={crop}
+        zoom={zoom}
+        aspect={aspect}
+        cropShape="rect"
+        showGrid={false}
+        objectFit="cover"
+        onCropChange={() => {}}
+        onZoomChange={() => {}}
+        onCropComplete={(_area, pixels) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeoutId);
+          resolve(pixels);
+          scheduleCleanup();
+        }}
+      />
+    );
+  });
+}
+
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
@@ -89,8 +168,22 @@ export default function EstudioApp({ mockups }) {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [mockupConfirmed, setMockupConfirmed] = useState(false);
+  // Tamaño real (px) del contenedor del Cropper, medido MIENTRAS el paso
+  // 2 todavía está montado — no se puede leer cropBoxRef.current más
+  // tarde (en handleSendToDrive, paso 4): para entonces React ya
+  // desmontó ese <div> al avanzar de paso, y el ref queda en null.
+  const [cropBoxSize, setCropBoxSize] = useState(null);
 
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const cropBoxRef = useRef(null);
+
+  // Hash SHA-256 del archivo crudo (calculado en handleFile, antes de
+  // cualquier recorte/composición) + resultado de preguntarle al
+  // servidor si ya existe un producto con ese mismo hash — aviso NO
+  // bloqueante para detectar que el mismo diseño se subió antes en
+  // otra categoría (ver /api/estudio-check-duplicate).
+  const [contentHash, setContentHash] = useState(null);
+  const [duplicateWarning, setDuplicateWarning] = useState(null); // { category } | null
 
   const [isExporting, setIsExporting] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -113,11 +206,25 @@ export default function EstudioApp({ mockups }) {
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setCroppedAreaPixels(null);
+    setCropBoxSize(null);
     setMockupConfirmed(false);
     setSelectedCategory(null);
     setUploadSuccess(false);
+    setContentHash(null);
+    setDuplicateWarning(null);
     setError("");
   };
+
+  // SHA-256 vía Web Crypto (nativo del navegador, sin librerías) sobre
+  // los bytes crudos del archivo — antes de cualquier recorte o cambio
+  // de formato, así el hash es estable sin importar qué categoría o
+  // ajuste se elija después.
+  async function sha256Hex(arrayBuffer) {
+    const digest = await window.crypto.subtle.digest("SHA-256", arrayBuffer);
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
 
   const handleFile = useCallback(async (file) => {
     if (!file) return;
@@ -129,13 +236,17 @@ export default function EstudioApp({ mockups }) {
     }
 
     setIsProcessingFile(true);
+    setDuplicateWarning(null);
     try {
-      const dataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error || new Error("Error leyendo el archivo."));
-        reader.readAsDataURL(file);
-      });
+      const [dataUrl, arrayBuffer] = await Promise.all([
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error || new Error("Error leyendo el archivo."));
+          reader.readAsDataURL(file);
+        }),
+        file.arrayBuffer(),
+      ]);
 
       const dimensions = await new Promise((resolve, reject) => {
         const img = new window.Image();
@@ -144,16 +255,39 @@ export default function EstudioApp({ mockups }) {
         img.src = dataUrl;
       });
 
+      const hash = await sha256Hex(arrayBuffer);
+
       setImageSrc(dataUrl);
       setImageDimensions(dimensions);
       setOriginalFileMeta({ name: file.name, type: file.type });
+      setContentHash(hash);
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setCroppedAreaPixels(null);
+      setCropBoxSize(null);
       setSelectedMockup(null);
       setMockupConfirmed(false);
       setSelectedCategory(null);
       setUploadSuccess(false);
+
+      // No bloqueante: solo avisa, no impide seguir. Si la consulta
+      // falla (red, servidor caído), simplemente no se muestra el
+      // aviso esta vez — nunca le impide al diseñador seguir trabajando.
+      try {
+        const checkRes = await fetch("/api/estudio-check-duplicate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contentHash: hash }),
+        });
+        if (checkRes.ok) {
+          const { duplicate, category } = await checkRes.json();
+          if (duplicate) {
+            setDuplicateWarning({ category });
+          }
+        }
+      } catch (checkErr) {
+        console.error("[estudio] No se pudo verificar duplicados:", checkErr);
+      }
     } catch (err) {
       setError(err.message || "No se pudo procesar el archivo.");
     } finally {
@@ -220,44 +354,108 @@ export default function EstudioApp({ mockups }) {
       const timestamp = Date.now();
       const filename = `mystery-mockup-${timestamp}.png`;
 
-      // Imagen para "Original (Portafolio)": mismo recorte/zoom que el
-      // mockup (finalCrop, ya en coordenadas de la imagen a resolución
-      // completa — react-easy-crop devuelve croppedAreaPixels en el
-      // espacio de píxeles nativo de la imagen original, no del canvas en
-      // pantalla), pero SIN recomponer sobre ningún fondo, y con 1cm de
-      // sangrado por lado agregado — misma función y misma lógica de
-      // proporción (pxPerCm sobre el ancho de referencia 40cm) que ya usa
-      // /crear para los pedidos de clientes.
-      const widthCm = 40;
-      const pxPerCm = finalCrop.width / widthCm;
-      const bleedPx = Math.round(pxPerCm * 1);
-      const originalWithBleedDataUrl = await getCroppedImageWithBleed(imageSrc, finalCrop, bleedPx);
-
-      // getCroppedImageWithBleed siempre exporta PNG (ver cropImage.js),
-      // así que el archivo final es PNG sin importar el formato que subió
-      // el diseñador — el nombre refleja eso.
-      const originalExtension = ".png";
       const safeBaseName = (originalFileMeta.name.includes(".")
         ? originalFileMeta.name.slice(0, originalFileMeta.name.lastIndexOf("."))
         : originalFileMeta.name
       )
         .replace(/[^a-zA-Z0-9-_ ]/g, "_")
         .trim() || "diseno";
-      const originalFilename = `${safeBaseName}-original-${timestamp}${originalExtension}`;
+
+      // Foto original SIN recortar, tal cual la subió el diseñador (no
+      // pasa por canvas, así que conserva su formato/calidad original) —
+      // se guarda para poder recalcular el recorte más adelante si
+      // cambia la lógica de sangrado, sin que el diseñador tenga que
+      // repetir el ajuste de zoom/posición.
+      const originalExtension = MIME_EXTENSIONS[originalFileMeta.type] || ".png";
+      const originalRawFilename = `${safeBaseName}-original-${timestamp}${originalExtension}`;
+
+      // Un recorte + sangrado horneado POR CADA TAMAÑO de venta
+      // (30x40/40x50/50x70): cada uno tiene una proporción distinta (ver
+      // CLAUDE.md, "Limitación conocida"), así que no basta con un solo
+      // archivo — se recalcula el rectángulo de recorte para cada
+      // proporción reusando el mismo crop/zoom que el diseñador ya
+      // ajustó (ver captureCropPixelsForAspect arriba), y se hornea con
+      // el sangrado de 1cm ya escalado a la densidad real de cada tamaño
+      // (mismo principio de pxPerCm que ya usa /crear).
+      //
+      // cropBoxSize se mide y guarda en el onClick de "Continuar" del
+      // paso 2 (mientras ese <div> todavía está montado) — para cuando
+      // se llega acá (paso 4), React ya lo desmontó y cropBoxRef.current
+      // sería null.
+      if (!cropBoxSize) {
+        throw new Error("No se pudo medir el área de recorte. Vuelve al paso anterior e intenta de nuevo.");
+      }
+      const printFiles = {};
+      for (const size of SIZES) {
+        const pixelsForSize =
+          size.ratio === DESIGN_RATIO
+            ? finalCrop
+            : await captureCropPixelsForAspect({
+                imageSrc,
+                crop,
+                zoom,
+                aspect: size.ratio,
+                width: cropBoxSize.width,
+                height: cropBoxSize.height,
+              });
+
+        const widthCm = Number(size.id.split("x")[0]);
+        const heightCm = Number(size.id.split("x")[1]);
+        const pxPerCm = pixelsForSize.width / widthCm;
+        const bleedPx = Math.round(pxPerCm * 1);
+        // DIAGNÓSTICO TEMPORAL — quitar una vez confirmada la causa del
+        // bug de 30x40 (ver conversación).
+        console.log(`[estudio][diag] bake ${size.id}`, {
+          widthCm,
+          heightCm,
+          // Resolución REAL de la foto subida (antes de cualquier
+          // recorte) — referencia para saber si pixelsForSize.width/
+          // Height es una fracción razonable de la imagen real, o si en
+          // cambio está pegado al tamaño en pantalla del contenedor.
+          originalImageWidth: imageDimensions?.width,
+          originalImageHeight: imageDimensions?.height,
+          cropBoxSizeWidth: cropBoxSize.width,
+          cropBoxSizeHeight: cropBoxSize.height,
+          pixelsForSizeWidth: pixelsForSize.width,
+          pixelsForSizeHeight: pixelsForSize.height,
+          pxPerCm,
+          bleedPx,
+          finalCanvasWidthPx: pixelsForSize.width + bleedPx * 2,
+          finalCanvasHeightPx: pixelsForSize.height + bleedPx * 2,
+        });
+        const dataUrl = await getCroppedImageWithBleed(imageSrc, pixelsForSize, bleedPx, pxPerCm);
+        printFiles[size.id] = {
+          dataUrl,
+          filename: `${safeBaseName}-print-${size.id}-${timestamp}.png`,
+        };
+      }
 
       // Paso 1: pedirle al servidor solo METADATA (nombre + tipo de cada
       // archivo) — nunca los bytes de la imagen, así se evita el
       // FUNCTION_PAYLOAD_TOO_LARGE de Vercel con imágenes de alta
-      // resolución. El servidor devuelve dos URLs de sesión de Drive
-      // (resumable upload), ya autorizadas para esa subida puntual.
+      // resolución. El servidor devuelve una URL de sesión de Drive
+      // (resumable upload) por archivo, ya autorizada para esa subida
+      // puntual.
+      const filesToUpload = [
+        { key: "mockup", filename, mimeType: "image/png", folder: "mockups" },
+        {
+          key: "originalRaw",
+          filename: originalRawFilename,
+          mimeType: originalFileMeta.type,
+          folder: "original",
+        },
+        ...SIZES.map((size) => ({
+          key: `print_${size.id}`,
+          filename: printFiles[size.id].filename,
+          mimeType: "image/png",
+          folder: "original",
+        })),
+      ];
+
       const sessionRes = await fetch("/api/estudio-upload-drive", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          categoryId: selectedCategory,
-          mockup: { filename, mimeType: "image/png" },
-          original: { filename: originalFilename, mimeType: "image/png" },
-        }),
+        body: JSON.stringify({ categoryId: selectedCategory, files: filesToUpload }),
       });
 
       if (!sessionRes.ok) {
@@ -265,25 +463,29 @@ export default function EstudioApp({ mockups }) {
         throw new Error(data.error || "No se pudo preparar la subida a Drive");
       }
 
-      const { mockupUploadUrl, originalUploadUrl } = await sessionRes.json();
+      const { uploadUrls } = await sessionRes.json();
 
       // Paso 2: el navegador sube los archivos pesados DIRECTAMENTE a
       // Google con esas URLs de sesión — nunca pasan por nuestro
       // servidor/Vercel.
-      const [mockupBlob, originalBlob] = await Promise.all([
-        dataUrlToBlob(finalDataUrl),
-        dataUrlToBlob(originalWithBleedDataUrl),
-      ]);
+      const printBlobEntries = await Promise.all(
+        SIZES.map(async (size) => [
+          `print_${size.id}`,
+          await dataUrlToBlob(printFiles[size.id].dataUrl),
+        ])
+      );
+      const blobsByKey = {
+        mockup: await dataUrlToBlob(finalDataUrl),
+        originalRaw: await dataUrlToBlob(imageSrc),
+        ...Object.fromEntries(printBlobEntries),
+      };
 
-      // mockupFile / originalFile: cada uno es el {id, name, mimeType}
-      // que devuelve Drive al completar SU PROPIO PUT — no se mezclan
-      // entre sí, así que originalFile.id siempre corresponde al archivo
-      // de "Original (Portafolio)" (la imagen que subió el diseñador,
-      // recortada a resolución completa + sangrado), nunca al mockup.
-      const [mockupFile, originalFile] = await Promise.all([
-        putToDriveSession(mockupUploadUrl, mockupBlob, "mockup"),
-        putToDriveSession(originalUploadUrl, originalBlob, "original"),
-      ]);
+      const uploadedByKey = {};
+      await Promise.all(
+        Object.entries(blobsByKey).map(async ([key, blob]) => {
+          uploadedByKey[key] = await putToDriveSession(uploadUrls[key], blob, key);
+        })
+      );
 
       // Paso 3: registrar el producto en el catálogo (Redis) — hace
       // público el mockup en Drive (para el link de miniatura) y guarda
@@ -293,8 +495,16 @@ export default function EstudioApp({ mockups }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           categoryId: selectedCategory,
-          mockupFileId: mockupFile.id,
-          originalFileId: originalFile.id,
+          mockupFileId: uploadedByKey.mockup.id,
+          originalRawFileId: uploadedByKey.originalRaw.id,
+          originalRawContentHash: contentHash,
+          printFileIds: {
+            "30x40": uploadedByKey.print_30x40.id,
+            "40x50": uploadedByKey.print_40x50.id,
+            "50x70": uploadedByKey.print_50x70.id,
+          },
+          crop,
+          zoom,
         }),
       });
 
@@ -317,6 +527,10 @@ export default function EstudioApp({ mockups }) {
 
   const previewAspect = useMemo(() => EXPORT_WIDTH / EXPORT_HEIGHT, []);
   const selectedCategoryLabel = ESTUDIO_CATEGORIES.find((c) => c.id === selectedCategory)?.label;
+  const duplicateCategoryLabel = duplicateWarning
+    ? ESTUDIO_CATEGORIES.find((c) => c.id === duplicateWarning.category)?.label ||
+      duplicateWarning.category
+    : null;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
@@ -338,6 +552,15 @@ export default function EstudioApp({ mockups }) {
       )}
 
       {error && <p className="text-center text-sm text-red-400">{error}</p>}
+
+      {/* Aviso NO bloqueante: el diseñador puede seguir igual si de
+          verdad quiere volver a subir el mismo diseño a propósito. */}
+      {duplicateWarning && (
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-sm text-amber-300">
+          ⚠ Este diseño ya está en el catálogo (categoría: {duplicateCategoryLabel}). Puedes
+          seguir igual si quieres subirlo de todas formas.
+        </p>
+      )}
 
       {/* PASO 1: subir diseño — lo único visible al inicio. */}
       {step === 1 && (
@@ -413,6 +636,7 @@ export default function EstudioApp({ mockups }) {
                   >
                     <Image src={mockupSrc} alt="Fondo elegido" fill className="object-cover" />
                     <div
+                      ref={cropBoxRef}
                       className="absolute overflow-hidden rounded-sm border border-black/60 shadow-lg"
                       style={{
                         left: `${(1 - DESIGN_WIDTH_RATIO) * 50}%`,
@@ -452,7 +676,13 @@ export default function EstudioApp({ mockups }) {
 
                   <button
                     type="button"
-                    onClick={() => setMockupConfirmed(true)}
+                    onClick={() => {
+                      const rect = cropBoxRef.current?.getBoundingClientRect();
+                      if (rect) {
+                        setCropBoxSize({ width: rect.width, height: rect.height });
+                      }
+                      setMockupConfirmed(true);
+                    }}
                     className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-accent-soft"
                   >
                     Continuar
@@ -518,8 +748,9 @@ export default function EstudioApp({ mockups }) {
             </>
           ) : (
             <p className="text-xs text-zinc-500">
-              Sube el mockup (PNG 1080x1350) a "Mockups (Instagram)" y la imagen original en alta
-              calidad a "Original (Portafolio)", dentro de la categoría elegida.
+              Sube el mockup (PNG 1080x1350) a &ldquo;Mockups (Instagram)&rdquo; y la foto original
+              + los 3 recortes de impresión (30x40/40x50/50x70) a &ldquo;Original
+              (Portafolio)&rdquo;, dentro de la categoría elegida.
             </p>
           )}
         </div>

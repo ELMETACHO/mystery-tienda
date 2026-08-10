@@ -149,13 +149,124 @@ function drawWithEdgeClamp(ctx, image, srcRect) {
   }
 }
 
+// --- Densidad física (chunk pHYs de PNG) ---------------------------------
+//
+// canvas.toDataURL()/toBlob() nunca escriben metadata de DPI/densidad — el
+// <canvas> no tiene concepto de tamaño físico, solo píxeles. Software
+// como Illustrator, al no encontrarla, asume 72 DPI por defecto y muestra
+// un tamaño físico incorrecto al abrir el archivo (aunque los píxeles en
+// sí ya son los correctos para imprimir en el tamaño real). Para que el
+// PNG declare su densidad real, hay que insertar a mano el chunk
+// estándar de PNG para esto: `pHYs` (9 bytes: píxeles por unidad en X,
+// píxeles por unidad en Y, y un byte de unidad — 1 = metro), justo
+// después del chunk `IHDR` (única posición válida para este chunk).
+
+// CRC32 estándar (usado por todos los chunks de PNG) — tabla calculada
+// una sola vez y cacheada.
+let pngCrcTable = null;
+function getPngCrcTable() {
+  if (pngCrcTable) return pngCrcTable;
+  pngCrcTable = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    pngCrcTable[n] = c;
+  }
+  return pngCrcTable;
+}
+
+function pngCrc32(bytes) {
+  const table = getPngCrcTable();
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) {
+    crc = table[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+// Inserta el chunk pHYs justo después de IHDR (8 bytes de firma + 4 de
+// longitud + 4 de tipo + 13 de datos + 4 de CRC = 33 bytes fijos al
+// inicio de cualquier PNG). pixelsPerMeter se aplica igual en X e Y —
+// el sangrado/recorte no distingue densidad horizontal de vertical.
+function insertPngPhysChunk(pngBytes, pixelsPerMeter) {
+  const IHDR_CHUNK_END = 8 + 4 + 4 + 13 + 4;
+
+  const physData = new Uint8Array(9);
+  const physView = new DataView(physData.buffer);
+  physView.setUint32(0, pixelsPerMeter, false);
+  physView.setUint32(4, pixelsPerMeter, false);
+  physData[8] = 1; // unidad: metro
+
+  const typeBytes = new Uint8Array([0x70, 0x48, 0x59, 0x73]); // "pHYs"
+  const crcInput = new Uint8Array(typeBytes.length + physData.length);
+  crcInput.set(typeBytes, 0);
+  crcInput.set(physData, typeBytes.length);
+  const crc = pngCrc32(crcInput);
+
+  const chunk = new Uint8Array(4 + typeBytes.length + physData.length + 4);
+  const chunkView = new DataView(chunk.buffer);
+  chunkView.setUint32(0, physData.length, false);
+  chunk.set(typeBytes, 4);
+  chunk.set(physData, 8);
+  chunkView.setUint32(chunk.length - 4, crc, false);
+
+  const result = new Uint8Array(pngBytes.length + chunk.length);
+  result.set(pngBytes.subarray(0, IHDR_CHUNK_END), 0);
+  result.set(chunk, IHDR_CHUNK_END);
+  result.set(pngBytes.subarray(IHDR_CHUNK_END), IHDR_CHUNK_END + chunk.length);
+  return result;
+}
+
+// Codifica el canvas a PNG y, si se conoce pxPerCm, le inyecta el chunk
+// pHYs correspondiente antes de devolver el dataURL final. Sin pxPerCm
+// (llamadas que no necesitan densidad física), se comporta igual que
+// antes: canvas.toDataURL("image/png") sin metadata.
+function canvasToPngDataUrlWithDensity(canvas, pxPerCm) {
+  return new Promise((resolve, reject) => {
+    if (!pxPerCm) {
+      resolve(canvas.toDataURL("image/png"));
+      return;
+    }
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        reject(new Error("No se pudo generar el PNG."));
+        return;
+      }
+      try {
+        const arrayBuffer = await blob.arrayBuffer();
+        // px/cm × 100 = px/metro — conversión directa, sin pasar por
+        // pulgadas/DPI (pHYs guarda píxeles por metro, no por pulgada).
+        const pixelsPerMeter = Math.round(pxPerCm * 100);
+        const withPhys = insertPngPhysChunk(new Uint8Array(arrayBuffer), pixelsPerMeter);
+        const finalBlob = new Blob([withPhys], { type: "image/png" });
+
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error("No se pudo leer el PNG final."));
+        reader.readAsDataURL(finalBlob);
+      } catch (err) {
+        reject(err);
+      }
+    }, "image/png");
+  });
+}
+
 // Igual que getCroppedImage, pero expande el área de recorte `bleedPx`
 // píxeles por lado (sangrado para producción) antes de dibujar. Si el área
 // expandida se sale de los límites de la imagen original, extiende el
 // borde (edge clamp) en vez de dejar transparencia o fallar. Pensada para
 // la imagen que recibe el fabricante — la que ve el cliente en el sitio
 // sigue usando getCroppedImage() sin sangrado.
-export function getCroppedImageWithBleed(imageSrc, croppedAreaPixels, bleedPx) {
+//
+// pxPerCm (opcional) es la densidad real del recorte (píxeles del
+// recorte / cm del tamaño físico vendido) — si se pasa, el PNG resultante
+// incrusta esa densidad como metadata (chunk pHYs) para que cualquier
+// software que lo abra muestre el tamaño físico correcto en cm/pulgadas,
+// en vez de asumir 72 DPI por defecto.
+export function getCroppedImageWithBleed(imageSrc, croppedAreaPixels, bleedPx, pxPerCm) {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
@@ -175,7 +286,7 @@ export function getCroppedImageWithBleed(imageSrc, croppedAreaPixels, bleedPx) {
 
       drawWithEdgeClamp(ctx, image, expandedRect);
 
-      resolve(canvas.toDataURL("image/png"));
+      canvasToPngDataUrlWithDensity(canvas, pxPerCm).then(resolve, reject);
     };
     image.onerror = reject;
   });

@@ -38,13 +38,36 @@ export async function processCatalogProductPurchase(order) {
     console.error("[catalogPurchase] No se pudo incrementar salesCount de", product.id);
   }
 
+  // El tamaño ya no es fijo por producto (ver catalog.js) — cada producto
+  // tiene un archivo horneado con sangrado POR TAMAÑO en printFileIds. Se
+  // usa el que corresponde a order.sizeId (el tamaño que efectivamente
+  // eligió y pagó el cliente en /producto/[id]), nunca uno fijo. El
+  // printFileId se resuelve siempre server-side a partir del producto
+  // real en Redis — nunca se confía en un fileId que venga directo del
+  // pedido/cliente.
+  const printFileId = product.printFileIds?.[order.sizeId];
+  // DIAGNÓSTICO TEMPORAL — quitar una vez confirmada la causa del bug de
+  // 30x40 (ver conversación).
+  console.log("[catalogPurchase][diag]", {
+    orderSizeId: order.sizeId,
+    productId: product.id,
+    printFileIds: product.printFileIds,
+    resolvedPrintFileId: printFileId,
+  });
+  if (!printFileId) {
+    console.error(
+      `[catalogPurchase] El producto ${product.id} no tiene printFileIds para el tamaño "${order.sizeId}"`
+    );
+    return { printImageBase64: null };
+  }
+
   let printImageBase64 = null;
   try {
-    const buffer = await downloadFileBuffer(product.originalFileId);
+    const buffer = await downloadFileBuffer(printFileId);
     printImageBase64 = buffer.toString("base64");
   } catch (err) {
     console.error(
-      "[catalogPurchase] No se pudo descargar el archivo de portafolio desde Drive:",
+      "[catalogPurchase] No se pudo descargar el archivo de impresión desde Drive:",
       err
     );
   }

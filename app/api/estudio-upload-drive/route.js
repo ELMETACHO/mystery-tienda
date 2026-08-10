@@ -18,23 +18,30 @@ async function isAuthenticated() {
 
 // Este endpoint YA NO recibe los bytes de las imágenes (eso causaba
 // FUNCTION_PAYLOAD_TOO_LARGE en Vercel con imágenes de alta resolución).
-// Solo recibe metadata (nombre + tipo de cada archivo) y devuelve dos
-// URLs de sesión de "resumable upload" de Drive — el navegador sube el
-// mockup y la imagen de portafolio DIRECTAMENTE a Google con esas URLs,
-// sin que el archivo pase por esta función.
+// Solo recibe metadata (nombre + tipo de cada archivo) y devuelve una URL
+// de sesión de "resumable upload" de Drive por archivo — el navegador
+// sube cada archivo DIRECTAMENTE a Google con esas URLs, sin que pase
+// por esta función.
+//
+// `files` es una lista de { key, filename, mimeType, folder } — `key` es
+// un identificador arbitrario que el cliente elige para poder mapear la
+// URL de sesión devuelta a cada archivo (ej. "mockup", "originalRaw",
+// "print_30x40", "print_40x50", "print_50x70"). `folder` selecciona en
+// qué subcarpeta de la categoría sube ese archivo ("mockups" u
+// "original"); todo lo que no sea mockup (el original crudo y los 3
+// recortes horneados) vive en "Original (Portafolio)".
 export async function POST(request) {
   if (!(await isAuthenticated())) {
     return Response.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const { categoryId, mockup, original } = await request.json().catch(() => ({}));
+  const { categoryId, files } = await request.json().catch(() => ({}));
 
   if (
     !categoryId ||
-    !mockup?.filename ||
-    !mockup?.mimeType ||
-    !original?.filename ||
-    !original?.mimeType
+    !Array.isArray(files) ||
+    files.length === 0 ||
+    files.some((f) => !f?.key || !f?.filename || !f?.mimeType)
   ) {
     return Response.json({ error: "Datos incompletos" }, { status: 400 });
   }
@@ -64,22 +71,20 @@ export async function POST(request) {
       findOrCreateFolder({ name: ORIGINAL_SUBFOLDER_NAME, parentFolderId: categoryFolderId }),
     ]);
 
-    const [mockupUploadUrl, originalUploadUrl] = await Promise.all([
-      createResumableUploadSession({
-        filename: mockup.filename,
-        mimeType: mockup.mimeType,
-        folderId: mockupsFolderId,
-        origin,
-      }),
-      createResumableUploadSession({
-        filename: original.filename,
-        mimeType: original.mimeType,
-        folderId: originalFolderId,
-        origin,
-      }),
-    ]);
+    const uploadUrls = {};
+    await Promise.all(
+      files.map(async (file) => {
+        const folderId = file.folder === "mockups" ? mockupsFolderId : originalFolderId;
+        uploadUrls[file.key] = await createResumableUploadSession({
+          filename: file.filename,
+          mimeType: file.mimeType,
+          folderId,
+          origin,
+        });
+      })
+    );
 
-    return Response.json({ ok: true, mockupUploadUrl, originalUploadUrl });
+    return Response.json({ ok: true, uploadUrls });
   } catch (err) {
     console.error("[estudio-upload-drive] Falló la creación de la sesión de subida:", err);
     return Response.json({ error: "No se pudo preparar la subida a Drive" }, { status: 502 });

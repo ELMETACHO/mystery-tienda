@@ -12,19 +12,28 @@ async function isAuthenticated() {
   return Boolean(expectedToken) && sessionCookie === expectedToken;
 }
 
-// Se llama DESPUÉS de que el navegador ya subió los dos archivos
+// Se llama DESPUÉS de que el navegador ya subió todos los archivos
 // directo a Drive (ver /api/estudio-upload-drive) — este paso final:
-// 1. Hace público el archivo del MOCKUP (nunca el original/portafolio,
-//    que es interno) para que su link de miniatura sirva en el sitio.
+// 1. Hace público el archivo del MOCKUP (nunca el original ni los
+//    recortes de impresión, que son internos) para que su link de
+//    miniatura sirva en el sitio.
 // 2. Registra el producto en Redis (catalog:products).
 export async function POST(request) {
   if (!(await isAuthenticated())) {
     return Response.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const { categoryId, mockupFileId, originalFileId } = await request.json().catch(() => ({}));
+  const { categoryId, mockupFileId, originalRawFileId, originalRawContentHash, printFileIds, crop, zoom } =
+    await request.json().catch(() => ({}));
 
-  if (!categoryId || !mockupFileId || !originalFileId) {
+  if (
+    !categoryId ||
+    !mockupFileId ||
+    !originalRawFileId ||
+    !printFileIds?.["30x40"] ||
+    !printFileIds?.["40x50"] ||
+    !printFileIds?.["50x70"]
+  ) {
     return Response.json({ error: "Datos incompletos" }, { status: 400 });
   }
 
@@ -44,12 +53,21 @@ export async function POST(request) {
   }
 
   try {
-    // originalFileId SIEMPRE debe ser el archivo de "Original
-    // (Portafolio)" — la imagen que subió el diseñador, recortada a
-    // resolución completa + sangrado — nunca el mockup. Ese mapeo ya lo
-    // garantiza el cliente (ver handleSendToDrive en EstudioApp.jsx); acá
-    // solo se guarda tal cual llega.
-    const product = await addCatalogProduct({ categoryId, mockupFileId, originalFileId });
+    // originalRawFileId es la foto SIN recortar que subió el diseñador, y
+    // printFileIds son los 3 recortes ya horneados (30x40/40x50/50x70,
+    // cada uno con su sangrado de 1cm) — ver EstudioApp.jsx. crop/zoom se
+    // guardan solo por si en el futuro se agrega una opción de
+    // "regenerar" un producto sin que el diseñador repita el ajuste; hoy
+    // no se leen en ningún otro flujo.
+    const product = await addCatalogProduct({
+      categoryId,
+      mockupFileId,
+      originalRawFileId,
+      originalRawContentHash,
+      printFileIds,
+      crop,
+      zoom,
+    });
     return Response.json({ ok: true, product });
   } catch (err) {
     console.error("[estudio-register-product] Falló el registro en el catálogo:", err);

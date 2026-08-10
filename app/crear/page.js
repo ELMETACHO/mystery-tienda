@@ -434,7 +434,7 @@ export default function CrearPage() {
     const widthCm = Number(selectedSize.id.split("x")[0]);
     const pxPerCm = finalCrop.width / widthCm;
     const bleedPx = Math.round(pxPerCm * 1);
-    const printImage = await getCroppedImageWithBleed(imageSrc, finalCrop, bleedPx);
+    const printImage = await getCroppedImageWithBleed(imageSrc, finalCrop, bleedPx, pxPerCm);
     console.log("[sangrado] px/cm:", pxPerCm.toFixed(1), "bleedPx por lado:", bleedPx);
 
     // No navegamos todavía: mostramos primero la pantalla de confirmación
@@ -830,8 +830,15 @@ export default function CrearPage() {
                             heightCm={heightCm}
                             currentColorClass={isSelected ? "text-accent-soft" : "text-zinc-500"}
                           />
-                          <span className={`text-xs sm:text-sm ${isSelected ? "text-white" : "text-zinc-300"}`}>
-                            {size.label}
+                          <span className="flex items-center gap-1.5">
+                            <span className={`text-xs sm:text-sm ${isSelected ? "text-white" : "text-zinc-300"}`}>
+                              {size.label}
+                            </span>
+                            {size.id === "40x50" && (
+                              <span className="whitespace-nowrap rounded-full bg-accent/20 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-accent-soft sm:px-2 sm:text-[10px]">
+                                Más elegido
+                              </span>
+                            )}
                           </span>
                         </span>
                         <span

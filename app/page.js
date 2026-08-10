@@ -1,22 +1,29 @@
 import Image from "next/image";
 import Link from "next/link";
-import { formatCOP } from "./lib/order";
+import { SIZES, formatCOP } from "./lib/order";
+
+// Precio de referencia para las tarjetas del catálogo: el tamaño más
+// barato de SIZES (hoy 30x40) — cada producto ya no vende un tamaño ni
+// un precio fijo, el comprador elige el tamaño en /producto/[id].
+const CHEAPEST_SIZE_PRICE_COP = SIZES[0].priceCOP;
 import { getBestSellingProducts, getRecentProducts } from "./lib/catalog";
 import { ESTUDIO_CATEGORIES } from "./lib/estudioCategories";
 import FoldText from "./components/FoldText";
+import CategoryScroller from "./components/CategoryScroller";
 
 // Esta página lee el catálogo real (Redis) en cada visita — nunca debe
 // quedar cacheada mostrando productos viejos/borrados.
 export const dynamic = "force-dynamic";
 
-// Fotos de aproximación (catálogo real pendiente) para las tarjetas de
-// categoría emocional — reemplazar por fotografía curada por categoría.
+// Categorías reales de diseño usadas en /estudio para organizar los
+// diseños en Google Drive (ver app/lib/estudioCategories.js).
 const CATEGORIAS = [
-  { nombre: "Mascotas", src: "/images/catalogo/IMG_7340.JPG" },
-  { nombre: "Familia", src: "/images/catalogo/IMG_7334.JPG" },
-  { nombre: "Parejas", src: "/images/catalogo/IMG_7339.PNG" },
-  { nombre: "Paisajes", src: "/images/catalogo/IMG_7341.JPG" },
-  { nombre: "Retratos", src: "/images/catalogo/IMG_7337.PNG" },
+  { nombre: "Abstracto", src: "/images/categorias/abstracto.jpg" },
+  { nombre: "Ánime", src: "/images/categorias/anime.jpg" },
+  { nombre: "Deportes", src: "/images/categorias/deportes.jpg" },
+  { nombre: "Iconic", src: "/images/categorias/iconic.jpg" },
+  { nombre: "Música", src: "/images/categorias/musica.jpg" },
+  { nombre: "Películas y Series", src: "/images/categorias/series y películas.jpg" },
 ];
 
 const FAQ = [
@@ -193,10 +200,10 @@ function ProductGrid({ items }) {
           </div>
           <div className="flex flex-1 flex-col gap-1 p-3">
             <h3 className="text-sm font-medium text-zinc-200">
-              Cuadro {categoryLabel(item.category)} · {item.size}
+              Cuadro {categoryLabel(item.category)}
             </h3>
             <p className="text-sm font-semibold text-accent-soft">
-              {formatCOP(item.priceCOP)}
+              Desde {formatCOP(CHEAPEST_SIZE_PRICE_COP)}
             </p>
             <Link
               href={`/producto/${item.id}`}
@@ -294,27 +301,7 @@ export default async function Home() {
         <section className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <h2 className="mb-4 text-lg font-semibold sm:text-xl">Elige tu estilo</h2>
-            <div className="flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible md:grid-cols-5">
-              {CATEGORIAS.map((cat) => (
-                <Link
-                  key={cat.nombre}
-                  href="/crear"
-                  className="group relative aspect-[3/4] w-36 shrink-0 overflow-hidden rounded-2xl border border-white/10 sm:w-auto"
-                >
-                  <Image
-                    src={cat.src}
-                    alt={cat.nombre}
-                    fill
-                    sizes="(min-width: 640px) 20vw, 40vw"
-                    className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-                  <span className="absolute inset-x-0 bottom-0 p-3 text-base font-semibold text-white sm:text-lg">
-                    {cat.nombre}
-                  </span>
-                </Link>
-              ))}
-            </div>
+            <CategoryScroller categorias={CATEGORIAS} />
           </div>
         </section>
 
