@@ -63,7 +63,7 @@ export default function CategoryScroller({ categorias }) {
         {categorias.map((cat) => (
           <Link
             key={cat.nombre}
-            href="/crear"
+            href={`/categoria/${cat.id}`}
             data-category-card
             className="group relative aspect-[3/4] w-36 shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 sm:w-44"
           >

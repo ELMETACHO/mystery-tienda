@@ -4,6 +4,10 @@ import { formatCOP } from "./order";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Mystery <pedidos@elmetacho.com>";
+// Para armar el link de /resena en sendReviewRequestEmail — mismo
+// patrón de fallback que FROM_EMAIL, por si no se configura la
+// variable en algún entorno de prueba.
+const SITE_URL = process.env.SITE_URL || "https://tienda.elmetacho.com";
 const ADMIN_EMAIL = "contacto@elmetacho.com";
 const ADMIN_RECIPIENTS = [ADMIN_EMAIL, process.env.MANUFACTURER_EMAIL].filter(
   Boolean
@@ -415,5 +419,64 @@ export async function sendOrderEmails({
       anticipoPagado,
       saldoPendiente,
     }),
+  });
+}
+
+// ---------------------------------------------------------------------
+// Correo de solicitud de reseña (disparado por el cron, ver
+// app/api/cron/send-review-emails/route.js)
+// ---------------------------------------------------------------------
+
+function reviewRequestEmailHtml({ order, reviewUrl }) {
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgOuter};padding:32px 12px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td style="background-color:${BRAND.dark};padding:28px 32px;text-align:center;">
+            <span style="font-family:${FONT_STACK};font-size:26px;font-weight:bold;color:${BRAND.soft};letter-spacing:0.5px;">Mystery</span>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:32px 32px 8px 32px;">
+            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¿Qué te pareció tu cuadro?</p>
+            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
+              Ya debería haber llegado tu cuadro${order.sizeLabel ? ` (${order.sizeLabel})` : ""}. Nos ayudaría mucho que nos cuentes qué te pareció — toma menos de un minuto.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:24px 32px 32px 32px;" align="center">
+            <a href="${reviewUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:16px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Dejar mi reseña</a>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:0 32px 28px 32px;">
+            <p style="margin:0;font-family:${FONT_STACK};font-size:12px;line-height:18px;color:${BRAND.faint};text-align:center;">Si el botón no funciona, copia y pega este link en tu navegador:<br>${reviewUrl}</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+// `order` acá es un registro de completedOrders.js (reference,
+// sizeLabel, ...), NO el order completo del checkout — el cron nunca
+// tiene acceso al pedido completo de IndexedDB, solo a lo que se
+// guardó server-side al confirmar el pago.
+export async function sendReviewRequestEmail({ order, token }) {
+  const reviewUrl = `${SITE_URL}/resena?ref=${encodeURIComponent(order.reference)}&token=${encodeURIComponent(token)}`;
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: order.customerEmail,
+    subject: "¿Qué te pareció tu cuadro Mystery?",
+    html: reviewRequestEmailHtml({ order, reviewUrl }),
   });
 }

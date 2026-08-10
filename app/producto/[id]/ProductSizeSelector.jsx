@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { SIZES, formatCOP } from "../../lib/order";
 import ProductBuyButton from "./ProductBuyButton";
+import FreeShippingBanner from "../../components/FreeShippingBanner";
 
 // Mismo patrón de selección que /crear (app/crear/page.js): tarjetas por
 // tamaño, precio que se actualiza según SIZES, no un valor fijo del
@@ -14,6 +15,7 @@ export default function ProductSizeSelector({ product }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-3xl font-bold text-accent-soft">{formatCOP(size.priceCOP)}</p>
+      <FreeShippingBanner />
 
       <div className="flex flex-col gap-2">
         {SIZES.map((s) => {

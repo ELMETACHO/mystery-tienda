@@ -126,6 +126,21 @@ export async function getRecentProducts(limit = 8) {
     .slice(0, limit);
 }
 
+// Productos de una categoría (para /categoria/[slug]), más nuevos
+// primero — mismo criterio que "Recientes". limit/offset ya están en la
+// firma aunque hoy nadie los use (la página trae todo): cuando se
+// agregue paginación/scroll infinito, alcanza con empezar a pasarlos,
+// sin tener que tocar esta función.
+export async function getProductsByCategory(categoryId, { limit, offset = 0 } = {}) {
+  const products = await getCatalogProducts();
+  const filtered = products
+    .filter((p) => p.category === categoryId)
+    .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+
+  const sliced = offset ? filtered.slice(offset) : filtered;
+  return limit ? sliced.slice(0, limit) : sliced;
+}
+
 // "Más vendidos": por salesCount descendente. Como todavía no hay ventas
 // reales, todos empatan en 0 — el desempate por fecha (más nuevo primero)
 // hace que, mientras no haya ventas, el orden coincida exactamente con

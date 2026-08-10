@@ -1,7 +1,5 @@
 import { fetchWompiTransaction } from "../../lib/wompi";
-import { sendOrderEmails } from "../../lib/email";
-import { recordOrderAndCheckReturning } from "../../lib/loyalty";
-import { processCatalogProductPurchase } from "../../lib/catalogPurchase";
+import { confirmApprovedOrder } from "../../lib/confirmApprovedOrder";
 
 export async function POST(request) {
   const { transactionId, order, customer } = await request.json();
@@ -28,30 +26,14 @@ export async function POST(request) {
     );
   }
 
-  // Historial de pedidos por correo en KV: se registra el pedido actual y
-  // se detecta si el cliente ya tenía uno previo, ANTES de enviar el
-  // correo de confirmación (para poder usarlo en el resultado devuelto y,
-  // más adelante si aplica, en el propio contenido del correo).
-  const isReturningCustomer = await recordOrderAndCheckReturning({
-    email: customer.email,
-    reference: transaction.reference,
-    amountCOP: order.priceCOP,
-  });
-
-  // Si el pedido viene de /producto/[id] (catálogo), incrementa el
-  // contador de ventas de ese producto y trae el archivo real de
-  // "Original (Portafolio)" desde Drive para adjuntarlo — no hace nada
-  // para pedidos normales de /crear (sin order.productId).
-  const { printImageBase64 } = await processCatalogProductPurchase(order);
-
+  // confirmApprovedOrder es idempotente: si el webhook (/api/wompi-webhook)
+  // ya confirmó esta misma transacción antes de que el cliente regresara
+  // a esta pestaña, acá simplemente no se repite el trabajo (ni los
+  // correos) — isReturningCustomer se devuelve en false como valor
+  // seguro en ese caso, ya que no se vuelve a calcular.
+  let isReturningCustomer;
   try {
-    await sendOrderEmails({
-      order,
-      customer,
-      transaction,
-      isReturningCustomer,
-      printImageBase64Override: printImageBase64,
-    });
+    ({ isReturningCustomer } = await confirmApprovedOrder({ order, customer, transaction }));
   } catch (err) {
     console.error(err);
     return Response.json(

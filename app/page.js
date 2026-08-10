@@ -1,15 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { SIZES, formatCOP } from "./lib/order";
-
-// Precio de referencia para las tarjetas del catálogo: el tamaño más
-// barato de SIZES (hoy 30x40) — cada producto ya no vende un tamaño ni
-// un precio fijo, el comprador elige el tamaño en /producto/[id].
-const CHEAPEST_SIZE_PRICE_COP = SIZES[0].priceCOP;
 import { getBestSellingProducts, getRecentProducts } from "./lib/catalog";
-import { ESTUDIO_CATEGORIES } from "./lib/estudioCategories";
 import FoldText from "./components/FoldText";
 import CategoryScroller from "./components/CategoryScroller";
+import ProductGrid from "./components/ProductGrid";
 
 // Esta página lee el catálogo real (Redis) en cada visita — nunca debe
 // quedar cacheada mostrando productos viejos/borrados.
@@ -18,12 +12,16 @@ export const dynamic = "force-dynamic";
 // Categorías reales de diseño usadas en /estudio para organizar los
 // diseños en Google Drive (ver app/lib/estudioCategories.js).
 const CATEGORIAS = [
-  { nombre: "Abstracto", src: "/images/categorias/abstracto.jpg" },
-  { nombre: "Ánime", src: "/images/categorias/anime.jpg" },
-  { nombre: "Deportes", src: "/images/categorias/deportes.jpg" },
-  { nombre: "Iconic", src: "/images/categorias/iconic.jpg" },
-  { nombre: "Música", src: "/images/categorias/musica.jpg" },
-  { nombre: "Películas y Series", src: "/images/categorias/series y películas.jpg" },
+  { id: "abstracto", nombre: "Abstracto", src: "/images/categorias/abstracto.jpg" },
+  { id: "anime", nombre: "Ánime", src: "/images/categorias/anime.jpg" },
+  { id: "deportes", nombre: "Deportes", src: "/images/categorias/deportes.jpg" },
+  { id: "iconic", nombre: "Iconic", src: "/images/categorias/iconic.jpg" },
+  { id: "musica", nombre: "Música", src: "/images/categorias/musica.jpg" },
+  {
+    id: "peliculas-series",
+    nombre: "Películas y Series",
+    src: "/images/categorias/series y películas.jpg",
+  },
 ];
 
 const FAQ = [
@@ -164,60 +162,6 @@ const TESTIMONIOS = [
   },
 ];
 
-function categoryLabel(categoryId) {
-  return ESTUDIO_CATEGORIES.find((c) => c.id === categoryId)?.label || "Diseño";
-}
-
-// Tarjeta de producto para "Recientes" / "Más vendidos", ahora con datos
-// reales del catálogo (Redis, vía /estudio) — antes eran ejemplos
-// estáticos. La imagen es el link de miniatura pública de Drive, y
-// "Comprar ahora" lleva a la página de detalle/checkout de ESE producto
-// puntual (/producto/[id]), no al editor genérico.
-function ProductGrid({ items }) {
-  if (items.length === 0) {
-    return (
-      <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-zinc-500">
-        Todavía no hay productos en el catálogo. Vuelve pronto.
-      </p>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-      {items.map((item) => (
-        <div
-          key={item.id}
-          className="group flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5"
-        >
-          <div className="relative aspect-square overflow-hidden">
-            <Image
-              src={item.thumbnailUrl}
-              alt={categoryLabel(item.category)}
-              fill
-              sizes="(min-width: 640px) 25vw, 50vw"
-              className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
-            />
-          </div>
-          <div className="flex flex-1 flex-col gap-1 p-3">
-            <h3 className="text-sm font-medium text-zinc-200">
-              Cuadro {categoryLabel(item.category)}
-            </h3>
-            <p className="text-sm font-semibold text-accent-soft">
-              Desde {formatCOP(CHEAPEST_SIZE_PRICE_COP)}
-            </p>
-            <Link
-              href={`/producto/${item.id}`}
-              className="mt-2 w-full rounded-full bg-accent px-4 py-2 text-center text-xs font-medium text-white opacity-100 transition-all duration-200 hover:bg-accent-soft sm:translate-y-1 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100"
-            >
-              Comprar ahora
-            </Link>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default async function Home() {
   const [recientes, masVendidos] = await Promise.all([
     getRecentProducts(8),
@@ -269,6 +213,10 @@ export default async function Home() {
             <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs tracking-wide text-accent-soft sm:text-sm">
               Cuadros en vinilo sobre madera
             </span>
+
+            <p className="text-center text-xs font-medium text-accent-soft sm:text-sm">
+              Por tiempo limitado: Envío gratis a todo el país
+            </p>
 
             <FoldText
               text="Transforma tus mejores recuerdos en cuadros de alta calidad"

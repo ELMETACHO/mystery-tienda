@@ -46,9 +46,8 @@ export default async function ProductPage({ params }) {
 
       <ProductSizeSelector product={product} />
 
-      <p className="text-center text-xs text-zinc-500">
-        Diseño listo — sin necesidad de subir ni ajustar imagen. Solo falta decirnos dónde
-        enviarlo.
+      <p className="text-center text-base font-semibold text-accent-soft">
+        Recibe de 3 a 5 días hábiles
       </p>
     </div>
   );

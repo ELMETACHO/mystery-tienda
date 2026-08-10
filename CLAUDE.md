@@ -67,9 +67,9 @@ Tienda online de cuadros personalizados en vinilo sobre madera (marca "Mystery")
 - Verificación server-side del pago, correos transaccionales con diseño de marca, sangrado de impresión, detección de cliente recurrente vía Redis.
 - Responsive completo, HEIC/PDF, validaciones de formulario y resolución.
 
-**Pendiente / placeholder — a resolver antes de producción:**
-- **Nunca se ha hecho un `deploy` real** — todo el trabajo hasta ahora es local.
-- Quitar `eruda`/`app/DevTools.js`/`allowedDevOrigins` de `next.config.mjs` antes de producción.
+**Pendiente / placeholder:**
+- **El sitio ya está publicado en producción en Vercel** y se probó el flujo completo end-to-end en vivo (catálogo, compras, correos) — deja de ser un ítem pendiente.
+- Quitar `eruda`/`app/DevTools.js`/`allowedDevOrigins` de `next.config.mjs` antes de producción (confirmar si ya se hizo en el deploy actual).
 - Catálogo real para Home (Recientes/Más vendidos/testimonios son contenido de ejemplo, marcado en el código).
 - Aplicar el código de descuento `MYSTERY10%` en un pago real (hoy solo se muestra el mensaje al cliente recurrente, no hay lógica de canje).
 - Miniatura de imagen en el correo al cliente (se quitó por incompatibilidad de `cid:` en Gmail; pendiente resolver con una URL pública si se quiere).

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { COD_DEPOSIT_COP, formatCOP, loadOrder, saveOrder } from "../lib/order";
+import FreeShippingBanner from "../components/FreeShippingBanner";
 
 const WOMPI_PUBLIC_KEY = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
 
@@ -175,6 +176,20 @@ export default function CheckoutPage() {
     const reference = `mystery-${Date.now()}`;
     const amountInCents = order.priceCOP * 100;
     const currency = "COP";
+
+    // Guardado en Redis por `reference`, ANTES de pagar — red de
+    // seguridad para que /api/wompi-webhook pueda confirmar el pedido
+    // más adelante aunque el cliente nunca regrese a esta pestaña. No
+    // es fatal si falla: el camino normal (este mismo flujo) no depende
+    // de esto para funcionar, así que un error acá nunca debe impedir
+    // que el cliente pague.
+    fetch("/api/save-pending-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reference, order: fullOrder, customer }),
+    }).catch((err) => {
+      console.error("[checkout] No se pudo guardar el pedido pendiente:", err);
+    });
 
     let signature;
     try {
@@ -693,6 +708,8 @@ export default function CheckoutPage() {
                 </span>
               </div>
             </div>
+
+            <FreeShippingBanner />
 
             {payError && (
               <p className="text-sm text-red-400">{payError}</p>

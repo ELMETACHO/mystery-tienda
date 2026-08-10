@@ -1,0 +1,62 @@
+import { sendOrderEmails } from "./email";
+import { recordOrderAndCheckReturning } from "./loyalty";
+import { processCatalogProductPurchase } from "./catalogPurchase";
+import { claimTransaction, releaseTransactionClaim } from "./idempotency";
+import { saveCompletedOrder } from "./completedOrders";
+
+// Lógica de confirmación de un pago YA VERIFICADO como APPROVED contra
+// Wompi — compartida entre /api/confirm-order (cuando el cliente
+// regresa a la pestaña) y /api/wompi-webhook (server-to-server,
+// funciona incluso si el cliente nunca vuelve). Ambos caminos pueden
+// llegar a confirmar la MISMA transacción, así que esto empieza
+// reclamando un lock de idempotencia (ver idempotency.js) — quien
+// llegue primero hace el trabajo, el segundo no hace nada.
+//
+// Si algo falla DESPUÉS de reclamar el lock (ej. el envío de correos),
+// se libera el reclamo antes de relanzar el error — así un reintento
+// legítimo (el propio webhook de Wompi reintenta hasta 3 veces en 24h)
+// puede volver a intentarlo, en vez de quedar marcado como "ya
+// procesado" sin que en realidad se haya completado.
+export async function confirmApprovedOrder({ order, customer, transaction }) {
+  const claimed = await claimTransaction(transaction.id);
+  if (!claimed) {
+    return { alreadyProcessed: true, isReturningCustomer: false };
+  }
+
+  try {
+    // Historial de pedidos por correo en KV: se registra el pedido
+    // actual y se detecta si el cliente ya tenía uno previo, ANTES de
+    // enviar el correo de confirmación.
+    const isReturningCustomer = await recordOrderAndCheckReturning({
+      email: customer.email,
+      reference: transaction.reference,
+      amountCOP: order.priceCOP,
+    });
+
+    // Si el pedido viene de /producto/[id] (catálogo), incrementa el
+    // contador de ventas de ese producto y trae el archivo real de
+    // impresión desde Drive para adjuntarlo — no hace nada para
+    // pedidos normales de /crear (sin order.productId).
+    const { printImageBase64 } = await processCatalogProductPurchase(order);
+
+    await sendOrderEmails({
+      order,
+      customer,
+      transaction,
+      isReturningCustomer,
+      printImageBase64Override: printImageBase64,
+    });
+
+    // Registro para la campaña de reseñas (ver completedOrders.js) — se
+    // guarda DESPUÉS de que los correos de confirmación ya salieron
+    // bien, nunca antes: si esto falla, no debe hacer que se libere el
+    // reclamo de idempotencia ni que se reintente todo el envío de
+    // correos de confirmación solo por esto.
+    await saveCompletedOrder({ order, customer, transaction });
+
+    return { alreadyProcessed: false, isReturningCustomer };
+  } catch (err) {
+    await releaseTransactionClaim(transaction.id);
+    throw err;
+  }
+}

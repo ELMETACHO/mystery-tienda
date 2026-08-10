@@ -8,6 +8,7 @@ import Cropper from "react-easy-crop";
 import { AnimatePresence, motion } from "motion/react";
 import TextType from "../components/TextType";
 import RecentesDriftWall from "../components/RecentesDriftWall";
+import FreeShippingBanner from "../components/FreeShippingBanner";
 import {
   getCroppedImage,
   getCroppedImageWithBleed,
@@ -810,7 +811,8 @@ export default function CrearPage() {
 
               <div>
                 <h2 className="mb-3 text-sm font-medium text-zinc-300">Tamaño</h2>
-                <div className="flex flex-col gap-2">
+                <FreeShippingBanner />
+                <div className="mt-3 flex flex-col gap-2">
                   {SIZES.map((size) => {
                     const heightCm = Number(size.id.split("x")[1]);
                     const isSelected = size.id === sizeId;
