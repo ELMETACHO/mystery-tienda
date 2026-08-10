@@ -1,6 +1,7 @@
 import { getCompletedOrders, markReviewEmailSent } from "../../../lib/completedOrders";
 import { generateReviewToken } from "../../../lib/reviewToken";
 import { sendReviewRequestEmail } from "../../../lib/email";
+import { claimReviewEmail, releaseReviewEmailClaim } from "../../../lib/idempotency";
 
 // Disparado una vez al día por Vercel Cron (ver vercel.json, 13:00 UTC
 // = 8:00am Colombia). Vercel firma sus propias llamadas de cron con
@@ -37,6 +38,19 @@ export async function GET(request) {
   // requests simultáneas — mismo criterio conservador que el resto de
   // los endpoints de confirmación de pago.
   for (const order of dueOrders) {
+    // Reclamo de idempotencia ANTES de enviar nada: si dos corridas de
+    // esta ruta se solapan (o el mismo request llega duplicado), solo
+    // una de las dos gana el reclamo — la otra ve `false` y no manda
+    // el correo. Sin esto, ambas podían leer reviewEmailSentAt: null
+    // (todavía no se había marcado) y enviar el correo por separado.
+    const claimed = await claimReviewEmail(order.reference);
+    if (!claimed) {
+      console.error(
+        `[cron/send-review-emails] reference=${order.reference} ya está siendo procesada por otra corrida — se omite.`
+      );
+      continue;
+    }
+
     try {
       const token = generateReviewToken(order.reference);
       await sendReviewRequestEmail({ order, token });
@@ -48,9 +62,9 @@ export async function GET(request) {
         `[cron/send-review-emails] Falló el envío para reference=${order.reference}:`,
         err
       );
-      // No se marca reviewEmailSentAt: la corrida de mañana lo vuelve
-      // a intentar. Nunca lanza — un pedido con error no debe frenar
-      // el envío al resto de la lista.
+      // Se libera el reclamo (no reviewEmailSentAt, que sigue sin
+      // marcarse) para que la corrida de mañana pueda reintentarlo.
+      await releaseReviewEmailClaim(order.reference);
     }
   }
 

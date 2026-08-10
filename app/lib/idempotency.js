@@ -27,10 +27,21 @@ function confirmedTxKey(transactionId) {
   return `confirmed-tx:${transactionId}`;
 }
 
+function reviewEmailClaimKey(reference) {
+  return `review-email-claim:${reference}`;
+}
+
 // 30 días: más que suficiente para cubrir cualquier reintento real de
 // Wompi (máximo 24h) con margen amplio, sin acumular estas keys para
 // siempre.
 const CONFIRMED_TX_TTL_SECONDS = 60 * 60 * 24 * 30;
+
+// Solo necesita sobrevivir una corrida del cron (y sus reintentos del
+// mismo día) — completedOrders.reviewEmailSentAt es el registro
+// permanente real; este reclamo es apenas para que dos ejecuciones
+// concurrentes del cron no manden el correo dos veces antes de que
+// cualquiera termine de marcar reviewEmailSentAt.
+const REVIEW_EMAIL_CLAIM_TTL_SECONDS = 60 * 60 * 6;
 
 // SET ... NX: solo UNA llamada concurrente puede "reclamar" un
 // transactionId — devuelve true si esta llamada fue la primera (debe
@@ -75,5 +86,45 @@ export async function releaseTransactionClaim(transactionId) {
     await client.del(confirmedTxKey(transactionId));
   } catch (err) {
     console.error("[idempotency] No se pudo liberar el reclamo de la transacción:", err);
+  }
+}
+
+// Mismo patrón SET NX que claimTransaction, pero para el cron de
+// reseñas (app/api/cron/send-review-emails) — evita que dos corridas
+// concurrentes (o un mismo request duplicado) manden el correo de
+// reseña dos veces para el mismo pedido.
+export async function claimReviewEmail(reference) {
+  const client = getRedisClient();
+  if (!client) {
+    console.error("[idempotency] REDIS_URL no está configurado; no se puede garantizar idempotencia.");
+    return true;
+  }
+
+  try {
+    const result = await client.set(
+      reviewEmailClaimKey(reference),
+      "1",
+      "EX",
+      REVIEW_EMAIL_CLAIM_TTL_SECONDS,
+      "NX"
+    );
+    return result === "OK";
+  } catch (err) {
+    console.error("[idempotency] No se pudo reclamar el envío de correo de reseña:", err);
+    return true;
+  }
+}
+
+// Libera el reclamo si el envío falló — así el cron de mañana puede
+// reintentar ese pedido (igual que ya hacía antes de este cambio,
+// basándose solo en reviewEmailSentAt).
+export async function releaseReviewEmailClaim(reference) {
+  const client = getRedisClient();
+  if (!client) return;
+
+  try {
+    await client.del(reviewEmailClaimKey(reference));
+  } catch (err) {
+    console.error("[idempotency] No se pudo liberar el reclamo de correo de reseña:", err);
   }
 }
