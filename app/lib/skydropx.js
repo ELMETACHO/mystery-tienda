@@ -302,43 +302,57 @@ function pickCheapestCodRate(rates) {
   });
 }
 
-// Confirmado por soporte de Skydropx: el payload de creación de guía va
-// PLANO (sin envolver en {shipment: {...}}), con is_cod: true e
-// include_shipping_cost: true como los campos que realmente marcan el
-// envío como contraentrega — los cod/cod_amount/cash_on_delivery que se
-// probaban antes por mejor esfuerzo quedan reemplazados por estos, ya
-// confirmados. address_from/address_to usan "country" (no "country_code"
-// como en la cotización) según el ejemplo que dio soporte.
+// CORREGIDO tras crear una guía real de prueba (pedido de Alvaro Ríos
+// Piña, agosto 2026): la suposición anterior de que el payload iba PLANO
+// (sin envolver) era incorrecta — sin el wrapper {shipment: {...}} la API
+// devuelve 400 genérico ("parámetros inválidos") sin detalle útil; envuelto
+// en "shipment", el mismo request devuelve 422 con el detalle exacto de lo
+// que falta. Confirmado con datos reales que el payload correcto necesita:
+//   - Wrapper {shipment: {...}}.
+//   - email + reference (string libre, ej. el barrio) en CADA address.
+//   - package_type ("box") y package_content (string libre) a nivel raíz,
+//     además de is_cod/include_shipping_cost que sí seguían siendo correctos.
+// La respuesta también es formato JSON:API: el tracking_number, label_url y
+// carrier real NO están en data.attributes sino en included[] (el recurso
+// "package") — data.attributes solo tiene master_tracking_number.
 async function createShipment({ rate, order, customer, reference }) {
   const declaredValue = getDeclaredValue(order.priceCOP);
   const destinationPhone = normalizePhone(customer.phone);
+  const { packageCm, weightKg } = getSizeSpec(order.sizeId);
 
   const res = await skydropxFetch("/api/v1/shipments", {
     method: "POST",
     body: JSON.stringify({
-      rate_id: rate.id,
-      order_number: reference,
-      declared_value: declaredValue,
-      is_cod: true,
-      include_shipping_cost: true,
-      address_from: {
-        name: ORIGIN.name,
-        phone: ORIGIN.phone,
-        street1: ORIGIN.street1,
-        area_level1: ORIGIN.areaLevel1,
-        area_level2: ORIGIN.areaLevel2,
-        postal_code: ORIGIN.postalCode,
-        country: ORIGIN.country,
-      },
-      address_to: {
-        name: customer.fullName,
-        email: customer.email,
-        phone: destinationPhone,
-        street1: customer.street,
-        area_level1: normalizeAreaName(customer.department),
-        area_level2: normalizeAreaName(customer.city),
-        postal_code: customer.postalCode || "",
-        country: "CO",
+      shipment: {
+        rate_id: rate.id,
+        order_number: reference,
+        declared_value: declaredValue,
+        is_cod: true,
+        include_shipping_cost: true,
+        package_type: "box",
+        package_content: "Cuadro decorativo personalizado",
+        address_from: {
+          name: ORIGIN.name,
+          email: process.env.MANUFACTURER_EMAIL || process.env.RESEND_FROM_EMAIL,
+          reference: "Origen Mystery",
+          phone: ORIGIN.phone,
+          street1: ORIGIN.street1,
+          area_level1: ORIGIN.areaLevel1,
+          area_level2: ORIGIN.areaLevel2,
+          postal_code: ORIGIN.postalCode,
+          country: ORIGIN.country,
+        },
+        address_to: {
+          name: customer.fullName,
+          email: customer.email,
+          reference: customer.neighborhood || customer.city,
+          phone: destinationPhone,
+          street1: customer.street,
+          area_level1: normalizeAreaName(customer.department),
+          area_level2: normalizeAreaName(customer.city),
+          postal_code: customer.postalCode || "",
+          country: "CO",
+        },
       },
     }),
   });
@@ -348,12 +362,20 @@ async function createShipment({ rate, order, customer, reference }) {
     throw new Error(`Skydropx: error creando la guía (${res.status}): ${text}`);
   }
 
-  const data = await res.json();
-  const shipment = data.data || data;
+  const body = await res.json();
+  const attributes = body.data?.attributes || {};
+  const packageResource = (body.included || []).find((r) => r.type === "package");
+  const packageAttrs = packageResource?.attributes || {};
+
   return {
-    trackingNumber: shipment.tracking_number || shipment.tracking || shipment.id,
-    carrierName: rate.carrier_name || rate.carrier || rate.provider_name || "",
-    labelUrl: shipment.label_url || shipment.label || null,
+    trackingNumber:
+      packageAttrs.tracking_number || attributes.master_tracking_number || null,
+    carrierName: attributes.carrier_name || rate.carrier_name || rate.provider_name || "",
+    labelUrl: packageAttrs.label_url || null,
+    // Página de rastreo genérica que da la transportadora (ej.
+    // "https://envia.co/") — no siempre es un deep-link directo al número
+    // de guía, pero es lo único que devuelve la API además del label_url.
+    trackingUrl: packageAttrs.tracking_url_provider || null,
   };
 }
 

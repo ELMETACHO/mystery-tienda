@@ -433,6 +433,141 @@ export async function sendOrderEmails({
 }
 
 // ---------------------------------------------------------------------
+// Correo de "guía generada" al cliente — disparado desde
+// app/api/confirm-cod-order/route.js justo después de que
+// createCodShipment() devuelve tracking_number + label_url reales (nunca
+// solo por confirmar el pago; ver app/lib/skydropx.js).
+// ---------------------------------------------------------------------
+
+function shippingNotificationEmailHtml({
+  customer,
+  trackingNumber,
+  carrierName,
+  trackingUrl,
+  labelUrl,
+  saldoPendiente,
+}) {
+  // Preferimos el link de rastreo real de la transportadora; si Skydropx no
+  // lo da, el label_url es lo único que le sirve al cliente para hacer
+  // seguimiento (ver app/lib/skydropx.js).
+  const linkToShow = trackingUrl || labelUrl;
+
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgOuter};padding:32px 12px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td style="background-color:${BRAND.dark};padding:28px 32px;text-align:center;">
+            <span style="font-family:${FONT_STACK};font-size:26px;font-weight:bold;color:${BRAND.soft};letter-spacing:0.5px;">Mystery</span>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:32px 32px 8px 32px;">
+            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Hola ${customer.fullName}! Tu pedido ya fue despachado.</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:12px 32px 4px 32px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${BRAND.border};border-radius:10px;">
+              <tr>
+                <td style="padding:18px;">
+                  <p style="margin:0 0 10px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Número de guía</p>
+                  <p style="margin:0 0 16px 0;font-family:'Courier New',Courier,monospace;font-size:18px;font-weight:bold;color:${BRAND.ink};">${trackingNumber}</p>
+
+                  <p style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Transportadora</p>
+                  <p style="margin:0;font-family:${FONT_STACK};font-size:15px;color:${BRAND.ink};">${carrierName || "-"}</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        ${
+          linkToShow
+            ? `
+        <tr>
+          <td style="padding:20px 32px 4px 32px;" align="center">
+            <a href="${linkToShow}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:15px;font-weight:bold;text-decoration:none;border-radius:999px;padding:13px 28px;">Rastrear mi envío</a>
+          </td>
+        </tr>
+        `
+            : ""
+        }
+
+        ${
+          saldoPendiente > 0
+            ? `
+        <tr>
+          <td style="padding:20px 32px 4px 32px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:8px;">
+              <tr>
+                <td style="padding:12px 16px;">
+                  <p style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">💵 Saldo a pagar al recibir: <strong>${formatCOP(saldoPendiente)}</strong></p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        `
+            : ""
+        }
+
+        <tr>
+          <td style="padding:20px 32px 8px 32px;">
+            <p style="margin:0;font-family:${FONT_STACK};font-size:14px;line-height:21px;color:${BRAND.muted};">Tiempo estimado de entrega: <strong style="color:${BRAND.ink};">3 a 5 días hábiles.</strong></p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:8px 32px 32px 32px;">
+            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">¡Gracias por comprar en Mystery! 💜</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background-color:#fafafa;border-top:1px solid ${BRAND.border};padding:20px 32px;">
+            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Mystery · ${ADMIN_EMAIL}</p>
+            <p style="margin:0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Correo enviado automáticamente, no responder.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+// trackingUrl y labelUrl pueden venir null (ver app/lib/skydropx.js) — el
+// html arriba ya maneja el caso de que ninguno esté disponible ocultando
+// el botón de rastreo. Nunca se llama si no hay trackingNumber (ver
+// app/api/confirm-cod-order/route.js).
+export async function sendShippingNotificationEmail({
+  customer,
+  trackingNumber,
+  carrierName,
+  trackingUrl,
+  labelUrl,
+  saldoPendiente,
+}) {
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: customer.email,
+    subject: "Tu cuadro va en camino",
+    html: shippingNotificationEmailHtml({
+      customer,
+      trackingNumber,
+      carrierName,
+      trackingUrl,
+      labelUrl,
+      saldoPendiente,
+    }),
+  });
+}
+
+// ---------------------------------------------------------------------
 // Correo de solicitud de reseña (disparado por el cron, ver
 // app/api/cron/send-review-emails/route.js)
 // ---------------------------------------------------------------------

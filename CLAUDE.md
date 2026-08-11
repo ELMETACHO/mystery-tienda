@@ -77,6 +77,7 @@ Tienda online de cuadros personalizados en vinilo sobre madera (marca "Mystery")
 - Mejora con IA para fotos de baja resolución (mencionada en el FAQ, no implementada).
 - Revisar el mensaje del FAQ sobre "100px/cm" contra los valores reales de `SIZES` en `app/lib/order.js`.
 - Confirmar en variables de Vercel si la integración quedó como "Redis" (Upstash) — si cambia de nombre, `REDIS_URL` podría necesitar ajuste.
+- **Guía Skydropx automática para pagos completos por Wompi**: hoy `createCodShipment`/`createShipment` (`app/lib/skydropx.js`) solo se dispara para pedidos contraentrega, desde `/api/confirm-cod-order`. Los pagos completos (`confirmApprovedOrder.js` / `/api/confirm-order` / `/api/wompi-webhook`) no generan ninguna guía automática todavía — si se construye ese flujo, enganchar ahí también `sendShippingNotificationEmail()` (`app/lib/email.js`), igual que ya está hecho para contraentrega.
 # Contexto adicional — Mystery Tienda
 
 > Pega el contenido de este archivo al final de tu CLAUDE.md existente en el

@@ -1,5 +1,5 @@
 import { fetchWompiTransaction } from "../../lib/wompi";
-import { sendOrderEmails } from "../../lib/email";
+import { sendOrderEmails, sendShippingNotificationEmail } from "../../lib/email";
 import { recordOrderAndCheckReturning } from "../../lib/loyalty";
 import { COD_DEPOSIT_COP } from "../../lib/order";
 import { createCodShipment } from "../../lib/skydropx";
@@ -72,6 +72,28 @@ export async function POST(request) {
         trackingNumber,
         carrierName
       );
+
+      // Correo de "va en camino" al cliente — solo cuando la guía SÍ se
+      // generó con éxito (tracking_number y label_url presentes). No debe
+      // tumbar la confirmación del pedido si falla, así que se captura
+      // aparte y solo se loguea.
+      if (trackingNumber && shipment.labelUrl) {
+        try {
+          await sendShippingNotificationEmail({
+            customer,
+            trackingNumber,
+            carrierName,
+            trackingUrl: shipment.trackingUrl,
+            labelUrl: shipment.labelUrl,
+            saldoPendiente,
+          });
+        } catch (emailErr) {
+          console.error(
+            "[confirm-cod-order] Falló el correo de guía generada:",
+            emailErr
+          );
+        }
+      }
     } catch (err) {
       // No relanzamos: el pedido contraentrega sigue su curso sin guía
       // automática. Se loguea completo para poder diagnosticar — y además
