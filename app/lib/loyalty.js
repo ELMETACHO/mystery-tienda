@@ -43,6 +43,7 @@ export async function recordOrderAndCheckReturning({
   amountCOP,
   trackingNumber,
   carrierName,
+  shipmentError,
 }) {
   const client = getRedisClient();
   if (!client) {
@@ -65,6 +66,10 @@ export async function recordOrderAndCheckReturning({
       // Skydropx; undefined se omite naturalmente al serializar a JSON.
       trackingNumber,
       carrierName,
+      // Mensaje de error EXACTO (no solo un booleano) cuando la guía
+      // automática falló, para poder diagnosticar sin ir a buscar en los
+      // logs de Vercel cada vez — ver app/api/confirm-cod-order/route.js.
+      shipmentError,
     });
     await client.rpush(key, record);
 

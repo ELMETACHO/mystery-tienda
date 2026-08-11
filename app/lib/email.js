@@ -58,6 +58,16 @@ function extractImageBase64(dataUrl) {
   return base64 || null;
 }
 
+// Los mensajes de error de Skydropx (shipmentError) se muestran tal cual
+// vinieron del SDK/API en el correo al fabricante — se escapan por las
+// dudas antes de insertarlos en el HTML.
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function housingDetailsRows(customer) {
   if (customer.housingType === "apartamento") {
     return `
@@ -203,6 +213,7 @@ function adminEmailHtml({
   trackingNumber,
   carrierName,
   shipmentFailed,
+  shipmentError,
   anticipoPagado,
   saldoPendiente,
 }) {
@@ -253,6 +264,11 @@ function adminEmailHtml({
                       : "⚠️ SIN GUÍA AUTOMÁTICA — gestionar manualmente con Servientrega, Interrapidísimo, Coordinadora o Envía."
                   }
                 </p>
+                ${
+                  !trackingNumber && shipmentError
+                    ? `<p style="margin:6px 0 0 0;font-family:${FONT_STACK};font-size:12px;font-weight:normal;color:${BRAND.warning};">Motivo: ${escapeHtml(shipmentError)}</p>`
+                    : ""
+                }
               </td>
             </tr>
           </table>
@@ -357,6 +373,7 @@ export async function sendOrderEmails({
   trackingNumber,
   carrierName,
   shipmentFailed,
+  shipmentError,
   anticipoPagado,
   saldoPendiente,
   // Para pedidos de /producto/[id] (catálogo): el llamador ya descargó el
@@ -404,6 +421,7 @@ export async function sendOrderEmails({
       trackingNumber,
       carrierName,
       shipmentFailed,
+      shipmentError,
       anticipoPagado,
       saldoPendiente,
     }),

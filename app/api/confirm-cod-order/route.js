@@ -58,6 +58,13 @@ export async function POST(request) {
   // no mostrar la alerta de "gestionar manualmente" cuando la integración
   // simplemente no corrió.
   let shipmentFailed = false;
+  // Mensaje de error EXACTO (err.message), no solo el booleano de arriba —
+  // se guarda en Redis (ver loyalty.js) y se muestra en el correo al
+  // fabricante para poder diagnosticar sin ir a los logs de Vercel. Un caso
+  // real: faltaban SKYDROPX_CLIENT_ID/SECRET en las variables de entorno de
+  // Vercel (sí estaban en .env.local, pero nunca se agregaron en
+  // Vercel → Settings → Environment Variables — ver CLAUDE.md).
+  let shipmentError = null;
   if (SKYDROPX_COD_ENABLED) {
     try {
       const shipment = await createCodShipment({
@@ -100,6 +107,7 @@ export async function POST(request) {
       // se refleja en el correo al fabricante (banner + asunto), en vez de
       // quedar solo en logs que nadie revisa en el momento.
       shipmentFailed = true;
+      shipmentError = err.message || String(err);
       console.error("[confirm-cod-order] Falló la creación de guía en Skydropx:", err);
     }
   }
@@ -110,6 +118,7 @@ export async function POST(request) {
     amountCOP: order.priceCOP,
     trackingNumber,
     carrierName,
+    shipmentError,
   });
 
   // Si el pedido viene de /producto/[id] (catálogo), incrementa el
@@ -128,6 +137,7 @@ export async function POST(request) {
       trackingNumber,
       carrierName,
       shipmentFailed,
+      shipmentError,
       anticipoPagado,
       saldoPendiente,
       printImageBase64Override: printImageBase64,

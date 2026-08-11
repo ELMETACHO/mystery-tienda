@@ -302,6 +302,48 @@ function pickCheapestCodRate(rates) {
   });
 }
 
+// La creación de guía en Skydropx es ASÍNCRONA: el POST a /api/v1/shipments
+// devuelve 202 casi de inmediato con workflow_status "in_progress" y
+// tracking_number/label_url en null — la guía se sigue generando del lado
+// de la transportadora. Se descubrió esto DESPUÉS de un caso real (pedido
+// con guía Servientrega #2259219169) donde la guía sí se creó exitosamente
+// en Skydropx, pero el código leía la respuesta del POST inicial (todavía
+// "in_progress") y la trataba como fallo silencioso — el cliente nunca
+// recibió el correo de envío y el fabricante vio "SIN GUÍA" con una guía
+// real ya cobrada. Por eso se consulta el shipment de nuevo (GET) hasta
+// que workflow_status deje de ser "in_progress" o se agoten los intentos.
+async function pollShipmentUntilReady(shipmentId, { attempts = 6, delayMs = 2000 } = {}) {
+  for (let i = 0; i < attempts; i++) {
+    const res = await skydropxFetch(`/api/v1/shipments/${shipmentId}`);
+    if (!res.ok) {
+      // Un fallo puntual al consultar no debe tumbar la creación de guía
+      // que ya sabemos que fue aceptada (202) — se reintenta en la
+      // siguiente vuelta en vez de lanzar de inmediato.
+      if (i === attempts - 1) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`Skydropx: error consultando la guía (${res.status}): ${text}`);
+      }
+    } else {
+      const body = await res.json();
+      const attributes = body.data?.attributes || {};
+      const packageResource = (body.included || []).find((r) => r.type === "package");
+      const packageAttrs = packageResource?.attributes || {};
+      if (attributes.workflow_status !== "in_progress") {
+        return { attributes, packageAttrs };
+      }
+    }
+    if (i < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  // Se agotaron los intentos sin que la guía saliera de "in_progress" —
+  // devuelve lo último que se tenga (probablemente sin tracking_number
+  // todavía); createCodShipment/confirm-cod-order lo tratan igual que un
+  // fallo (sin guía automática), aunque la guía puede terminar de
+  // generarse minutos después del lado de Skydropx.
+  return null;
+}
+
 // CORREGIDO tras crear una guía real de prueba (pedido de Alvaro Ríos
 // Piña, agosto 2026): la suposición anterior de que el payload iba PLANO
 // (sin envolver) era incorrecta — sin el wrapper {shipment: {...}} la API
@@ -363,15 +405,46 @@ async function createShipment({ rate, order, customer, reference }) {
   }
 
   const body = await res.json();
-  const attributes = body.data?.attributes || {};
-  const packageResource = (body.included || []).find((r) => r.type === "package");
-  const packageAttrs = packageResource?.attributes || {};
+  const shipmentId = body.data?.id;
+  let attributes = body.data?.attributes || {};
+  let packageResource = (body.included || []).find((r) => r.type === "package");
+  let packageAttrs = packageResource?.attributes || {};
+
+  // El 202 inicial casi siempre viene con workflow_status "in_progress" y
+  // tracking_number/label_url en null — hay que volver a consultar hasta
+  // que la transportadora termine de generar la guía (ver
+  // pollShipmentUntilReady más arriba).
+  if (attributes.workflow_status === "in_progress" && shipmentId) {
+    const polled = await pollShipmentUntilReady(shipmentId);
+    if (polled) {
+      attributes = polled.attributes;
+      packageAttrs = polled.packageAttrs;
+    }
+  }
+
+  const trackingNumber =
+    packageAttrs.tracking_number || attributes.master_tracking_number || null;
+  const labelUrl = packageAttrs.label_url || null;
+
+  // Log explícito de éxito justo después de confirmar la creación de la
+  // guía, ANTES de cualquier paso posterior (correo al cliente, Redis,
+  // etc.) que pueda fallar por su cuenta — así, si algo falla más
+  // adelante, los logs ya prueban que la guía sí se creó bien y el
+  // problema está en otro lado (caso real: guía Servientrega
+  // #2259219169 sí se creó, pero se leyó como fallo porque el código no
+  // esperaba a que saliera de "in_progress").
+  if (trackingNumber) {
+    console.log(`[skydropx] Guía creada: ${trackingNumber} (${attributes.carrier_name || rate.carrier_name || rate.provider_name || "?"})`);
+  } else {
+    console.warn(
+      `[skydropx] La guía se aceptó (shipment ${shipmentId}) pero sigue sin tracking_number tras reintentar — workflow_status: ${attributes.workflow_status}`
+    );
+  }
 
   return {
-    trackingNumber:
-      packageAttrs.tracking_number || attributes.master_tracking_number || null,
+    trackingNumber,
     carrierName: attributes.carrier_name || rate.carrier_name || rate.provider_name || "",
-    labelUrl: packageAttrs.label_url || null,
+    labelUrl,
     // Página de rastreo genérica que da la transportadora (ej.
     // "https://envia.co/") — no siempre es un deep-link directo al número
     // de guía, pero es lo único que devuelve la API además del label_url.
