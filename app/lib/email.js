@@ -58,6 +58,25 @@ function extractImageBase64(dataUrl) {
   return base64 || null;
 }
 
+// Descarga la etiqueta de envío (labelUrl de Skydropx, ver
+// app/lib/skydropx.js) para adjuntarla en PDF al correo del fabricante.
+// Nunca lanza: si la descarga falla (link vencido, red, etc.), el correo
+// sigue su curso sin ese adjunto en vez de bloquear la confirmación del
+// pedido — el aviso de guía generada en el cuerpo del correo ya avisa el
+// número de guía de todos modos.
+async function fetchLabelPdfBase64(labelUrl) {
+  if (!labelUrl) return null;
+  try {
+    const res = await fetch(labelUrl);
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const buffer = await res.arrayBuffer();
+    return Buffer.from(buffer).toString("base64");
+  } catch (err) {
+    console.error("[email] No se pudo descargar la etiqueta de envío para adjuntarla:", err);
+    return null;
+  }
+}
+
 // Los mensajes de error de Skydropx (shipmentError) se muestran tal cual
 // vinieron del SDK/API en el correo al fabricante — se escapan por las
 // dudas antes de insertarlos en el HTML.
@@ -372,6 +391,7 @@ export async function sendOrderEmails({
   paymentMethod = "wompi",
   trackingNumber,
   carrierName,
+  labelUrl,
   shipmentFailed,
   shipmentError,
   anticipoPagado,
@@ -386,11 +406,9 @@ export async function sendOrderEmails({
   // El fabricante recibe la versión CON sangrado de producción
   // (order.printImage); si por algún motivo no viene (pedidos guardados
   // antes de agregar el sangrado), se usa la imagen normal como respaldo.
-  // Esto es INDEPENDIENTE del resultado de la guía de Skydropx — no hay
-  // ningún adjunto relacionado a la guía en ningún momento, solo esta
-  // imagen del cuadro. extractImageBase64 valida el formato antes de
-  // adjuntar, así que un dato corrupto o ausente simplemente no se adjunta
-  // en vez de mandar un PNG roto.
+  // extractImageBase64 valida el formato antes de adjuntar, así que un dato
+  // corrupto o ausente simplemente no se adjunta en vez de mandar un PNG
+  // roto.
   const printBase64 =
     printImageBase64Override ||
     extractImageBase64(order.printImage) ||
@@ -401,12 +419,24 @@ export async function sendOrderEmails({
     );
   }
 
+  // Etiqueta de envío (PDF) — solo presente en pedidos contraentrega con
+  // guía generada por Skydropx (ver app/api/confirm-cod-order/route.js).
+  const labelBase64 = await fetchLabelPdfBase64(labelUrl);
+
   // Refuerzo visible en el asunto (no solo en el cuerpo del correo) cuando
   // un pedido contraentrega se queda sin guía automática — para que se note
   // aunque el fabricante/admin solo mire la bandeja de entrada por encima,
   // en vez de depender de que abra el correo para descubrirlo.
   const needsManualShipping = paymentMethod === "cod" && !trackingNumber;
   const subjectPrefix = needsManualShipping ? "⚠️ SIN GUÍA - " : "";
+
+  const attachments = [];
+  if (printBase64) {
+    attachments.push({ filename: "cuadro-mystery.png", content: printBase64 });
+  }
+  if (labelBase64) {
+    attachments.push({ filename: "guia-envio.pdf", content: labelBase64 });
+  }
 
   await resend.emails.send({
     from: FROM_EMAIL,
@@ -425,9 +455,7 @@ export async function sendOrderEmails({
       anticipoPagado,
       saldoPendiente,
     }),
-    attachments: printBase64
-      ? [{ filename: "cuadro-mystery.png", content: printBase64 }]
-      : [],
+    attachments,
   });
 
   // Sin imagen en el correo al cliente por ahora: un cid: de adjunto no
@@ -562,6 +590,12 @@ function shippingNotificationEmailHtml({
 // html arriba ya maneja el caso de que ninguno esté disponible ocultando
 // el botón de rastreo. Nunca se llama si no hay trackingNumber (ver
 // app/api/confirm-cod-order/route.js).
+//
+// scheduledAt: usa la programación nativa de Resend (acepta lenguaje
+// natural como "in 24 hours"/"tomorrow at 10am" o un ISO timestamp) para
+// que este correo salga el día siguiente en vez de inmediatamente — ver
+// computeTomorrowAt10amBogota en app/api/confirm-cod-order/route.js. Si se
+// omite, el correo sale de inmediato (comportamiento previo).
 export async function sendShippingNotificationEmail({
   customer,
   trackingNumber,
@@ -569,6 +603,7 @@ export async function sendShippingNotificationEmail({
   trackingUrl,
   labelUrl,
   saldoPendiente,
+  scheduledAt,
 }) {
   await resend.emails.send({
     from: FROM_EMAIL,
@@ -582,6 +617,7 @@ export async function sendShippingNotificationEmail({
       labelUrl,
       saldoPendiente,
     }),
+    ...(scheduledAt ? { scheduledAt } : {}),
   });
 }
 

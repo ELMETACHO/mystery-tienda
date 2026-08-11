@@ -23,6 +23,20 @@ import { processCatalogProductPurchase } from "../../lib/catalogPurchase";
 // fabricante (app/lib/email.js).
 const SKYDROPX_COD_ENABLED = true;
 
+// El correo de "guía generada" al cliente se programa (Resend
+// scheduledAt) para el día siguiente a las 10am hora Bogotá (UTC-5, sin
+// horario de verano) en vez de salir apenas se crea la guía — el cliente
+// ya recibió el correo de "pago confirmado" al instante, así que no hay
+// apuro, y mandarlo al día siguiente en un horario razonable se siente
+// menos automatizado/spam que uno a las 2am si el pedido se procesó de
+// madrugada.
+function computeTomorrowAt10amBogota() {
+  const target = new Date();
+  target.setUTCDate(target.getUTCDate() + 1);
+  target.setUTCHours(15, 0, 0, 0); // 10:00 Bogotá = 15:00 UTC
+  return target.toISOString();
+}
+
 export async function POST(request) {
   const { transactionId, order, customer } = await request.json();
 
@@ -53,6 +67,7 @@ export async function POST(request) {
 
   let trackingNumber = null;
   let carrierName = null;
+  let labelUrl = null;
   // true solo cuando SÍ se intentó generar la guía y falló (por cualquier
   // motivo) — nunca queda en true si SKYDROPX_COD_ENABLED está apagado, para
   // no mostrar la alerta de "gestionar manualmente" cuando la integración
@@ -74,6 +89,7 @@ export async function POST(request) {
       });
       trackingNumber = shipment.trackingNumber || null;
       carrierName = shipment.carrierName || null;
+      labelUrl = shipment.labelUrl || null;
       console.log(
         "[confirm-cod-order] Guía Skydropx creada:",
         trackingNumber,
@@ -81,18 +97,22 @@ export async function POST(request) {
       );
 
       // Correo de "va en camino" al cliente — solo cuando la guía SÍ se
-      // generó con éxito (tracking_number y label_url presentes). No debe
-      // tumbar la confirmación del pedido si falla, así que se captura
-      // aparte y solo se loguea.
-      if (trackingNumber && shipment.labelUrl) {
+      // generó con éxito (tracking_number y label_url presentes). Se
+      // programa para el día siguiente en vez de salir de inmediato (ver
+      // computeTomorrowAt10amBogota) — el de "pago confirmado" ya salió al
+      // instante desde sendOrderEmails más abajo. No debe tumbar la
+      // confirmación del pedido si falla, así que se captura aparte y solo
+      // se loguea.
+      if (trackingNumber && labelUrl) {
         try {
           await sendShippingNotificationEmail({
             customer,
             trackingNumber,
             carrierName,
             trackingUrl: shipment.trackingUrl,
-            labelUrl: shipment.labelUrl,
+            labelUrl,
             saldoPendiente,
+            scheduledAt: computeTomorrowAt10amBogota(),
           });
         } catch (emailErr) {
           console.error(
@@ -136,6 +156,7 @@ export async function POST(request) {
       paymentMethod: "cod",
       trackingNumber,
       carrierName,
+      labelUrl,
       shipmentFailed,
       shipmentError,
       anticipoPagado,
