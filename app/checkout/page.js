@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { COD_DEPOSIT_COP, formatCOP, loadOrder, saveOrder } from "../lib/order";
+import { lookupPostalCode } from "../lib/postalCodes";
 import FreeShippingBanner from "../components/FreeShippingBanner";
 
 const WOMPI_PUBLIC_KEY = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
@@ -161,6 +162,18 @@ export default function CheckoutPage() {
 
   const handleChange = (field) => (e) =>
     setCustomer((prev) => ({ ...prev, [field]: e.target.value }));
+
+  // Código postal derivado automáticamente de departamento + ciudad contra
+  // el catálogo canónico de Skydropx (ver app/lib/postalCodes.js) — antes
+  // el cliente lo escribía a mano, lo que era una fuente frecuente de
+  // errores de cotización. Si no hay match en el catálogo, se deja vacío
+  // (nunca bloquea el pedido, ver lookupPostalCode).
+  useEffect(() => {
+    const found = lookupPostalCode(customer.department, customer.city);
+    setCustomer((prev) =>
+      prev.postalCode === (found || "") ? prev : { ...prev, postalCode: found || "" }
+    );
+  }, [customer.department, customer.city]);
 
   const setHousingType = (housingType) =>
     setCustomer((prev) => ({ ...prev, housingType }));
@@ -549,10 +562,11 @@ export default function CheckoutPage() {
               </select>
               <input
                 type="text"
-                placeholder="Código postal (opcional)"
+                placeholder="Código postal (automático)"
                 value={customer.postalCode}
-                onChange={handleChange("postalCode")}
-                className={`flex-1 ${INPUT_CLASS}`}
+                readOnly
+                title="Se calcula automáticamente según el departamento y la ciudad"
+                className={`flex-1 ${INPUT_CLASS} cursor-not-allowed text-zinc-400`}
               />
             </div>
 

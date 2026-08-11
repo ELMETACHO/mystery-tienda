@@ -92,7 +92,21 @@ async function skydropxFetch(path, options = {}) {
 // (case-insensitive) contra el nombre de cada tarifa devuelta por la
 // cotización, ya que el campo exacto puede venir como carrier/carrier_name/
 // provider_name según el endpoint.
-const COD_CARRIERS = ["servientrega", "interrapidisimo", "interrapidísimo"];
+//
+// Se amplió de solo Servientrega/Interrapidísimo a incluir también
+// Coordinadora y Envía: al probar cotizaciones reales confirmamos que en
+// Medellín y Barranquilla esas dos transportadoras eran las ÚNICAS
+// disponibles con contraentrega — con la lista original, todo pedido COD a
+// esas ciudades se quedaba sin guía automática aunque sí había una opción
+// viable cotizada.
+const COD_CARRIERS = [
+  "servientrega",
+  "interrapidisimo",
+  "interrapidísimo",
+  "coordinadora",
+  "envia",
+  "envía",
+];
 
 // Causa raíz confirmada DIRECTAMENTE por soporte de Skydropx: ni el
 // 110221 (su propio ejemplo genérico) ni el 110131 (código DANE oficial
@@ -355,9 +369,18 @@ export async function createCodShipment({ order, customer, reference }) {
 
   const bestRate = pickCheapestCodRate(rates);
   if (!bestRate) {
-    throw new Error(
-      "Skydropx: no se encontró ninguna tarifa de Servientrega/Interrapidísimo disponible para esta dirección."
+    // Se marca con noEligibleCarrier para que el llamador (ver
+    // app/api/confirm-cod-order/route.js) pueda distinguir "cotizó pero
+    // ninguna transportadora habilitada para COD" de un error técnico, y
+    // reflejarlo de forma explícita en el correo al fabricante en vez de
+    // dejarlo como un simple log silencioso.
+    const err = new Error(
+      `Skydropx: se cotizó pero ninguna transportadora habilitada para contraentrega (${COD_CARRIERS.join(
+        "/"
+      )}) está disponible para esta dirección.`
     );
+    err.noEligibleCarrier = true;
+    throw err;
   }
 
   return createShipment({ rate: bestRate, order, customer, reference });

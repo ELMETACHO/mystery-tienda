@@ -12,14 +12,16 @@ import { processCatalogProductPurchase } from "../../lib/catalogPurchase";
 // Wompi que verificar, pero solo por el monto del anticipo — nunca se
 // confía en el navegador para eso.
 //
-// La integración con Skydropx para generar la guía automáticamente está
-// en pausa esperando confirmación de su soporte sobre si la cuenta
-// soporta envíos domésticos Colombia→Colombia con contraentrega (ver
-// app/lib/skydropx.js). Mientras tanto, SKYDROPX_COD_ENABLED queda en
-// false: el pedido se confirma igual, sin guía automática, y el correo al
-// fabricante avisa que hay que crearla manualmente. Cuando soporte
-// confirme que la integración aplica, se vuelve a habilitar acá.
-const SKYDROPX_COD_ENABLED = false;
+// Habilitado tras confirmar en vivo (solo cotización, ticket #47432505243)
+// que Bogotá/Cali/Medellín/Barranquilla y una ciudad aleatoria cotizan
+// correctamente contra el catálogo canónico de códigos postales
+// (app/lib/postalCodes.js), y tras ampliar COD_CARRIERS para incluir
+// Coordinadora/Envía además de Servientrega/Interrapidísimo. Si de todos
+// modos falla (sin transportadora COD disponible para esa dirección, o un
+// error técnico), el pedido sigue su curso sin guía automática — ver
+// manejo del error más abajo y el aviso reforzado en el correo al
+// fabricante (app/lib/email.js).
+const SKYDROPX_COD_ENABLED = true;
 
 export async function POST(request) {
   const { transactionId, order, customer } = await request.json();
@@ -51,6 +53,11 @@ export async function POST(request) {
 
   let trackingNumber = null;
   let carrierName = null;
+  // true solo cuando SÍ se intentó generar la guía y falló (por cualquier
+  // motivo) — nunca queda en true si SKYDROPX_COD_ENABLED está apagado, para
+  // no mostrar la alerta de "gestionar manualmente" cuando la integración
+  // simplemente no corrió.
+  let shipmentFailed = false;
   if (SKYDROPX_COD_ENABLED) {
     try {
       const shipment = await createCodShipment({
@@ -67,7 +74,10 @@ export async function POST(request) {
       );
     } catch (err) {
       // No relanzamos: el pedido contraentrega sigue su curso sin guía
-      // automática. Se loguea completo para poder diagnosticar.
+      // automática. Se loguea completo para poder diagnosticar — y además
+      // se refleja en el correo al fabricante (banner + asunto), en vez de
+      // quedar solo en logs que nadie revisa en el momento.
+      shipmentFailed = true;
       console.error("[confirm-cod-order] Falló la creación de guía en Skydropx:", err);
     }
   }
@@ -95,6 +105,7 @@ export async function POST(request) {
       paymentMethod: "cod",
       trackingNumber,
       carrierName,
+      shipmentFailed,
       anticipoPagado,
       saldoPendiente,
       printImageBase64Override: printImageBase64,

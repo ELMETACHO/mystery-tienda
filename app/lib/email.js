@@ -202,6 +202,7 @@ function adminEmailHtml({
   paymentMethod,
   trackingNumber,
   carrierName,
+  shipmentFailed,
   anticipoPagado,
   saldoPendiente,
 }) {
@@ -249,7 +250,7 @@ function adminEmailHtml({
                   ${
                     trackingNumber
                       ? `🚚 Guía generada (${carrierName || "transportadora"}): ${trackingNumber}`
-                      : "⚠️ No se pudo generar la guía automática — crearla manualmente en Servientrega/Interrapidísimo."
+                      : "⚠️ SIN GUÍA AUTOMÁTICA — gestionar manualmente con Servientrega, Interrapidísimo, Coordinadora o Envía."
                   }
                 </p>
               </td>
@@ -355,6 +356,7 @@ export async function sendOrderEmails({
   paymentMethod = "wompi",
   trackingNumber,
   carrierName,
+  shipmentFailed,
   anticipoPagado,
   saldoPendiente,
   // Para pedidos de /producto/[id] (catálogo): el llamador ya descargó el
@@ -382,10 +384,17 @@ export async function sendOrderEmails({
     );
   }
 
+  // Refuerzo visible en el asunto (no solo en el cuerpo del correo) cuando
+  // un pedido contraentrega se queda sin guía automática — para que se note
+  // aunque el fabricante/admin solo mire la bandeja de entrada por encima,
+  // en vez de depender de que abra el correo para descubrirlo.
+  const needsManualShipping = paymentMethod === "cod" && !trackingNumber;
+  const subjectPrefix = needsManualShipping ? "⚠️ SIN GUÍA - " : "";
+
   await resend.emails.send({
     from: FROM_EMAIL,
     to: ADMIN_RECIPIENTS,
-    subject: `Nuevo pedido Mystery - ${customer.fullName}`,
+    subject: `${subjectPrefix}Nuevo pedido Mystery - ${customer.fullName}`,
     html: adminEmailHtml({
       order,
       customer,
@@ -394,6 +403,7 @@ export async function sendOrderEmails({
       paymentMethod,
       trackingNumber,
       carrierName,
+      shipmentFailed,
       anticipoPagado,
       saldoPendiente,
     }),
