@@ -136,6 +136,27 @@ export default function CheckoutPage() {
     };
   }, [router]);
 
+  // Código postal derivado automáticamente de departamento + ciudad contra
+  // el catálogo canónico de Skydropx (ver app/lib/postalCodes.js) — antes
+  // el cliente lo escribía a mano, lo que era una fuente frecuente de
+  // errores de cotización. Si no hay match en el catálogo, se deja vacío
+  // (nunca bloquea el pedido, ver lookupPostalCode).
+  //
+  // IMPORTANTE: este hook debe quedar SIEMPRE antes del early return de
+  // abajo (isLoadingOrder/!order) — todos los hooks de un componente deben
+  // ejecutarse en el mismo orden en cada render. Tenerlo después del
+  // return causaba React error #310 ("Rendered fewer hooks than expected"):
+  // en el primer render (isLoadingOrder=true) el componente retornaba antes
+  // de llegar a este useEffect, pero en renders posteriores (ya con la
+  // orden cargada) sí lo alcanzaba — un número distinto de hooks entre
+  // renders, lo que React nunca permite.
+  useEffect(() => {
+    const found = lookupPostalCode(customer.department, customer.city);
+    setCustomer((prev) =>
+      prev.postalCode === (found || "") ? prev : { ...prev, postalCode: found || "" }
+    );
+  }, [customer.department, customer.city]);
+
   if (isLoadingOrder || !order) {
     return (
       <div className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6">
@@ -162,18 +183,6 @@ export default function CheckoutPage() {
 
   const handleChange = (field) => (e) =>
     setCustomer((prev) => ({ ...prev, [field]: e.target.value }));
-
-  // Código postal derivado automáticamente de departamento + ciudad contra
-  // el catálogo canónico de Skydropx (ver app/lib/postalCodes.js) — antes
-  // el cliente lo escribía a mano, lo que era una fuente frecuente de
-  // errores de cotización. Si no hay match en el catálogo, se deja vacío
-  // (nunca bloquea el pedido, ver lookupPostalCode).
-  useEffect(() => {
-    const found = lookupPostalCode(customer.department, customer.city);
-    setCustomer((prev) =>
-      prev.postalCode === (found || "") ? prev : { ...prev, postalCode: found || "" }
-    );
-  }, [customer.department, customer.city]);
 
   const setHousingType = (housingType) =>
     setCustomer((prev) => ({ ...prev, housingType }));
