@@ -119,19 +119,36 @@ function alreadyGeneratedPage(record) {
   });
 }
 
+// Colombia no tiene horario de verano — Bogotá es siempre UTC-5. Restar 5h
+// a la hora UTC actual y leer los campos UTC del resultado da la hora de
+// pared en Bogotá, sin depender de la zona horaria del servidor (Vercel
+// corre en UTC, pero esto funciona igual en cualquier entorno).
+function getBogotaHour() {
+  const bogotaNow = new Date(Date.now() - 5 * 60 * 60 * 1000);
+  return bogotaNow.getUTCHours();
+}
+
+function deadlineWarningHtml() {
+  const beforeDeadline = getBogotaHour() < 16;
+  return beforeDeadline
+    ? `<p style="margin:0 0 20px 0;padding:12px 14px;background-color:${BRAND.warningBg};border-radius:8px;font-size:14px;font-weight:bold;color:${BRAND.warning};">⚠️ Debes entregar el cuadro en la transportadora HOY antes de las 4:00 PM.</p>`
+    : `<p style="margin:0 0 20px 0;padding:12px 14px;background-color:${BRAND.warningBg};border-radius:8px;font-size:14px;font-weight:bold;color:${BRAND.warning};">🕐 Ya pasó el horario de hoy — vuelve mañana más temprano y genera la guía antes de las 4:00 PM para evitar que venza.</p>`;
+}
+
 function confirmPage({ ref, token, record }) {
   return renderPage({
     title: "Generar guía — Mystery",
     bodyHtml: `
       <p style="margin:0 0 6px 0;font-size:16px;font-weight:bold;color:${BRAND.ink};">${escapeHtml(record.customer.fullName)}</p>
       <p style="margin:0 0 20px 0;font-size:14px;color:${BRAND.muted};">${escapeHtml(record.order.sizeLabel)} · ${escapeHtml(record.customer.city)}</p>
-      <p style="margin:0 0 20px 0;font-size:14px;line-height:20px;color:${BRAND.muted};">
-        Al confirmar, se genera la guía REAL en Skydropx (${record.paymentMethod === "cod" ? "con recaudo contraentrega" : "sin recaudo, pago ya completo"}) y se descuenta de tu saldo. Solo hazlo cuando el cuadro esté listo para llevar a la transportadora.
+      ${deadlineWarningHtml()}
+      <p style="margin:0 0 20px 0;font-size:14px;line-height:20px;color:${BRAND.ink};">
+        Toca el botón SOLO si ya tienes el cuadro listo para entregar en la transportadora.
       </p>
       <form method="POST" action="/api/generate-shipment">
         <input type="hidden" name="ref" value="${escapeHtml(ref)}">
         <input type="hidden" name="token" value="${escapeHtml(token)}">
-        <button type="submit" style="display:block;width:100%;background-color:${BRAND.solid};color:#ffffff;font-size:15px;font-weight:bold;border:none;border-radius:999px;padding:14px 0;cursor:pointer;">✅ Ya está listo — generar guía ahora</button>
+        <button type="submit" style="display:block;width:100%;background-color:${BRAND.solid};color:#ffffff;font-size:15px;font-weight:bold;border:none;border-radius:999px;padding:14px 0;cursor:pointer;">✅ Ya fabriqué el cuadro - generar guía</button>
       </form>
     `,
   });

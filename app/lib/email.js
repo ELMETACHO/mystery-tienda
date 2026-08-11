@@ -297,10 +297,10 @@ function adminEmailHtml({
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.lilac};border-radius:6px;">
             <tr>
               <td style="padding:14px;text-align:center;">
-                <p style="margin:0 0 10px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.text};">Guía de envío pendiente — generarla cuando el cuadro esté listo.</p>
+                <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.text};">Guía de envío pendiente — generarla cuando el cuadro esté listo.</p>
                 ${
                   manualShipmentUrl
-                    ? `<a href="${manualShipmentUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:14px;font-weight:bold;text-decoration:none;border-radius:999px;padding:11px 24px;">✅ Ya está listo — generar guía ahora</a>`
+                    ? `<a href="${manualShipmentUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:17px;font-weight:bold;text-decoration:none;border-radius:999px;padding:18px 32px;">✅ Ya fabriqué el cuadro - generar guía</a>`
                     : ""
                 }
                 ${
