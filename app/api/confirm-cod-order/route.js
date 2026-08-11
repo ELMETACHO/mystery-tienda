@@ -1,8 +1,8 @@
 import { fetchWompiTransaction } from "../../lib/wompi";
-import { sendOrderEmails, sendShippingNotificationEmail } from "../../lib/email";
+import { sendOrderEmails } from "../../lib/email";
 import { recordOrderAndCheckReturning } from "../../lib/loyalty";
 import { COD_DEPOSIT_COP } from "../../lib/order";
-import { createCodShipment } from "../../lib/skydropx";
+import { saveManualShipmentRequest } from "../../lib/manualShipments";
 import { processCatalogProductPurchase } from "../../lib/catalogPurchase";
 
 // Confirma un pedido "Pago contraentrega": el cliente paga un anticipo
@@ -12,31 +12,14 @@ import { processCatalogProductPurchase } from "../../lib/catalogPurchase";
 // Wompi que verificar, pero solo por el monto del anticipo — nunca se
 // confía en el navegador para eso.
 //
-// Habilitado tras confirmar en vivo (solo cotización, ticket #47432505243)
-// que Bogotá/Cali/Medellín/Barranquilla y una ciudad aleatoria cotizan
-// correctamente contra el catálogo canónico de códigos postales
-// (app/lib/postalCodes.js), y tras ampliar COD_CARRIERS para incluir
-// Coordinadora/Envía además de Servientrega/Interrapidísimo. Si de todos
-// modos falla (sin transportadora COD disponible para esa dirección, o un
-// error técnico), el pedido sigue su curso sin guía automática — ver
-// manejo del error más abajo y el aviso reforzado en el correo al
-// fabricante (app/lib/email.js).
-const SKYDROPX_COD_ENABLED = true;
-
-// El correo de "guía generada" al cliente se programa (Resend
-// scheduledAt) para el día siguiente a las 10am hora Bogotá (UTC-5, sin
-// horario de verano) en vez de salir apenas se crea la guía — el cliente
-// ya recibió el correo de "pago confirmado" al instante, así que no hay
-// apuro, y mandarlo al día siguiente en un horario razonable se siente
-// menos automatizado/spam que uno a las 2am si el pedido se procesó de
-// madrugada.
-function computeTomorrowAt10amBogota() {
-  const target = new Date();
-  target.setUTCDate(target.getUTCDate() + 1);
-  target.setUTCHours(15, 0, 0, 0); // 10:00 Bogotá = 15:00 UTC
-  return target.toISOString();
-}
-
+// La guía de Skydropx YA NO se genera automáticamente acá (se probó y
+// funcionaba, pero arriesgaba que la guía venciera esperando días a que
+// se produjera el cuadro — pasó con la guía real de Alvaro Ríos Piña).
+// En vez de eso, se guarda la solicitud completa en Redis
+// (manualShipments.js, TTL 30 días) y el correo al fabricante
+// (sendOrderEmails) incluye un botón "✅ Ya está listo — generar guía
+// ahora" que dispara /api/generate-shipment cuando el cuadro esté
+// realmente listo para despachar.
 export async function POST(request) {
   const { transactionId, order, customer } = await request.json();
 
@@ -65,80 +48,22 @@ export async function POST(request) {
   const anticipoPagado = COD_DEPOSIT_COP;
   const saldoPendiente = order.priceCOP - COD_DEPOSIT_COP;
 
-  let trackingNumber = null;
-  let carrierName = null;
-  let labelUrl = null;
-  // true solo cuando SÍ se intentó generar la guía y falló (por cualquier
-  // motivo) — nunca queda en true si SKYDROPX_COD_ENABLED está apagado, para
-  // no mostrar la alerta de "gestionar manualmente" cuando la integración
-  // simplemente no corrió.
-  let shipmentFailed = false;
-  // Mensaje de error EXACTO (err.message), no solo el booleano de arriba —
-  // se guarda en Redis (ver loyalty.js) y se muestra en el correo al
-  // fabricante para poder diagnosticar sin ir a los logs de Vercel. Un caso
-  // real: faltaban SKYDROPX_CLIENT_ID/SECRET en las variables de entorno de
-  // Vercel (sí estaban en .env.local, pero nunca se agregaron en
-  // Vercel → Settings → Environment Variables — ver CLAUDE.md).
-  let shipmentError = null;
-  if (SKYDROPX_COD_ENABLED) {
-    try {
-      const shipment = await createCodShipment({
-        order,
-        customer,
-        reference: transaction.reference,
-      });
-      trackingNumber = shipment.trackingNumber || null;
-      carrierName = shipment.carrierName || null;
-      labelUrl = shipment.labelUrl || null;
-      console.log(
-        "[confirm-cod-order] Guía Skydropx creada:",
-        trackingNumber,
-        carrierName
-      );
-
-      // Correo de "va en camino" al cliente — solo cuando la guía SÍ se
-      // generó con éxito (tracking_number y label_url presentes). Se
-      // programa para el día siguiente en vez de salir de inmediato (ver
-      // computeTomorrowAt10amBogota) — el de "pago confirmado" ya salió al
-      // instante desde sendOrderEmails más abajo. No debe tumbar la
-      // confirmación del pedido si falla, así que se captura aparte y solo
-      // se loguea.
-      if (trackingNumber && labelUrl) {
-        try {
-          await sendShippingNotificationEmail({
-            customer,
-            trackingNumber,
-            carrierName,
-            trackingUrl: shipment.trackingUrl,
-            labelUrl,
-            saldoPendiente,
-            scheduledAt: computeTomorrowAt10amBogota(),
-          });
-        } catch (emailErr) {
-          console.error(
-            "[confirm-cod-order] Falló el correo de guía generada:",
-            emailErr
-          );
-        }
-      }
-    } catch (err) {
-      // No relanzamos: el pedido contraentrega sigue su curso sin guía
-      // automática. Se loguea completo para poder diagnosticar — y además
-      // se refleja en el correo al fabricante (banner + asunto), en vez de
-      // quedar solo en logs que nadie revisa en el momento.
-      shipmentFailed = true;
-      shipmentError = err.message || String(err);
-      console.error("[confirm-cod-order] Falló la creación de guía en Skydropx:", err);
-    }
-  }
+  // Nunca lanza (ver manualShipments.js) — si esto falla, el pedido sigue
+  // su curso igual; el único efecto es que el botón del correo del
+  // fabricante no podrá generar la guía más adelante (se loguea fuerte
+  // ahí mismo para detectarlo).
+  await saveManualShipmentRequest({
+    reference: transaction.reference,
+    order,
+    customer,
+    paymentMethod: "cod",
+    saldoPendiente,
+  });
 
   const isReturningCustomer = await recordOrderAndCheckReturning({
     email: customer.email,
     reference: transaction.reference,
     amountCOP: order.priceCOP,
-    trackingNumber,
-    carrierName,
-    shipmentError,
   });
 
   // Si el pedido viene de /producto/[id] (catálogo), incrementa el
@@ -154,11 +79,6 @@ export async function POST(request) {
       transaction,
       isReturningCustomer,
       paymentMethod: "cod",
-      trackingNumber,
-      carrierName,
-      labelUrl,
-      shipmentFailed,
-      shipmentError,
       anticipoPagado,
       saldoPendiente,
       printImageBase64Override: printImageBase64,
@@ -176,8 +96,6 @@ export async function POST(request) {
     reference: transaction.reference,
     status: transaction.status,
     isReturningCustomer,
-    trackingNumber,
-    carrierName,
     anticipoPagado,
     saldoPendiente,
   });

@@ -194,8 +194,8 @@ function buildOriginAddress() {
 // de Colombia + Bogotá D.C., requerido) y código postal (texto libre,
 // opcional). Si el cliente deja el código postal vacío, la cotización
 // puede fallar igual que fallaba con address_from vacío — eso se degrada
-// de forma segura a "sin guía automática" (ver createCodShipment más
-// abajo), nunca bloquea el pedido.
+// de forma segura (ver createManualShipment más abajo), nunca bloquea el
+// pedido.
 function buildDestinationAddress(customer) {
   return {
     country_code: "CO",
@@ -214,7 +214,7 @@ function getSizeSpec(sizeId) {
   return size;
 }
 
-async function createQuotation({ order, customer }) {
+async function createQuotation({ order, customer, isCod }) {
   const { packageCm, weightKg } = getSizeSpec(order.sizeId);
 
   const res = await skydropxFetch("/api/v1/quotations", {
@@ -224,10 +224,11 @@ async function createQuotation({ order, customer }) {
         address_from: buildOriginAddress(),
         address_to: buildDestinationAddress(customer),
         // cash_on_delivery en la cotización para que las tarifas devueltas
-        // ya reflejen transportadoras/costos compatibles con contraentrega.
-        // El nombre exacto del campo tampoco está documentado públicamente
-        // para este paso — se envía junto al ya usado en createShipment.
-        cash_on_delivery: true,
+        // ya reflejen transportadoras/costos compatibles con contraentrega
+        // cuando aplica. El nombre exacto del campo tampoco está
+        // documentado públicamente para este paso — se envía junto al ya
+        // usado en createShipment.
+        cash_on_delivery: isCod,
         parcel: {
           weight: weightKg,
           length: packageCm.length,
@@ -283,23 +284,31 @@ async function pollQuotationRates(quotationId, { attempts = 5, delayMs = 1500 } 
   return [];
 }
 
-function pickCheapestCodRate(rates) {
-  const eligible = rates.filter((rate) => {
-    const carrierName = String(
-      rate.carrier_name || rate.carrier || rate.provider_name || ""
-    ).toLowerCase();
-    return COD_CARRIERS.some((name) => carrierName.includes(name));
-  });
-
-  if (eligible.length === 0) return null;
-
-  return eligible.reduce((cheapest, rate) => {
+function cheapestOf(rates) {
+  if (rates.length === 0) return null;
+  return rates.reduce((cheapest, rate) => {
     const price = Number(rate.total || rate.amount || rate.price || Infinity);
     const cheapestPrice = Number(
       cheapest.total || cheapest.amount || cheapest.price || Infinity
     );
     return price < cheapestPrice ? rate : cheapest;
   });
+}
+
+// Para pedidos SIN contraentrega (pago completo por Wompi) no hay
+// restricción de transportadora — cualquiera que haya cotizado sirve,
+// simplemente se toma la más barata. Para contraentrega, solo cuentan las
+// que sabemos que soportan recaudo en efectivo (COD_CARRIERS).
+function pickRate(rates, { isCod }) {
+  if (!isCod) return cheapestOf(rates);
+
+  const eligible = rates.filter((rate) => {
+    const carrierName = String(
+      rate.carrier_name || rate.carrier || rate.provider_name || ""
+    ).toLowerCase();
+    return COD_CARRIERS.some((name) => carrierName.includes(name));
+  });
+  return cheapestOf(eligible);
 }
 
 // La creación de guía en Skydropx es ASÍNCRONA: el POST a /api/v1/shipments
@@ -338,9 +347,9 @@ async function pollShipmentUntilReady(shipmentId, { attempts = 6, delayMs = 2000
   }
   // Se agotaron los intentos sin que la guía saliera de "in_progress" —
   // devuelve lo último que se tenga (probablemente sin tracking_number
-  // todavía); createCodShipment/confirm-cod-order lo tratan igual que un
-  // fallo (sin guía automática), aunque la guía puede terminar de
-  // generarse minutos después del lado de Skydropx.
+  // todavía); createManualShipment/generate-shipment lo tratan igual que
+  // un fallo (guía sin generar), aunque puede terminar de generarse
+  // minutos después del lado de Skydropx.
   return null;
 }
 
@@ -357,10 +366,9 @@ async function pollShipmentUntilReady(shipmentId, { attempts = 6, delayMs = 2000
 // La respuesta también es formato JSON:API: el tracking_number, label_url y
 // carrier real NO están en data.attributes sino en included[] (el recurso
 // "package") — data.attributes solo tiene master_tracking_number.
-async function createShipment({ rate, order, customer, reference }) {
+async function createShipment({ rate, order, customer, reference, isCod }) {
   const declaredValue = getDeclaredValue(order.priceCOP);
   const destinationPhone = normalizePhone(customer.phone);
-  const { packageCm, weightKg } = getSizeSpec(order.sizeId);
 
   const res = await skydropxFetch("/api/v1/shipments", {
     method: "POST",
@@ -369,7 +377,7 @@ async function createShipment({ rate, order, customer, reference }) {
         rate_id: rate.id,
         order_number: reference,
         declared_value: declaredValue,
-        is_cod: true,
+        is_cod: isCod,
         include_shipping_cost: true,
         package_type: "box",
         package_content: "Cuadro decorativo personalizado",
@@ -452,31 +460,37 @@ async function createShipment({ rate, order, customer, reference }) {
   };
 }
 
-// Orquesta cotización → elegir la tarifa contraentrega más barata (entre
-// Servientrega/Interrapidísimo, lo que esté disponible) → crear la guía.
-// Nunca debe tumbar el flujo de confirmación del pedido: cualquier error
-// se captura afuera, en el endpoint que llama a esta función (ver
-// app/api/confirm-cod-order/route.js), donde el pedido sigue su curso sin
-// número de guía automático si esto falla.
-export async function createCodShipment({ order, customer, reference }) {
-  const quotationId = await createQuotation({ order, customer });
+// Orquesta cotización → elegir la mejor tarifa → crear la guía, para
+// AMBOS tipos de pedido: contraentrega (isCod: true, solo transportadoras
+// que soportan recaudo — COD_CARRIERS) y pago completo por Wompi (isCod:
+// false, cualquier transportadora que cotice, sin monto a recaudar).
+//
+// Ya NO se llama automáticamente al confirmar el pago (ver diseño en
+// CLAUDE.md: "botón generar guía") — el único llamador es
+// app/api/generate-shipment/route.js, disparado cuando el fabricante
+// confirma desde su correo que el cuadro está listo. Nunca debe tumbar esa
+// confirmación: cualquier error se captura en ese endpoint, donde queda
+// registrado para reintentar (la solicitud en Redis sigue en status
+// "pending" — ver app/lib/manualShipments.js).
+export async function createManualShipment({ order, customer, reference, isCod }) {
+  const quotationId = await createQuotation({ order, customer, isCod });
   const rates = await pollQuotationRates(quotationId);
 
-  const bestRate = pickCheapestCodRate(rates);
+  const bestRate = pickRate(rates, { isCod });
   if (!bestRate) {
-    // Se marca con noEligibleCarrier para que el llamador (ver
-    // app/api/confirm-cod-order/route.js) pueda distinguir "cotizó pero
-    // ninguna transportadora habilitada para COD" de un error técnico, y
-    // reflejarlo de forma explícita en el correo al fabricante en vez de
-    // dejarlo como un simple log silencioso.
+    // Se marca con noEligibleCarrier para distinguir "cotizó pero ninguna
+    // transportadora disponible" de un error técnico — ver
+    // app/api/generate-shipment/route.js.
     const err = new Error(
-      `Skydropx: se cotizó pero ninguna transportadora habilitada para contraentrega (${COD_CARRIERS.join(
-        "/"
-      )}) está disponible para esta dirección.`
+      isCod
+        ? `Skydropx: se cotizó pero ninguna transportadora habilitada para contraentrega (${COD_CARRIERS.join(
+            "/"
+          )}) está disponible para esta dirección.`
+        : "Skydropx: se cotizó pero no se encontró ninguna tarifa disponible para esta dirección."
     );
     err.noEligibleCarrier = true;
     throw err;
   }
 
-  return createShipment({ rate: bestRate, order, customer, reference });
+  return createShipment({ rate: bestRate, order, customer, reference, isCod });
 }

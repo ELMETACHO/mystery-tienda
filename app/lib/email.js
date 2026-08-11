@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { formatCOP } from "./order";
+import { generateManualShipmentToken } from "./manualShipmentToken";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -231,8 +232,8 @@ function adminEmailHtml({
   paymentMethod,
   trackingNumber,
   carrierName,
-  shipmentFailed,
   shipmentError,
+  manualShipmentUrl,
   anticipoPagado,
   saldoPendiente,
 }) {
@@ -269,23 +270,42 @@ function adminEmailHtml({
       </table>
     `;
 
-  const trackingRow = isCod
+  // La guía de Skydropx YA NO se genera automáticamente al pagar (ver
+  // CLAUDE.md) — el fabricante la dispara cuando el cuadro esté listo,
+  // desde el botón de este correo. Aplica a AMBOS métodos de pago (antes
+  // solo a contraentrega): el pago completo también necesita que alguien
+  // lleve el cuadro a la transportadora, solo que sin monto a recaudar.
+  const trackingRow = trackingNumber
     ? `
       <tr>
         <td style="padding:0 20px 16px 20px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${trackingNumber ? BRAND.successBg : BRAND.warningBg};border-radius:6px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:6px;">
             <tr>
               <td style="padding:10px 14px;">
-                <p style="margin:0;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${trackingNumber ? BRAND.success : BRAND.warning};">
-                  ${
-                    trackingNumber
-                      ? `🚚 Guía generada (${carrierName || "transportadora"}): ${trackingNumber}`
-                      : "⚠️ SIN GUÍA AUTOMÁTICA — gestionar manualmente con Servientrega, Interrapidísimo, Coordinadora o Envía."
-                  }
+                <p style="margin:0;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.success};">
+                  🚚 Guía generada (${carrierName || "transportadora"}): ${trackingNumber}
                 </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `
+    : `
+      <tr>
+        <td style="padding:0 20px 16px 20px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.lilac};border-radius:6px;">
+            <tr>
+              <td style="padding:14px;text-align:center;">
+                <p style="margin:0 0 10px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.text};">Guía de envío pendiente — generarla cuando el cuadro esté listo.</p>
                 ${
-                  !trackingNumber && shipmentError
-                    ? `<p style="margin:6px 0 0 0;font-family:${FONT_STACK};font-size:12px;font-weight:normal;color:${BRAND.warning};">Motivo: ${escapeHtml(shipmentError)}</p>`
+                  manualShipmentUrl
+                    ? `<a href="${manualShipmentUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:14px;font-weight:bold;text-decoration:none;border-radius:999px;padding:11px 24px;">✅ Ya está listo — generar guía ahora</a>`
+                    : ""
+                }
+                ${
+                  shipmentError
+                    ? `<p style="margin:10px 0 0 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.warning};">Último intento fallido — motivo: ${escapeHtml(shipmentError)}</p>`
                     : ""
                 }
               </td>
@@ -293,8 +313,7 @@ function adminEmailHtml({
           </table>
         </td>
       </tr>
-    `
-    : "";
+    `;
 
   return `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgAdminOuter};padding:16px 10px;font-family:${FONT_STACK};">
@@ -392,7 +411,6 @@ export async function sendOrderEmails({
   trackingNumber,
   carrierName,
   labelUrl,
-  shipmentFailed,
   shipmentError,
   anticipoPagado,
   saldoPendiente,
@@ -419,16 +437,19 @@ export async function sendOrderEmails({
     );
   }
 
-  // Etiqueta de envío (PDF) — solo presente en pedidos contraentrega con
-  // guía generada por Skydropx (ver app/api/confirm-cod-order/route.js).
+  // Etiqueta de envío (PDF) — solo presente cuando la guía ya se generó
+  // (ver app/api/generate-shipment/route.js); en el correo inicial del
+  // pedido normalmente todavía no existe.
   const labelBase64 = await fetchLabelPdfBase64(labelUrl);
 
-  // Refuerzo visible en el asunto (no solo en el cuerpo del correo) cuando
-  // un pedido contraentrega se queda sin guía automática — para que se note
-  // aunque el fabricante/admin solo mire la bandeja de entrada por encima,
-  // en vez de depender de que abra el correo para descubrirlo.
-  const needsManualShipping = paymentMethod === "cod" && !trackingNumber;
-  const subjectPrefix = needsManualShipping ? "⚠️ SIN GUÍA - " : "";
+  // Link firmado del botón "generar guía ahora" — se calcula siempre
+  // (no solo cuando falta la guía) por simplicidad; adminEmailHtml decide
+  // si lo muestra según trackingNumber. Mismo patrón que
+  // generateReviewToken/sendReviewRequestEmail (HMAC sobre el reference,
+  // sin estado — ver app/lib/manualShipmentToken.js).
+  const manualShipmentUrl = `${SITE_URL}/api/generate-shipment?ref=${encodeURIComponent(
+    transaction.reference
+  )}&token=${encodeURIComponent(generateManualShipmentToken(transaction.reference))}`;
 
   const attachments = [];
   if (printBase64) {
@@ -441,7 +462,7 @@ export async function sendOrderEmails({
   await resend.emails.send({
     from: FROM_EMAIL,
     to: ADMIN_RECIPIENTS,
-    subject: `${subjectPrefix}Nuevo pedido Mystery - ${customer.fullName}`,
+    subject: `Nuevo pedido Mystery - ${customer.fullName}`,
     html: adminEmailHtml({
       order,
       customer,
@@ -450,8 +471,8 @@ export async function sendOrderEmails({
       paymentMethod,
       trackingNumber,
       carrierName,
-      shipmentFailed,
       shipmentError,
+      manualShipmentUrl,
       anticipoPagado,
       saldoPendiente,
     }),
@@ -480,9 +501,10 @@ export async function sendOrderEmails({
 
 // ---------------------------------------------------------------------
 // Correo de "guía generada" al cliente — disparado desde
-// app/api/confirm-cod-order/route.js justo después de que
-// createCodShipment() devuelve tracking_number + label_url reales (nunca
-// solo por confirmar el pago; ver app/lib/skydropx.js).
+// app/api/generate-shipment/route.js justo después de que
+// createManualShipment() devuelve tracking_number + label_url reales
+// (nunca solo por confirmar el pago; ver app/lib/skydropx.js). Aplica a
+// pedidos contraentrega y de pago completo por igual.
 // ---------------------------------------------------------------------
 
 function shippingNotificationEmailHtml({
@@ -589,13 +611,13 @@ function shippingNotificationEmailHtml({
 // trackingUrl y labelUrl pueden venir null (ver app/lib/skydropx.js) — el
 // html arriba ya maneja el caso de que ninguno esté disponible ocultando
 // el botón de rastreo. Nunca se llama si no hay trackingNumber (ver
-// app/api/confirm-cod-order/route.js).
+// app/api/generate-shipment/route.js).
 //
 // scheduledAt: usa la programación nativa de Resend (acepta lenguaje
-// natural como "in 24 hours"/"tomorrow at 10am" o un ISO timestamp) para
-// que este correo salga el día siguiente en vez de inmediatamente — ver
-// computeTomorrowAt10amBogota en app/api/confirm-cod-order/route.js. Si se
-// omite, el correo sale de inmediato (comportamiento previo).
+// natural como "in 2 hours" o un ISO timestamp) para que este correo
+// salga un par de horas después de que el fabricante confirme la guía —
+// no inmediatamente, para dar margen a que el cuadro efectivamente salga
+// hacia la transportadora. Si se omite, el correo sale de inmediato.
 export async function sendShippingNotificationEmail({
   customer,
   trackingNumber,

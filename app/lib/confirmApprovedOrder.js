@@ -3,6 +3,7 @@ import { recordOrderAndCheckReturning } from "./loyalty";
 import { processCatalogProductPurchase } from "./catalogPurchase";
 import { claimTransaction, releaseTransactionClaim } from "./idempotency";
 import { saveCompletedOrder } from "./completedOrders";
+import { saveManualShipmentRequest } from "./manualShipments";
 
 // Lógica de confirmación de un pago YA VERIFICADO como APPROVED contra
 // Wompi — compartida entre /api/confirm-order (cuando el cliente
@@ -31,6 +32,20 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
       email: customer.email,
       reference: transaction.reference,
       amountCOP: order.priceCOP,
+    });
+
+    // Igual que en el pedido contraentrega (ver
+    // app/api/confirm-cod-order/route.js): la guía de Skydropx no se
+    // genera automáticamente acá — se guarda la solicitud para que el
+    // fabricante la dispare desde el botón de su correo cuando el cuadro
+    // esté listo (sin monto a recaudar, ver saldoPendiente: 0 — este
+    // pedido ya está pagado completo).
+    await saveManualShipmentRequest({
+      reference: transaction.reference,
+      order,
+      customer,
+      paymentMethod: "wompi",
+      saldoPendiente: 0,
     });
 
     // Si el pedido viene de /producto/[id] (catálogo), incrementa el
