@@ -116,6 +116,15 @@ export default function CheckoutPage() {
   const [isConfirmingCod, setIsConfirmingCod] = useState(false);
   const widgetRef = useRef(null);
 
+  // Código de descuento MYSTERY10 — link discreto en vez de un campo
+  // siempre visible, para no saturar a quien no tiene uno (ver
+  // CLAUDE.md: la mayoría de clientes son nuevos, sin código).
+  const [showDiscountField, setShowDiscountField] = useState(false);
+  const [discountInput, setDiscountInput] = useState("");
+  const [discountApplied, setDiscountApplied] = useState(null); // { code, percent, discountedPriceCOP }
+  const [discountError, setDiscountError] = useState("");
+  const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -165,6 +174,47 @@ export default function CheckoutPage() {
     );
   }
 
+  const effectivePriceCOP = discountApplied
+    ? discountApplied.discountedPriceCOP
+    : order.priceCOP;
+
+  const handleApplyDiscount = async () => {
+    const code = discountInput.trim().toUpperCase();
+    if (!code) return;
+
+    if (!customer.email.trim()) {
+      setDiscountApplied(null);
+      setDiscountError("Ingresa tu correo arriba antes de aplicar el código.");
+      return;
+    }
+
+    setIsValidatingDiscount(true);
+    setDiscountError("");
+    try {
+      const res = await fetch("/api/validate-discount", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: customer.email, code }),
+      });
+      const data = await res.json();
+
+      if (data.valid) {
+        const discountedPriceCOP = Math.round(order.priceCOP * (1 - data.percent / 100));
+        setDiscountApplied({ code, percent: data.percent, discountedPriceCOP });
+        setDiscountError("");
+      } else {
+        setDiscountApplied(null);
+        setDiscountError(data.error || "Código inválido o ya utilizado");
+      }
+    } catch (err) {
+      console.error(err);
+      setDiscountApplied(null);
+      setDiscountError("No pudimos validar el código. Intenta de nuevo.");
+    } finally {
+      setIsValidatingDiscount(false);
+    }
+  };
+
   const isFormValid =
     customer.fullName.trim() &&
     customer.email.trim() &&
@@ -192,11 +242,20 @@ export default function CheckoutPage() {
     setPayError("");
     setIsPaying(true);
 
-    const fullOrder = { ...order, customer };
+    const fullOrder = {
+      ...order,
+      customer,
+      // Precio efectivo (con MYSTERY10 aplicado si corresponde) — se
+      // propaga desde aquí a Wompi (amountInCents abajo), Skydropx
+      // (declared_value lee order.priceCOP) y los correos de
+      // confirmación, todos con una sola fuente de verdad.
+      priceCOP: effectivePriceCOP,
+      discountCode: discountApplied?.code || null,
+    };
     await saveOrder(fullOrder);
 
     const reference = `mystery-${Date.now()}`;
-    const amountInCents = order.priceCOP * 100;
+    const amountInCents = fullOrder.priceCOP * 100;
     const currency = "COP";
 
     // Guardado en Redis por `reference`, ANTES de pagar — red de
@@ -314,7 +373,16 @@ export default function CheckoutPage() {
     setPayError("");
     setIsConfirmingCod(true);
 
-    const fullOrder = { ...order, customer };
+    const fullOrder = {
+      ...order,
+      customer,
+      // El anticipo (COD_DEPOSIT_COP) es un monto fijo, no cambia con el
+      // descuento — pero el precio total sí, y de ahí se calcula el
+      // saldo pendiente en /api/confirm-cod-order (order.priceCOP -
+      // COD_DEPOSIT_COP), así que igual necesita quedar ya descontado.
+      priceCOP: effectivePriceCOP,
+      discountCode: discountApplied?.code || null,
+    };
     await saveOrder(fullOrder);
 
     const reference = `mystery-cod-${Date.now()}`;
@@ -623,7 +691,7 @@ export default function CheckoutPage() {
                 <div className="flex items-center justify-between border-t border-white/10 pt-2">
                   <span className="text-zinc-400">Saldo al recibir tu cuadro</span>
                   <span className="font-semibold text-white">
-                    {formatCOP(order.priceCOP - COD_DEPOSIT_COP)}
+                    {formatCOP(effectivePriceCOP - COD_DEPOSIT_COP)}
                   </span>
                 </div>
                 <p className="mt-2 text-xs text-zinc-500">
@@ -696,8 +764,13 @@ export default function CheckoutPage() {
                 />
                 <div className="flex flex-1 items-center justify-between gap-2">
                   <span className="text-sm text-zinc-300">{order.sizeLabel}</span>
-                  <span className="text-sm font-semibold">
-                    {formatCOP(order.priceCOP)}
+                  <span className="flex items-baseline gap-1.5 text-sm font-semibold">
+                    {discountApplied && (
+                      <span className="text-xs font-normal text-zinc-500 line-through">
+                        {formatCOP(order.priceCOP)}
+                      </span>
+                    )}
+                    {formatCOP(effectivePriceCOP)}
                   </span>
                 </div>
                 <span className="shrink-0 text-xs text-zinc-500 transition-transform group-open:rotate-180">
@@ -734,10 +807,64 @@ export default function CheckoutPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-zinc-400">Total</span>
-                <span className="text-2xl font-bold text-accent-soft">
-                  {formatCOP(order.priceCOP)}
+                <span className="flex items-baseline gap-2">
+                  {discountApplied && (
+                    <span className="text-sm font-normal text-zinc-500 line-through">
+                      {formatCOP(order.priceCOP)}
+                    </span>
+                  )}
+                  <span className="text-2xl font-bold text-accent-soft">
+                    {formatCOP(effectivePriceCOP)}
+                  </span>
                 </span>
               </div>
+              {discountApplied && (
+                <p className="-mt-2 text-right text-xs text-emerald-400">
+                  Código {discountApplied.code} aplicado (-{discountApplied.percent}%)
+                </p>
+              )}
+            </div>
+
+            {/* Código de descuento — link discreto, se expande solo si el
+                cliente indica que tiene uno, para no saturar a quien no. */}
+            <div className="border-t border-white/10 pt-3">
+              {discountApplied ? (
+                <p className="text-xs text-emerald-400">
+                  🎉 Código {discountApplied.code} aplicado — descuento del{" "}
+                  {discountApplied.percent}%
+                </p>
+              ) : showDiscountField ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Código de descuento"
+                      value={discountInput}
+                      onChange={(e) => setDiscountInput(e.target.value)}
+                      className={`flex-1 ${INPUT_CLASS} py-2 text-sm`}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyDiscount}
+                      disabled={isValidatingDiscount || !discountInput.trim()}
+                      className="shrink-0 rounded-xl border border-accent/50 px-4 py-2 text-sm font-medium text-accent-soft transition-colors hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {isValidatingDiscount ? "Validando..." : "Aplicar"}
+                    </button>
+                  </div>
+                  {discountError && (
+                    <p className="text-xs text-red-400">{discountError}</p>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowDiscountField(true)}
+                  className="text-xs text-zinc-500 underline decoration-dotted hover:text-zinc-300"
+                >
+                  ¿Tienes un código de descuento?
+                </button>
+              )}
             </div>
 
             <FreeShippingBanner />

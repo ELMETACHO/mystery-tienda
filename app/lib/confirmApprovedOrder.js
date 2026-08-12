@@ -4,6 +4,7 @@ import { processCatalogProductPurchase } from "./catalogPurchase";
 import { claimTransaction, releaseTransactionClaim } from "./idempotency";
 import { saveCompletedOrder } from "./completedOrders";
 import { saveManualShipmentRequest } from "./manualShipments";
+import { grantDiscountCode, markDiscountUsed } from "./discount";
 
 // Lógica de confirmación de un pago YA VERIFICADO como APPROVED contra
 // Wompi — compartida entre /api/confirm-order (cuando el cliente
@@ -33,6 +34,24 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
       reference: transaction.reference,
       amountCOP: order.priceCOP,
     });
+
+    // Otorga el código MYSTERY10 la primera vez que detectamos que es
+    // cliente recurrente — grantDiscountCode no hace nada si ya tenía
+    // uno guardado (usado o no), así que es seguro llamarlo en cada
+    // compra recurrente sin re-otorgar ni resetear uno ya canjeado.
+    if (isReturningCustomer) {
+      await grantDiscountCode(customer.email);
+    }
+
+    // Si este pedido usó un código de descuento, lo marcamos como usado
+    // recién ahora que el pago quedó aprobado — nunca antes de este
+    // punto. Se revalida code/used server-side (ver markDiscountUsed),
+    // así que es seguro aunque order.discountCode venga manipulado desde
+    // el navegador: si no coincide con el registro real, simplemente no
+    // se marca nada.
+    if (order.discountCode) {
+      await markDiscountUsed(customer.email, order.discountCode);
+    }
 
     // Igual que en el pedido contraentrega (ver
     // app/api/confirm-cod-order/route.js): la guía de Skydropx no se

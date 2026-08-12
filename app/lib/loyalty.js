@@ -79,3 +79,22 @@ export async function recordOrderAndCheckReturning({
     return false;
   }
 }
+
+// Usado por /api/validate-discount: un código de descuento nunca es
+// canjeable por un correo sin compras registradas — ni siquiera si por
+// algún motivo hubiera quedado un registro en discount:<email> (no
+// debería pasar, ver grantDiscountCode en discount.js, pero se
+// revalida acá para no depender solo de esa garantía). Nunca lanza: un
+// fallo de Redis simplemente hace que el código se trate como inválido.
+export async function hasPreviousOrders(email) {
+  const client = getRedisClient();
+  if (!client) return false;
+
+  try {
+    const count = await client.llen(orderHistoryKey(email));
+    return count > 0;
+  } catch (err) {
+    console.error("[loyalty] No se pudo verificar el historial:", err);
+    return false;
+  }
+}
