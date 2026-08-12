@@ -1,6 +1,6 @@
 import { validateDiscountCode } from "../../lib/discount";
 import { hasPreviousOrders } from "../../lib/loyalty";
-import { getReferral } from "../../lib/referrals";
+import { getReferral, REFERRAL_DISCOUNT_PERCENT } from "../../lib/referrals";
 
 // Mismo mensaje genérico para "no existe", "ya usado", "correo sin
 // compras previas" y "tampoco es un código de referido" — no darle a
@@ -31,16 +31,28 @@ export async function POST(request) {
   if (eligibleForDiscount) {
     const result = await validateDiscountCode({ email, code: normalizedCode });
     if (result.valid) {
-      return Response.json({ valid: true, type: "discount", percent: result.percent });
+      return Response.json({
+        valid: true,
+        type: "discount",
+        code: normalizedCode,
+        percent: result.percent,
+      });
     }
   }
 
   // No fue un código de descuento válido — ¿es un código de referido?
-  // Nunca se revela el nombre del referido ni ningún dato interno acá,
-  // solo que el código existe.
+  // Ahora también da descuento al comprador (mismo mecanismo que
+  // MYSTERY10, ver REFERRAL_DISCOUNT_PERCENT) — nunca se revela el
+  // nombre del referido ni ningún otro dato interno acá, solo que el
+  // código existe.
   const referral = await getReferral(normalizedCode);
   if (referral) {
-    return Response.json({ valid: true, type: "referral", code: referral.code });
+    return Response.json({
+      valid: true,
+      type: "referral",
+      code: referral.code,
+      percent: REFERRAL_DISCOUNT_PERCENT,
+    });
   }
 
   return Response.json({ valid: false, error: INVALID_MESSAGE });

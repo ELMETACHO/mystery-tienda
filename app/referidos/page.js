@@ -69,13 +69,22 @@ export default function ReferidosPage() {
               </span>
             </div>
 
+            <p className="text-sm text-zinc-300">
+              Tus clientes recibirán <span className="font-semibold text-accent-soft">5% de descuento</span>{" "}
+              en su compra. Comparte tu código — por cada cuadro que se venda con él, tú
+              ganas entre <span className="font-semibold text-white">$7.000</span> y{" "}
+              <span className="font-semibold text-white">$13.000</span>, según el tamaño
+              que elija tu cliente.
+            </p>
+
             <div className="w-full rounded-2xl border border-white/10 bg-white/5 p-5 text-left text-sm text-zinc-300">
               <p className="mb-2 font-medium text-zinc-100">¿Cómo funciona?</p>
               <ol className="flex flex-col gap-2 text-zinc-400">
                 <li>1. Comparte tu código con quien quieras.</li>
                 <li>
                   2. Cuando compren un cuadro Mystery, deben escribir tu código en el
-                  campo de código del checkout.
+                  campo de código del checkout — tu cliente recibe 5% de descuento al
+                  instante.
                 </li>
                 <li>3. Ganas comisión por esa venta — automático, sin que hagas nada más.</li>
                 <li>

@@ -99,13 +99,20 @@ export async function getReferral(code) {
   }
 }
 
+// Descuento que recibe el COMPRADOR al usar un código de referido —
+// mismo mecanismo que MYSTERY10 (ver app/lib/discount.js y
+// /api/validate-discount), aplicado también acá desde que se decidió
+// que los códigos de referido ya no son "invisibles" para el
+// comprador.
+export const REFERRAL_DISCOUNT_PERCENT = 5;
+
 // Comisión fija por tamaño — independiente del precio de venta (no un
-// porcentaje), así que un descuento MYSTERY10 en la misma compra nunca
+// porcentaje), así que el 5% de descuento en la misma compra nunca
 // reduce lo que gana el referido.
 const COMMISSION_BY_SIZE_ID = {
-  "30x40": 10000,
-  "40x50": 15000,
-  "50x70": 20000,
+  "30x40": 7000,
+  "40x50": 10000,
+  "50x70": 13000,
 };
 
 // Nunca lanza: acreditar la comisión es un "extra" sobre el pedido ya
@@ -144,6 +151,60 @@ export async function recordReferralSale({ code, sizeId }) {
     return true;
   } catch (err) {
     console.error("[referrals] No se pudo registrar la venta:", err);
+    return false;
+  }
+}
+
+// Cada referido vive en su propia key (referral:<code>), no en una
+// LIST como completedOrders.js/catalog.js — necesario para que
+// getReferral() sea O(1) por código. Para el panel de administrador
+// (el único lugar que necesita ver TODOS los referidos a la vez) se
+// usa KEYS + lecturas individuales; al volumen esperado de embajadores
+// esto es razonable (mismo criterio que otros escaneos puntuales del
+// proyecto). Nunca lanza — un fallo de Redis devuelve lista vacía.
+export async function getAllReferrals() {
+  const client = getRedisClient();
+  if (!client) return [];
+
+  try {
+    const keys = await client.keys("referral:*");
+    if (keys.length === 0) return [];
+
+    const rawValues = await client.mget(keys);
+    return rawValues
+      .map((raw) => {
+        try {
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  } catch (err) {
+    console.error("[referrals] No se pudo listar los referidos:", err);
+    return [];
+  }
+}
+
+// Marca el saldo de un referido como pagado: reinicia totalCommission a
+// 0 SIN tocar totalSales ni el historial de orders (esos siguen siendo
+// el registro histórico real de ventas, independiente de si ya se le
+// pagó o no). Nunca lanza.
+export async function resetReferralCommission(code) {
+  const client = getRedisClient();
+  if (!client || !code) return false;
+
+  try {
+    const key = referralKey(code);
+    const raw = await client.get(key);
+    if (!raw) return false;
+
+    const record = JSON.parse(raw);
+    record.totalCommission = 0;
+    await client.set(key, JSON.stringify(record));
+    return true;
+  } catch (err) {
+    console.error("[referrals] No se pudo reiniciar la comisión:", err);
     return false;
   }
 }

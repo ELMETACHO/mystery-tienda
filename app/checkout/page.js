@@ -116,16 +116,17 @@ export default function CheckoutPage() {
   const [isConfirmingCod, setIsConfirmingCod] = useState(false);
   const widgetRef = useRef(null);
 
-  // Código de descuento MYSTERY10 — link discreto en vez de un campo
-  // siempre visible, para no saturar a quien no tiene uno (ver
-  // CLAUDE.md: la mayoría de clientes son nuevos, sin código).
+  // Código de descuento MYSTERY10 o de referido — mismo campo, mismo
+  // efecto sobre el precio (ambos dan descuento al comprador, ver
+  // /api/validate-discount): la única diferencia es qué campo del
+  // pedido se llena al pagar (discountCode vs referralCode, ver
+  // handlePay/handlePayCod) — type distingue cuál de los dos fue.
+  // Link discreto en vez de un campo siempre visible, para no saturar a
+  // quien no tiene código (ver CLAUDE.md: la mayoría de clientes son
+  // nuevos).
   const [showDiscountField, setShowDiscountField] = useState(false);
   const [discountInput, setDiscountInput] = useState("");
-  const [discountApplied, setDiscountApplied] = useState(null); // { code, percent, discountedPriceCOP }
-  // Mismo campo, código de referido en vez de descuento: no toca el
-  // precio, solo se guarda para acreditarle la comisión a quien lo
-  // compartió (ver /api/validate-discount, que distingue los dos casos).
-  const [referralApplied, setReferralApplied] = useState(null); // code string
+  const [appliedCode, setAppliedCode] = useState(null); // { type: "discount"|"referral", code, percent, discountedPriceCOP }
   const [discountError, setDiscountError] = useState("");
   const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
 
@@ -178,17 +179,14 @@ export default function CheckoutPage() {
     );
   }
 
-  const effectivePriceCOP = discountApplied
-    ? discountApplied.discountedPriceCOP
-    : order.priceCOP;
+  const effectivePriceCOP = appliedCode ? appliedCode.discountedPriceCOP : order.priceCOP;
 
   const handleApplyDiscount = async () => {
     const code = discountInput.trim().toUpperCase();
     if (!code) return;
 
     if (!customer.email.trim()) {
-      setDiscountApplied(null);
-      setReferralApplied(null);
+      setAppliedCode(null);
       setDiscountError("Ingresa tu correo arriba antes de aplicar el código.");
       return;
     }
@@ -203,26 +201,22 @@ export default function CheckoutPage() {
       });
       const data = await res.json();
 
-      if (data.valid && data.type === "discount") {
+      if (data.valid && (data.type === "discount" || data.type === "referral")) {
         const discountedPriceCOP = Math.round(order.priceCOP * (1 - data.percent / 100));
-        setDiscountApplied({ code, percent: data.percent, discountedPriceCOP });
-        setReferralApplied(null);
-        setDiscountError("");
-      } else if (data.valid && data.type === "referral") {
-        // No cambia el precio — solo se guarda para acreditar la
-        // comisión al confirmarse el pago (ver handlePay/handlePayCod).
-        setReferralApplied(data.code);
-        setDiscountApplied(null);
+        setAppliedCode({
+          type: data.type,
+          code: data.code || code,
+          percent: data.percent,
+          discountedPriceCOP,
+        });
         setDiscountError("");
       } else {
-        setDiscountApplied(null);
-        setReferralApplied(null);
+        setAppliedCode(null);
         setDiscountError(data.error || "Código inválido o ya utilizado");
       }
     } catch (err) {
       console.error(err);
-      setDiscountApplied(null);
-      setReferralApplied(null);
+      setAppliedCode(null);
       setDiscountError("No pudimos validar el código. Intenta de nuevo.");
     } finally {
       setIsValidatingDiscount(false);
@@ -264,8 +258,8 @@ export default function CheckoutPage() {
       // (declared_value lee order.priceCOP) y los correos de
       // confirmación, todos con una sola fuente de verdad.
       priceCOP: effectivePriceCOP,
-      discountCode: discountApplied?.code || null,
-      referralCode: referralApplied || null,
+      discountCode: appliedCode?.type === "discount" ? appliedCode.code : null,
+      referralCode: appliedCode?.type === "referral" ? appliedCode.code : null,
     };
     await saveOrder(fullOrder);
 
@@ -411,8 +405,8 @@ export default function CheckoutPage() {
       // saldo pendiente en /api/confirm-cod-order (order.priceCOP -
       // COD_DEPOSIT_COP), así que igual necesita quedar ya descontado.
       priceCOP: effectivePriceCOP,
-      discountCode: discountApplied?.code || null,
-      referralCode: referralApplied || null,
+      discountCode: appliedCode?.type === "discount" ? appliedCode.code : null,
+      referralCode: appliedCode?.type === "referral" ? appliedCode.code : null,
     };
     await saveOrder(fullOrder);
 
@@ -796,7 +790,7 @@ export default function CheckoutPage() {
                 <div className="flex flex-1 items-center justify-between gap-2">
                   <span className="text-sm text-zinc-300">{order.sizeLabel}</span>
                   <span className="flex items-baseline gap-1.5 text-sm font-semibold">
-                    {discountApplied && (
+                    {appliedCode && (
                       <span className="text-xs font-normal text-zinc-500 line-through">
                         {formatCOP(order.priceCOP)}
                       </span>
@@ -839,7 +833,7 @@ export default function CheckoutPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-zinc-400">Total</span>
                 <span className="flex items-baseline gap-2">
-                  {discountApplied && (
+                  {appliedCode && (
                     <span className="text-sm font-normal text-zinc-500 line-through">
                       {formatCOP(order.priceCOP)}
                     </span>
@@ -856,13 +850,11 @@ export default function CheckoutPage() {
                 Único lugar donde se confirma el código aplicado — antes
                 también se repetía justo arriba, debajo de "Total". */}
             <div className="border-t border-white/10 pt-3">
-              {discountApplied ? (
+              {appliedCode ? (
                 <p className="text-xs text-emerald-400">
-                  🎉 Código {discountApplied.code} aplicado — descuento del{" "}
-                  {discountApplied.percent}%
+                  🎉 Código {appliedCode.code} aplicado — descuento del{" "}
+                  {appliedCode.percent}%
                 </p>
-              ) : referralApplied ? (
-                <p className="text-xs text-emerald-400">✓ Código de referido aplicado</p>
               ) : showDiscountField ? (
                 <div className="flex flex-col gap-2">
                   <div className="flex gap-2">
