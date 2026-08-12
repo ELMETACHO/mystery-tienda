@@ -235,6 +235,14 @@ export default function CheckoutPage() {
       reference,
       publicKey: WOMPI_PUBLIC_KEY,
       signature: { integrity: signature },
+      // Si Wompi redirige el navegador automáticamente en vez de invocar
+      // el callback de abajo (pasa en algunos navegadores/flujos donde el
+      // cliente nunca hace clic en "Volver a comercio"), aterriza en
+      // /checkout/confirmacion con ?id=<transactionId> en la URL — esa
+      // página detecta el parámetro y llama a /api/confirm-order por su
+      // cuenta. Seguro llamarlo por los dos caminos: confirmApprovedOrder
+      // ya es idempotente (claimTransaction), igual que con el webhook.
+      redirectUrl: `${window.location.origin}/checkout/confirmacion`,
       customerData: {
         email: customer.email,
         fullName: customer.fullName,

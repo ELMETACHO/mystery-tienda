@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import confetti from "canvas-confetti";
-import { formatCOP, loadOrder } from "../../lib/order";
+import { formatCOP, loadOrder, saveOrder } from "../../lib/order";
 
 // Morado de marca + blanco/dorado, para que el confeti se sienta "Mystery"
 // y no genérico.
@@ -59,11 +59,59 @@ export default function ConfirmacionPage() {
     let cancelled = false;
     (async () => {
       const stored = await loadOrder();
+      if (cancelled) return;
+
+      // TEMPORAL: estructura completa del pedido guardado, para
+      // confirmar cómo llega realmente en móvil. Quitar una vez
+      // diagnosticado.
+      console.log("[confirmacion] order completo:", JSON.stringify(stored));
+
+      // Wompi redirigió aquí directamente (redirectUrl del widget, ver
+      // /checkout) en vez de que el callback del navegador confirmara el
+      // pago antes de navegar — pasa cuando el cliente nunca vuelve a la
+      // pestaña original por su cuenta. Si detectamos ?id=<transactionId>
+      // y el pedido guardado todavía no quedó como APROBADO, confirmamos
+      // acá mismo con la misma ruta idempotente que usa ese callback y el
+      // webhook — es seguro aunque los tres lleguen a confirmar la misma
+      // transacción (confirmApprovedOrder solo hace el trabajo una vez).
+      const transactionId = new URLSearchParams(window.location.search).get("id");
+
+      if (transactionId && stored?.customer && stored.payment?.status !== "APPROVED") {
+        try {
+          const res = await fetch("/api/confirm-order", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              transactionId,
+              order: stored,
+              customer: stored.customer,
+            }),
+          });
+          const confirmation = await res.json();
+          if (res.ok) {
+            const updated = {
+              ...stored,
+              payment: {
+                reference: confirmation.reference,
+                status: confirmation.status,
+                id: transactionId,
+              },
+              cliente_recurrente: Boolean(confirmation.isReturningCustomer),
+            };
+            await saveOrder(updated);
+            if (!cancelled) {
+              setOrder(updated);
+              setIsLoading(false);
+            }
+            return;
+          }
+          console.error("[confirmacion] Falló la confirmación vía auto-redirect:", confirmation);
+        } catch (err) {
+          console.error("[confirmacion] Error confirmando el pago vía auto-redirect:", err);
+        }
+      }
+
       if (!cancelled) {
-        // TEMPORAL: estructura completa del pedido guardado, para
-        // confirmar cómo llega realmente en móvil. Quitar una vez
-        // diagnosticado.
-        console.log("[confirmacion] order completo:", JSON.stringify(stored));
         setOrder(stored);
         setIsLoading(false);
       }
