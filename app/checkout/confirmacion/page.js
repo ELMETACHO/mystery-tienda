@@ -437,6 +437,16 @@ export default function ConfirmacionPage() {
           </Link>
         </div>
 
+        {/* 5.5 Programa de referidos — discreto a propósito, nunca debe
+            competir con el resumen del pedido ni con las CTAs de arriba;
+            por eso va casi al final, después de todo lo importante. */}
+        <Link
+          href="/referidos"
+          className="text-xs text-zinc-500 underline-offset-4 transition-colors hover:text-zinc-300 hover:underline"
+        >
+          💜 ¿Sabías que puedes ganar dinero recomendando Mystery?
+        </Link>
+
         {/* 6. Agradecimiento cálido */}
         <p className="text-xs text-zinc-600">Gracias por confiar en Mystery</p>
       </div>

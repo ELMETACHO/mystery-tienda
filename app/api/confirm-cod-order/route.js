@@ -5,6 +5,7 @@ import { COD_DEPOSIT_COP } from "../../lib/order";
 import { saveManualShipmentRequest } from "../../lib/manualShipments";
 import { processCatalogProductPurchase } from "../../lib/catalogPurchase";
 import { grantDiscountCode, markDiscountUsed } from "../../lib/discount";
+import { recordReferralSale } from "../../lib/referrals";
 
 // Confirma un pedido "Pago contraentrega": el cliente paga un anticipo
 // fijo (COD_DEPOSIT_COP) por Wompi para cubrir costos de producción, y el
@@ -75,6 +76,13 @@ export async function POST(request) {
   }
   if (order.discountCode) {
     await markDiscountUsed(customer.email, order.discountCode);
+  }
+
+  // Mismo punto que el descuento: si el pedido trae un código de
+  // referido, acredita la comisión según el tamaño comprado — nunca
+  // bloquea la confirmación si el código no existe o Redis falla.
+  if (order.referralCode) {
+    await recordReferralSale({ code: order.referralCode, sizeId: order.sizeId });
   }
 
   // Si el pedido viene de /producto/[id] (catálogo), incrementa el

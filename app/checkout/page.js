@@ -122,6 +122,10 @@ export default function CheckoutPage() {
   const [showDiscountField, setShowDiscountField] = useState(false);
   const [discountInput, setDiscountInput] = useState("");
   const [discountApplied, setDiscountApplied] = useState(null); // { code, percent, discountedPriceCOP }
+  // Mismo campo, código de referido en vez de descuento: no toca el
+  // precio, solo se guarda para acreditarle la comisión a quien lo
+  // compartió (ver /api/validate-discount, que distingue los dos casos).
+  const [referralApplied, setReferralApplied] = useState(null); // code string
   const [discountError, setDiscountError] = useState("");
   const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
 
@@ -184,6 +188,7 @@ export default function CheckoutPage() {
 
     if (!customer.email.trim()) {
       setDiscountApplied(null);
+      setReferralApplied(null);
       setDiscountError("Ingresa tu correo arriba antes de aplicar el código.");
       return;
     }
@@ -198,17 +203,26 @@ export default function CheckoutPage() {
       });
       const data = await res.json();
 
-      if (data.valid) {
+      if (data.valid && data.type === "discount") {
         const discountedPriceCOP = Math.round(order.priceCOP * (1 - data.percent / 100));
         setDiscountApplied({ code, percent: data.percent, discountedPriceCOP });
+        setReferralApplied(null);
+        setDiscountError("");
+      } else if (data.valid && data.type === "referral") {
+        // No cambia el precio — solo se guarda para acreditar la
+        // comisión al confirmarse el pago (ver handlePay/handlePayCod).
+        setReferralApplied(data.code);
+        setDiscountApplied(null);
         setDiscountError("");
       } else {
         setDiscountApplied(null);
+        setReferralApplied(null);
         setDiscountError(data.error || "Código inválido o ya utilizado");
       }
     } catch (err) {
       console.error(err);
       setDiscountApplied(null);
+      setReferralApplied(null);
       setDiscountError("No pudimos validar el código. Intenta de nuevo.");
     } finally {
       setIsValidatingDiscount(false);
@@ -251,6 +265,7 @@ export default function CheckoutPage() {
       // confirmación, todos con una sola fuente de verdad.
       priceCOP: effectivePriceCOP,
       discountCode: discountApplied?.code || null,
+      referralCode: referralApplied || null,
     };
     await saveOrder(fullOrder);
 
@@ -288,6 +303,17 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Wompi rechaza con 403 (silencioso: pasa DENTRO de su iframe, nunca
+    // llega a nuestro try/catch) cualquier redirect-url que no sea un
+    // dominio autorizado para esta llave — localhost nunca lo está. Sin
+    // este chequeo, CUALQUIER pago completo en local se queda colgado en
+    // "Procesando..." para siempre, sin importar si hay código de
+    // descuento/referido o no (así se reprodujo este bug: no tenía nada
+    // que ver con el código, solo coincidió con la primera prueba local
+    // después de agregar redirectUrl).
+    const isLocalDev =
+      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+
     widgetRef.current = new window.WidgetCheckout({
       currency,
       amountInCents,
@@ -301,7 +327,11 @@ export default function CheckoutPage() {
       // página detecta el parámetro y llama a /api/confirm-order por su
       // cuenta. Seguro llamarlo por los dos caminos: confirmApprovedOrder
       // ya es idempotente (claimTransaction), igual que con el webhook.
-      redirectUrl: `${window.location.origin}/checkout/confirmacion`,
+      // Solo se manda en dominios reales (nunca localhost) — ver nota de
+      // arriba.
+      ...(isLocalDev
+        ? {}
+        : { redirectUrl: `${window.location.origin}/checkout/confirmacion` }),
       customerData: {
         email: customer.email,
         fullName: customer.fullName,
@@ -382,6 +412,7 @@ export default function CheckoutPage() {
       // COD_DEPOSIT_COP), así que igual necesita quedar ya descontado.
       priceCOP: effectivePriceCOP,
       discountCode: discountApplied?.code || null,
+      referralCode: referralApplied || null,
     };
     await saveOrder(fullOrder);
 
@@ -818,21 +849,20 @@ export default function CheckoutPage() {
                   </span>
                 </span>
               </div>
-              {discountApplied && (
-                <p className="-mt-2 text-right text-xs text-emerald-400">
-                  Código {discountApplied.code} aplicado (-{discountApplied.percent}%)
-                </p>
-              )}
             </div>
 
             {/* Código de descuento — link discreto, se expande solo si el
-                cliente indica que tiene uno, para no saturar a quien no. */}
+                cliente indica que tiene uno, para no saturar a quien no.
+                Único lugar donde se confirma el código aplicado — antes
+                también se repetía justo arriba, debajo de "Total". */}
             <div className="border-t border-white/10 pt-3">
               {discountApplied ? (
                 <p className="text-xs text-emerald-400">
                   🎉 Código {discountApplied.code} aplicado — descuento del{" "}
                   {discountApplied.percent}%
                 </p>
+              ) : referralApplied ? (
+                <p className="text-xs text-emerald-400">✓ Código de referido aplicado</p>
               ) : showDiscountField ? (
                 <div className="flex flex-col gap-2">
                   <div className="flex gap-2">
@@ -860,9 +890,9 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => setShowDiscountField(true)}
-                  className="text-xs text-zinc-500 underline decoration-dotted hover:text-zinc-300"
+                  className="text-sm font-medium text-accent-soft underline decoration-accent-soft/50 underline-offset-4 transition-colors hover:text-white"
                 >
-                  ¿Tienes un código de descuento?
+                  CÓDIGO DE DESCUENTO
                 </button>
               )}
             </div>

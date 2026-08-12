@@ -436,7 +436,7 @@ export default async function Home() {
               💰 Gana dinero vendiendo cuadros con Mystery
             </p>
             <Link
-              href="#vender"
+              href="/referidos"
               className="shrink-0 rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-accent/25 transition-colors hover:bg-accent-soft"
             >
               Toca aquí
@@ -493,6 +493,9 @@ export default async function Home() {
               </Link>
               <Link href="#" className="text-zinc-500 hover:text-white">
                 Contacto
+              </Link>
+              <Link href="/referidos" className="text-zinc-500 hover:text-white">
+                Programa de referidos
               </Link>
             </div>
 

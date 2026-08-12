@@ -5,6 +5,7 @@ import { claimTransaction, releaseTransactionClaim } from "./idempotency";
 import { saveCompletedOrder } from "./completedOrders";
 import { saveManualShipmentRequest } from "./manualShipments";
 import { grantDiscountCode, markDiscountUsed } from "./discount";
+import { recordReferralSale } from "./referrals";
 
 // Lógica de confirmación de un pago YA VERIFICADO como APPROVED contra
 // Wompi — compartida entre /api/confirm-order (cuando el cliente
@@ -51,6 +52,13 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
     // se marca nada.
     if (order.discountCode) {
       await markDiscountUsed(customer.email, order.discountCode);
+    }
+
+    // Si este pedido trae un código de referido, acredita la comisión
+    // según el tamaño comprado — nunca bloquea la confirmación si el
+    // código no existe o Redis falla (ver recordReferralSale).
+    if (order.referralCode) {
+      await recordReferralSale({ code: order.referralCode, sizeId: order.sizeId });
     }
 
     // Igual que en el pedido contraentrega (ver
