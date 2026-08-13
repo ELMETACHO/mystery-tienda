@@ -23,5 +23,8 @@ export async function GET(request) {
     totalSales: referral.totalSales,
     totalCommission: referral.totalCommission,
     orders: referral.orders,
+    // payouts||[] por si el registro es de antes de que existiera este
+    // campo (ver createReferral en app/lib/referrals.js).
+    payouts: referral.payouts || [],
   });
 }

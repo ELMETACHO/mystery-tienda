@@ -79,6 +79,12 @@ export async function createReferral({ name, whatsapp }) {
     totalSales: 0,
     totalCommission: 0,
     orders: [],
+    // Historial de pagos ya realizados — separado de orders (que es el
+    // historial de VENTAS). Cada vez que el admin marca como pagado
+    // (ver resetReferralCommission), se agrega acá el monto que se
+    // reinició, para que /referidos/panel pueda mostrar "cobrado" vs
+    // "sin cobrar" en vez de solo el saldo actual.
+    payouts: [],
   };
   await client.set(referralKey(code), JSON.stringify(record));
   return record;
@@ -186,10 +192,12 @@ export async function getAllReferrals() {
   }
 }
 
-// Marca el saldo de un referido como pagado: reinicia totalCommission a
-// 0 SIN tocar totalSales ni el historial de orders (esos siguen siendo
-// el registro histórico real de ventas, independiente de si ya se le
-// pagó o no). Nunca lanza.
+// Marca el saldo de un referido como pagado: registra un pago en
+// `payouts` por el monto que tenía acumulado y reinicia totalCommission
+// a 0 — SIN tocar totalSales ni el historial de orders (esos siguen
+// siendo el registro histórico real de ventas, independiente de si ya
+// se pagó o no). No registra nada si no había saldo pendiente (evita
+// pagos de $0 en el historial). Nunca lanza.
 export async function resetReferralCommission(code) {
   const client = getRedisClient();
   if (!client || !code) return false;
@@ -200,6 +208,10 @@ export async function resetReferralCommission(code) {
     if (!raw) return false;
 
     const record = JSON.parse(raw);
+    const amount = record.totalCommission || 0;
+    if (amount > 0) {
+      record.payouts = [...(record.payouts || []), { date: new Date().toISOString(), amount }];
+    }
     record.totalCommission = 0;
     await client.set(key, JSON.stringify(record));
     return true;

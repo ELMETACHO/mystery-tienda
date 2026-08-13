@@ -501,6 +501,51 @@ export default function CheckoutPage() {
     });
   };
 
+  // Se renderiza dos veces: en la tarjeta de resumen (arriba del botón
+  // de pago principal) y de nuevo justo encima del botón de pago
+  // duplicado al final del formulario en móvil — antes solo estaba en
+  // la primera, así que quien llenaba el formulario largo y pagaba
+  // desde el botón de abajo nunca veía la opción de aplicar un código.
+  const discountCodeSection = (
+    <div className="border-t border-white/10 pt-3">
+      {appliedCode ? (
+        <p className="text-xs text-emerald-400">
+          🎉 Código {appliedCode.code} aplicado — descuento del{" "}
+          {appliedCode.percent}%
+        </p>
+      ) : showDiscountField ? (
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Código de descuento"
+              value={discountInput}
+              onChange={(e) => setDiscountInput(e.target.value)}
+              className={`flex-1 ${INPUT_CLASS} py-2 text-sm`}
+            />
+            <button
+              type="button"
+              onClick={handleApplyDiscount}
+              disabled={isValidatingDiscount || !discountInput.trim()}
+              className="shrink-0 rounded-xl border border-accent/50 px-4 py-2 text-sm font-medium text-accent-soft transition-colors hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isValidatingDiscount ? "Validando..." : "Aplicar"}
+            </button>
+          </div>
+          {discountError && <p className="text-xs text-red-400">{discountError}</p>}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowDiscountField(true)}
+          className="text-sm font-medium text-accent-soft underline decoration-accent-soft/50 underline-offset-4 transition-colors hover:text-white"
+        >
+          CÓDIGO DE DESCUENTO
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <>
       <Script
@@ -726,10 +771,11 @@ export default function CheckoutPage() {
             )}
 
             {/* En móvil el resumen + botón de pago de arriba queda fuera de
-                vista al llenar un formulario largo. Repetimos solo el botón
-                (mismas condiciones y mismo handler) al final del formulario;
-                en desktop ambas columnas ya están lado a lado, así que ahí
-                no hace falta. */}
+                vista al llenar un formulario largo. Repetimos el botón
+                (mismas condiciones y mismo handler) y el código de
+                descuento al final del formulario; en desktop ambas
+                columnas ya están lado a lado, así que ahí no hace falta. */}
+            <div className="sm:hidden">{discountCodeSection}</div>
             {payError && (
               <p className="text-sm text-red-400 sm:hidden">{payError}</p>
             )}
@@ -845,49 +891,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Código de descuento — link discreto, se expande solo si el
-                cliente indica que tiene uno, para no saturar a quien no.
-                Único lugar donde se confirma el código aplicado — antes
-                también se repetía justo arriba, debajo de "Total". */}
-            <div className="border-t border-white/10 pt-3">
-              {appliedCode ? (
-                <p className="text-xs text-emerald-400">
-                  🎉 Código {appliedCode.code} aplicado — descuento del{" "}
-                  {appliedCode.percent}%
-                </p>
-              ) : showDiscountField ? (
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Código de descuento"
-                      value={discountInput}
-                      onChange={(e) => setDiscountInput(e.target.value)}
-                      className={`flex-1 ${INPUT_CLASS} py-2 text-sm`}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleApplyDiscount}
-                      disabled={isValidatingDiscount || !discountInput.trim()}
-                      className="shrink-0 rounded-xl border border-accent/50 px-4 py-2 text-sm font-medium text-accent-soft transition-colors hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {isValidatingDiscount ? "Validando..." : "Aplicar"}
-                    </button>
-                  </div>
-                  {discountError && (
-                    <p className="text-xs text-red-400">{discountError}</p>
-                  )}
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowDiscountField(true)}
-                  className="text-sm font-medium text-accent-soft underline decoration-accent-soft/50 underline-offset-4 transition-colors hover:text-white"
-                >
-                  CÓDIGO DE DESCUENTO
-                </button>
-              )}
-            </div>
+            {discountCodeSection}
 
             <FreeShippingBanner />
 

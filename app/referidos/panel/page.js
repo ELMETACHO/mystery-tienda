@@ -23,6 +23,18 @@ function formatDate(iso) {
   });
 }
 
+// Fecha larga ("12 de agosto de 2026") para el mensaje de pago recibido
+// — más formal/legible que la versión corta usada en las ventas, mismo
+// patrón que usan las plataformas de afiliados (fecha completa en el
+// historial de pagos, ver investigación en la respuesta al usuario).
+function formatDateLong(iso) {
+  return new Date(iso).toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function ReferidosPanelPage() {
   const [codeInput, setCodeInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -60,6 +72,30 @@ export default function ReferidosPanelPage() {
         )}`
       )}`
     : "";
+
+  // Historial combinado de ventas y pagos ya recibidos, más reciente
+  // primero — mismo patrón que usan los dashboards de afiliados
+  // (actividad unificada en vez de dos listas separadas), para que se
+  // entienda de un vistazo cuándo se ganó cada comisión y cuándo se
+  // cobró.
+  const totalPaid = referral
+    ? (referral.payouts || []).reduce((sum, p) => sum + p.amount, 0)
+    : 0;
+  const timeline = referral
+    ? [
+        ...referral.orders.map((o) => ({
+          type: "sale",
+          date: o.date,
+          sizeId: o.sizeId,
+          amount: o.commission,
+        })),
+        ...(referral.payouts || []).map((p) => ({
+          type: "payout",
+          date: p.date,
+          amount: p.amount,
+        })),
+      ].sort((a, b) => new Date(b.date) - new Date(a.date))
+    : [];
 
   return (
     <div className="relative overflow-hidden">
@@ -110,15 +146,23 @@ export default function ReferidosPanelPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 border-t border-white/10 pt-4">
+              <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-4 sm:gap-3">
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
-                  <p className="text-xs text-zinc-400">Ventas totales</p>
-                  <p className="text-xl font-bold text-white">{referral.totalSales}</p>
+                  <p className="text-[11px] text-zinc-400 sm:text-xs">Ventas</p>
+                  <p className="text-lg font-bold text-white sm:text-xl">
+                    {referral.totalSales}
+                  </p>
                 </div>
                 <div className="rounded-xl border border-accent/30 bg-accent/10 p-3 text-center">
-                  <p className="text-xs text-zinc-400">Comisión acumulada</p>
-                  <p className="text-xl font-bold text-accent-soft">
+                  <p className="text-[11px] text-zinc-400 sm:text-xs">Sin cobrar</p>
+                  <p className="text-lg font-bold text-accent-soft sm:text-xl">
                     {formatCOP(referral.totalCommission)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center">
+                  <p className="text-[11px] text-zinc-400 sm:text-xs">Cobrado</p>
+                  <p className="text-lg font-bold text-emerald-400 sm:text-xl">
+                    {formatCOP(totalPaid)}
                   </p>
                 </div>
               </div>
@@ -134,32 +178,47 @@ export default function ReferidosPanelPage() {
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6">
-              <h2 className="mb-4 text-sm font-medium text-zinc-300">Tus últimas ventas</h2>
-              {referral.orders.length === 0 ? (
+              <h2 className="mb-4 text-sm font-medium text-zinc-300">Historial</h2>
+              {timeline.length === 0 ? (
                 <p className="text-sm text-zinc-500">
                   Todavía no tienes ventas registradas — comparte tu código para empezar
                   a ganar.
                 </p>
               ) : (
                 <ul className="flex flex-col gap-2">
-                  {[...referral.orders]
-                    .reverse()
-                    .map((order, i) => (
+                  {timeline.map((item, i) =>
+                    item.type === "payout" ? (
+                      <li
+                        key={i}
+                        className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span aria-hidden="true">💸</span>
+                          <span className="text-zinc-300">
+                            Recibiste un pago el {formatDateLong(item.date)}
+                          </span>
+                        </div>
+                        <span className="font-semibold text-emerald-400">
+                          {formatCOP(item.amount)}
+                        </span>
+                      </li>
+                    ) : (
                       <li
                         key={i}
                         className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
                       >
                         <div className="flex flex-col">
-                          <span className="text-zinc-200">{sizeLabel(order.sizeId)}</span>
+                          <span className="text-zinc-200">{sizeLabel(item.sizeId)}</span>
                           <span className="text-xs text-zinc-500">
-                            {formatDate(order.date)}
+                            {formatDate(item.date)}
                           </span>
                         </div>
-                        <span className="font-semibold text-emerald-400">
-                          +{formatCOP(order.commission)}
+                        <span className="font-semibold text-accent-soft">
+                          +{formatCOP(item.amount)}
                         </span>
                       </li>
-                    ))}
+                    )
+                  )}
                 </ul>
               )}
             </div>
