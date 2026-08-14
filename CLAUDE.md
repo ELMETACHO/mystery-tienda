@@ -206,8 +206,6 @@ código si no existen): "Mockups (Instagram)" y "Original (Portafolio)".
 - `ESTUDIO_PASSWORD` — acceso a /estudio
 - `SKYDROPX_CLIENT_ID`, `SKYDROPX_CLIENT_SECRET`, `SKYDROPX_ENV`,
   `SKYDROPX_BASE_URL` (fijo en `https://pro.skydropx.com`)
-- `SKYDROPX_COD_ENABLED` — flag para activar creación real de guías
-  (hoy en `false`, pendiente de la lista de códigos postales)
 - Variables de Wompi, Resend y Redis/Upstash ya documentadas en el
   CLAUDE.md original del proyecto.
 
