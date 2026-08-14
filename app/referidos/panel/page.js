@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { formatCOP, SIZES } from "../../lib/order";
 
 // Número de WhatsApp del negocio ("CUADROS MYSTERY") — mismo que se usa
@@ -35,15 +36,17 @@ function formatDateLong(iso) {
   });
 }
 
-export default function ReferidosPanelPage() {
-  const [codeInput, setCodeInput] = useState("");
+function ReferidosPanelContent() {
+  const searchParams = useSearchParams();
+  const codeFromUrl = searchParams.get("code");
+
+  const [codeInput, setCodeInput] = useState(codeFromUrl || "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [referral, setReferral] = useState(null);
 
-  const handleLookup = async (e) => {
-    e.preventDefault();
-    const code = codeInput.trim().toUpperCase();
+  const lookupCode = useCallback(async (rawCode) => {
+    const code = rawCode.trim().toUpperCase();
     if (!code) return;
 
     setIsLoading(true);
@@ -63,6 +66,22 @@ export default function ReferidosPanelPage() {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  // Si se llega desde un enlace tipo /referidos/panel?code=ABC123
+  // (ej. el que se comparte en /referidos al generar el código),
+  // consultamos automáticamente sin que el usuario tenga que volver
+  // a escribirlo.
+  useEffect(() => {
+    if (codeFromUrl) {
+      lookupCode(codeFromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codeFromUrl]);
+
+  const handleLookup = (e) => {
+    e.preventDefault();
+    lookupCode(codeInput);
   };
 
   const whatsappHref = referral
@@ -226,5 +245,13 @@ export default function ReferidosPanelPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ReferidosPanelPage() {
+  return (
+    <Suspense fallback={null}>
+      <ReferidosPanelContent />
+    </Suspense>
   );
 }
