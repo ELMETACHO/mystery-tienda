@@ -2,6 +2,13 @@
 // sobre madera, marco trasero de ~3cm incluido) y peso — punto medio del
 // rango confirmado por el negocio. Usados para cotizar/crear guías con
 // Skydropx (ver app/lib/skydropx.js).
+//
+// fabricanteCostCOP: lo que se le debe al fabricante por cada cuadro de
+// ese tamaño (definitivo, agosto 2026 — ver CLAUDE.md) — es el "Monto
+// adeudado" que se registra en Redis (fabricante:orders) y en la
+// pestaña "Fabricante" del Sheet de finanzas (ver
+// app/lib/manufacturerFinance.js), nunca priceCOP (eso es lo que paga
+// el cliente, no lo que se le debe al fabricante).
 export const SIZES = [
   {
     id: "30x40",
@@ -10,6 +17,7 @@ export const SIZES = [
     minWidth: 1200,
     minHeight: 1600,
     priceCOP: 65000,
+    fabricanteCostCOP: 12000,
     packageCm: { length: 35, width: 45, height: 5 },
     weightKg: 1.0,
   },
@@ -20,6 +28,7 @@ export const SIZES = [
     minWidth: 1600,
     minHeight: 2000,
     priceCOP: 89000,
+    fabricanteCostCOP: 18000,
     packageCm: { length: 45, width: 55, height: 5 },
     weightKg: 1.5,
   },
@@ -30,6 +39,7 @@ export const SIZES = [
     minWidth: 2000,
     minHeight: 2800,
     priceCOP: 149000,
+    fabricanteCostCOP: 28000,
     packageCm: { length: 55, width: 75, height: 5 },
     weightKg: 2.15,
   },

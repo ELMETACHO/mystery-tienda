@@ -6,6 +6,7 @@ import { saveManualShipmentRequest } from "../../lib/manualShipments";
 import { processCatalogProductPurchase } from "../../lib/catalogPurchase";
 import { grantDiscountCode, markDiscountUsed } from "../../lib/discount";
 import { recordReferralSale } from "../../lib/referrals";
+import { recordCrmEntry } from "../../lib/manufacturerFinance";
 
 // Confirma un pedido "Pago contraentrega": el cliente paga un anticipo
 // fijo (COD_DEPOSIT_COP) por Wompi para cubrir costos de producción, y el
@@ -84,6 +85,12 @@ export async function POST(request) {
   if (order.referralCode) {
     await recordReferralSale({ code: order.referralCode, sizeId: order.sizeId });
   }
+
+  // Registro CRM (ver manufacturerFinance.js) — la DEUDA al fabricante
+  // ya NO se registra acá, se mueve al momento en que se genera la guía
+  // real de Skydropx (ver app/api/generate-shipment/route.js). Nunca
+  // lanza.
+  await recordCrmEntry({ order, customer, paymentMethod: "cod" });
 
   // Si el pedido viene de /producto/[id] (catálogo), incrementa el
   // contador de ventas de ese producto y trae el archivo real de

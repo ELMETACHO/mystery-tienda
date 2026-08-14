@@ -6,6 +6,7 @@ import { saveCompletedOrder } from "./completedOrders";
 import { saveManualShipmentRequest } from "./manualShipments";
 import { grantDiscountCode, markDiscountUsed } from "./discount";
 import { recordReferralSale } from "./referrals";
+import { recordCrmEntry } from "./manufacturerFinance";
 
 // Lógica de confirmación de un pago YA VERIFICADO como APPROVED contra
 // Wompi — compartida entre /api/confirm-order (cuando el cliente
@@ -74,6 +75,16 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
       paymentMethod: "wompi",
       saldoPendiente: 0,
     });
+
+    // Registro CRM (ver manufacturerFinance.js) — solo datos de
+    // contacto/compra, independiente de si el cuadro se llega a
+    // fabricar y despachar. La DEUDA al fabricante (Sheets + Redis) ya
+    // NO se registra acá: se mueve al momento en que se genera la guía
+    // real de Skydropx (ver app/api/generate-shipment/route.js), única
+    // evidencia verificable de que el cuadro se fabricó y se entregó a
+    // la transportadora — así pedidos de prueba, cancelados o nunca
+    // fabricados nunca generan una deuda fantasma. Nunca lanza.
+    await recordCrmEntry({ order, customer, paymentMethod: "wompi" });
 
     // Si el pedido viene de /producto/[id] (catálogo), incrementa el
     // contador de ventas de ese producto y trae el archivo real de

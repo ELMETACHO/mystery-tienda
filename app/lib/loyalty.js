@@ -80,6 +80,24 @@ export async function recordOrderAndCheckReturning({
   }
 }
 
+// Cuántos pedidos previos tiene un correo — usado para la columna "Total
+// histórico de compras" del CRM (ver manufacturerFinance.js). Se llama
+// DESPUÉS de recordOrderAndCheckReturning, así que ya incluye el pedido
+// recién confirmado. Nunca lanza: si Redis falla, se reporta 1 (el
+// pedido actual) como piso seguro en vez de bloquear el registro CRM.
+export async function getOrderCount(email) {
+  const client = getRedisClient();
+  if (!client) return 1;
+
+  try {
+    const count = await client.llen(orderHistoryKey(email));
+    return count || 1;
+  } catch (err) {
+    console.error("[loyalty] No se pudo contar el historial:", err);
+    return 1;
+  }
+}
+
 // Usado por /api/validate-discount: un código de descuento nunca es
 // canjeable por un correo sin compras registradas — ni siquiera si por
 // algún motivo hubiera quedado un registro en discount:<email> (no

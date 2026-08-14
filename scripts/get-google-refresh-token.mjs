@@ -64,7 +64,14 @@ const oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_U
 const authUrl = oauth2Client.generateAuthUrl({
   access_type: "offline",
   prompt: "consent", // fuerza a que SIEMPRE devuelva refresh_token, no solo la primera vez.
-  scope: ["https://www.googleapis.com/auth/drive.file"],
+  scope: [
+    "https://www.googleapis.com/auth/drive.file",
+    // Agregado para el sistema de finanzas/CRM en Google Sheets (panel
+    // /admin): un refresh_token queda fijo a los scopes con los que se
+    // generó, así que agregar este scope obliga a repetir esta
+    // autorización una vez — no basta con solo agregarlo aquí.
+    "https://www.googleapis.com/auth/spreadsheets",
+  ],
 });
 
 console.log("\nAbre esta URL en tu navegador e inicia sesión con oscarmetacho@gmail.com:\n");

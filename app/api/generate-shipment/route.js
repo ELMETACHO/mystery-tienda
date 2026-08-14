@@ -5,6 +5,7 @@ import {
 } from "../../lib/manualShipments";
 import { createManualShipment } from "../../lib/skydropx";
 import { sendShippingNotificationEmail } from "../../lib/email";
+import { recordManufacturerOrder } from "../../lib/manufacturerFinance";
 
 // Botón "✅ Ya está listo — generar guía ahora" del correo al fabricante
 // (ver app/lib/email.js) — dispara la creación REAL de la guía de
@@ -247,6 +248,19 @@ export async function POST(request) {
       carrierName: shipment.carrierName,
       labelUrl: shipment.labelUrl,
       trackingUrl: shipment.trackingUrl,
+    });
+
+    // Solo ACÁ se registra la deuda real al fabricante (Sheets + Redis,
+    // ver manufacturerFinance.js) — justo después de confirmar que
+    // Skydropx devolvió un trackingNumber real, única evidencia
+    // verificable de que el cuadro se fabricó y se entregó a la
+    // transportadora. Nunca lanza: un fallo acá no debe tumbar la
+    // página de éxito, la guía ya se generó y se guardó igual.
+    await recordManufacturerOrder({
+      reference: ref,
+      order: record.order,
+      customer: record.customer,
+      guideUrl: shipment.labelUrl,
     });
 
     // Correo al cliente programado 2 horas después — no debe tumbar la
