@@ -1,24 +1,49 @@
-import { cookies } from "next/headers";
-import { ADMIN_COOKIE_NAME, getAdminSessionToken } from "../lib/adminAuth";
-import AdminLogin from "./AdminLogin";
-import AdminApp from "./AdminApp";
+const SECTIONS = [
+  {
+    href: "/admin/finanzas",
+    title: "Finanzas (fabricante)",
+    description: "Saldo pendiente al fabricante y botón para marcarlo como pagado.",
+    icon: "💰",
+  },
+  {
+    href: "/admin/crm",
+    title: "CRM",
+    description: "Datos de contacto y compra de cada pedido confirmado.",
+    icon: "📇",
+  },
+  {
+    href: "/admin/referidos",
+    title: "Referidos",
+    description: "Comisiones pendientes de los embajadores — marcar como pagadas.",
+    icon: "🤝",
+  },
+];
 
-// Herramienta interna, sin enlace en ningún menú — mismo tratamiento
-// que /estudio y /referidos/admin (desautorizada para buscadores).
-export const metadata = {
-  title: "Admin — Mystery",
-  robots: { index: false, follow: false },
-};
+export default function AdminHubPage() {
+  return (
+    <div className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-12 sm:px-6 sm:py-16">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Admin — Mystery</h1>
+        <p className="mt-1 text-sm text-zinc-400">Panel de control interno.</p>
+      </div>
 
-export default async function AdminPage() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
-  const expectedToken = getAdminSessionToken();
-  const isAuthenticated = Boolean(expectedToken) && sessionCookie === expectedToken;
-
-  if (!isAuthenticated) {
-    return <AdminLogin />;
-  }
-
-  return <AdminApp />;
+      <div className="flex flex-col gap-3">
+        {SECTIONS.map((s) => (
+          <a
+            key={s.href}
+            href={s.href}
+            className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 transition-colors hover:border-accent/40 hover:bg-white/10"
+          >
+            <span className="text-2xl" aria-hidden="true">
+              {s.icon}
+            </span>
+            <div>
+              <p className="font-semibold text-zinc-100">{s.title}</p>
+              <p className="mt-0.5 text-sm text-zinc-400">{s.description}</p>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
 }

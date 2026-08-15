@@ -9,9 +9,8 @@ async function isAuthenticated() {
   return Boolean(expectedToken) && sessionCookie === expectedToken;
 }
 
-// Resetea fabricante:balance a 0, marca todos los pedidos pendientes
-// como paid:true, y actualiza el Estado a "Pagado" en la pestaña
-// Fabricante del Sheet — nunca borra el historial.
+// Resetea fabricante:balance a 0 y marca todos los pedidos pendientes
+// como paid:true en Redis — nunca borra el historial.
 export async function POST() {
   if (!(await isAuthenticated())) {
     return Response.json({ error: "No autorizado" }, { status: 401 });

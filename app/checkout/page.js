@@ -223,11 +223,18 @@ export default function CheckoutPage() {
     }
   };
 
+  // Exactamente 10 dígitos numéricos, sin espacios ni caracteres
+  // especiales — mismo formato que exige Skydropx al crear la guía
+  // (ver normalizePhone en app/lib/skydropx.js). Validar acá evita que
+  // un pedido real llegue con un teléfono incompleto y solo se
+  // descubra días después, al generar la guía manual.
+  const isPhoneValid = /^\d{10}$/.test(customer.phone);
+
   const isFormValid =
     customer.fullName.trim() &&
     customer.email.trim() &&
     customer.phonePrefix.trim() &&
-    customer.phone.trim() &&
+    isPhoneValid &&
     customer.street.trim() &&
     customer.neighborhood.trim() &&
     customer.city.trim() &&
@@ -241,6 +248,13 @@ export default function CheckoutPage() {
 
   const handleChange = (field) => (e) =>
     setCustomer((prev) => ({ ...prev, [field]: e.target.value }));
+
+  // Filtra en vivo cualquier caracter que no sea dígito (espacios,
+  // guiones, +, letras) — así el campo nunca contiene "sin espacios ni
+  // caracteres especiales" por construcción, sin depender solo del
+  // mensaje de error para corregirlo.
+  const handlePhoneChange = (e) =>
+    setCustomer((prev) => ({ ...prev, phone: e.target.value.replace(/\D/g, "") }));
 
   const setHousingType = (housingType) =>
     setCustomer((prev) => ({ ...prev, housingType }));
@@ -600,13 +614,23 @@ export default function CheckoutPage() {
                   </option>
                 ))}
               </select>
-              <input
-                type="tel"
-                placeholder="Celular"
-                value={customer.phone}
-                onChange={handleChange("phone")}
-                className={`flex-1 ${INPUT_CLASS}`}
-              />
+              <div className="flex-1">
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="Celular (10 dígitos)"
+                  maxLength={10}
+                  value={customer.phone}
+                  onChange={handlePhoneChange}
+                  className={`w-full ${INPUT_CLASS}`}
+                />
+                {customer.phone.length > 0 && !isPhoneValid && (
+                  <p className="mt-1.5 text-xs text-red-400">
+                    El celular debe tener exactamente 10 dígitos numéricos (tienes{" "}
+                    {customer.phone.length}).
+                  </p>
+                )}
+              </div>
             </div>
 
             <h2 className="mt-2 text-sm font-medium text-zinc-300">

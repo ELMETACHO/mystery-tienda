@@ -27,8 +27,10 @@ export default function AdminLogin() {
       }
 
       // La cookie ya quedó guardada por el endpoint; refrescamos la ruta
-      // para que app/admin/page.js (server component) la lea y muestre
-      // el panel en vez de este formulario.
+      // para que app/admin/layout.js (server component) la lea y
+      // muestre el panel en vez de este formulario — funciona igual sin
+      // importar en qué subruta de /admin estabas (layout envuelve a
+      // todas).
       router.refresh();
     } catch (err) {
       setError(err.message);

@@ -5,10 +5,33 @@ import { generateManualShipmentToken } from "./manualShipmentToken";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Mystery <pedidos@elmetacho.com>";
-// Para armar el link de /resena en sendReviewRequestEmail — mismo
-// patrón de fallback que FROM_EMAIL, por si no se configura la
-// variable en algún entorno de prueba.
-const SITE_URL = process.env.SITE_URL || "https://tienda.elmetacho.com";
+// Para armar links absolutos dentro de correos (botón "Ya fabriqué el
+// cuadro - generar guía" en manualShipmentUrl, y /resena en
+// sendReviewRequestEmail) — SIEMPRE se manda un correo real (Resend no
+// tiene "modo local"), así que el link no puede depender del origin de
+// una request como en un endpoint normal; tiene que quedar fijo en el
+// momento de armar el correo.
+//
+// Caso real que reveló el bug (agosto 2026): en localhost, sin SITE_URL
+// definido en .env.local, este fallback SIEMPRE apuntaba a producción —
+// un pedido de prueba hecho en localhost terminaba generando una guía
+// REAL contra producción (dinero real en Skydropx) en vez de contra el
+// servidor local, sin ningún indicio visible (la terminal de dev nunca
+// veía la request, porque nunca llegaba ahí). Ahora el fallback depende
+// de NODE_ENV en vez de estar fijo a producción — pero de todos modos
+// se recomienda definir SITE_URL explícitamente en .env.local
+// (http://localhost:3000) para que sea explícito y no dependa de un
+// fallback implícito.
+const SITE_URL =
+  process.env.SITE_URL ||
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:3000"
+    : "https://tienda.elmetacho.com");
+// DEBUG TEMPORAL — quitar después de diagnosticar por qué SITE_URL
+// seguía apuntando a producción en local pese a estar en .env.local.
+console.log(
+  `[DEBUG SITE_URL] process.env.SITE_URL=${JSON.stringify(process.env.SITE_URL)} | process.env.NODE_ENV=${JSON.stringify(process.env.NODE_ENV)} | valor final=${JSON.stringify(SITE_URL)}`
+);
 const ADMIN_EMAIL = "contacto@elmetacho.com";
 const ADMIN_RECIPIENTS = [ADMIN_EMAIL, process.env.MANUFACTURER_EMAIL].filter(
   Boolean

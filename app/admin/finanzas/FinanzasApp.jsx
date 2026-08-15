@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatCOP } from "../lib/order";
+import { formatCOP } from "../../lib/order";
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("es-CO", {
@@ -11,7 +11,7 @@ function formatDate(iso) {
   });
 }
 
-export default function AdminApp() {
+export default function FinanzasApp() {
   const [data, setData] = useState(null); // { balance, orders }
   const [error, setError] = useState("");
   const [isPaying, setIsPaying] = useState(false);
@@ -19,7 +19,7 @@ export default function AdminApp() {
   const load = async () => {
     setError("");
     try {
-      const res = await fetch("/api/admin-list");
+      const res = await fetch("/api/finanzas-list");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "No se pudo cargar la lista");
       setData(json);
@@ -39,7 +39,7 @@ export default function AdminApp() {
     setIsPaying(true);
     setError("");
     try {
-      const res = await fetch("/api/admin-mark-paid", { method: "POST" });
+      const res = await fetch("/api/finanzas-mark-paid", { method: "POST" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "No se pudo marcar como pagado");
       setData({ balance: 0, orders: [] });
@@ -53,13 +53,29 @@ export default function AdminApp() {
 
   return (
     <div className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-12 sm:px-6 sm:py-16">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-          Saldo pendiente al fabricante
-        </h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Pedidos confirmados que todavía no se le han pagado al fabricante.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+            Saldo pendiente al fabricante
+          </h1>
+          <p className="mt-1 text-sm text-zinc-400">
+            Pedidos confirmados que todavía no se le han pagado al fabricante.
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <a
+            href="/admin"
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-accent/40 hover:text-accent-soft"
+          >
+            ← Admin
+          </a>
+          <a
+            href="/admin/crm"
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-accent/40 hover:text-accent-soft"
+          >
+            Ver CRM →
+          </a>
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}

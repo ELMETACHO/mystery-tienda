@@ -1,14 +1,13 @@
 import { cookies } from "next/headers";
-import {
-  REFERIDOS_ADMIN_COOKIE_NAME,
-  getReferidosAdminSessionToken,
-} from "../../lib/referidosAdminAuth";
+import { ADMIN_COOKIE_NAME, getAdminSessionToken } from "../../lib/adminAuth";
 import { resetReferralCommission } from "../../lib/referrals";
 
+// Usa la misma sesión que el resto de /admin (ver app/admin/layout.js) —
+// ya no tiene su propia contraseña separada.
 async function isAuthenticated() {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(REFERIDOS_ADMIN_COOKIE_NAME)?.value;
-  const expectedToken = getReferidosAdminSessionToken();
+  const sessionCookie = cookieStore.get(ADMIN_COOKIE_NAME)?.value;
+  const expectedToken = getAdminSessionToken();
   return Boolean(expectedToken) && sessionCookie === expectedToken;
 }
 

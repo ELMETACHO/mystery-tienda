@@ -100,6 +100,14 @@ function ReferidosPanelContent() {
   const totalPaid = referral
     ? (referral.payouts || []).reduce((sum, p) => sum + p.amount, 0)
     : 0;
+  // Cuando el saldo sin cobrar vuelve a $0 tras un pago, mostramos el
+  // último pago recibido en vez de dejar el silencio de "Sin cobrar:
+  // $0" sin contexto — el más reciente de payouts (siempre se agrega al
+  // final, ver resetReferralCommission en app/lib/referrals.js).
+  const lastPayout =
+    referral && referral.totalCommission === 0 && (referral.payouts || []).length > 0
+      ? referral.payouts[referral.payouts.length - 1]
+      : null;
   const timeline = referral
     ? [
         ...referral.orders.map((o) => ({
@@ -195,6 +203,13 @@ function ReferidosPanelContent() {
                 💸 Retirar saldo
               </a>
             </div>
+
+            {lastPayout && (
+              <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-center text-sm text-emerald-300">
+                ✅ Recibiste tu último pago: {formatCOP(lastPayout.amount)} el{" "}
+                {formatDateLong(lastPayout.date)}
+              </p>
+            )}
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6">
               <h2 className="mb-4 text-sm font-medium text-zinc-300">Historial</h2>

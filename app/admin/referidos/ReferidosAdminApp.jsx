@@ -49,13 +49,21 @@ export default function ReferidosAdminApp() {
 
   return (
     <div className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-12 sm:px-6 sm:py-16">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-          Comisiones pendientes de pago
-        </h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Referidos con saldo acumulado — márcalos como pagados cuando les transfieras.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+            Comisiones pendientes de pago
+          </h1>
+          <p className="mt-1 text-sm text-zinc-400">
+            Referidos con saldo acumulado — márcalos como pagados cuando les transfieras.
+          </p>
+        </div>
+        <a
+          href="/admin"
+          className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-accent/40 hover:text-accent-soft"
+        >
+          ← Admin
+        </a>
       </div>
 
       {error && <p className="text-sm text-red-400">{error}</p>}

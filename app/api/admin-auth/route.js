@@ -25,8 +25,9 @@ export async function POST(request) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     // path "/" (no "/admin"): el navegador debe mandar esta cookie
-    // también a /api/admin-list y /api/admin-mark-paid, que viven fuera
-    // de esa ruta.
+    // también a /api/finanzas-list, /api/finanzas-mark-paid, /api/crm-list,
+    // /api/referidos-admin-list y /api/referidos-admin-mark-paid, que
+    // viven fuera de /admin.
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });

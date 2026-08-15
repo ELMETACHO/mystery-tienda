@@ -1,11 +1,12 @@
 import crypto from "crypto";
 
-// Protección simple de /admin: mismo patrón que
-// app/lib/referidosAdminAuth.js (una sola contraseña compartida,
-// ADMIN_PASSWORD en .env.local, sin usuarios ni base de datos). La
-// cookie de sesión NUNCA guarda la contraseña en texto plano — guarda
-// un hash derivado de ella, calculado igual en login (route.js) y en
-// cada carga de la página (page.js) para comparar. Si ADMIN_PASSWORD
+// Protección de todo /admin (una sola contraseña compartida,
+// ADMIN_PASSWORD en .env.local, sin usuarios ni base de datos) —
+// gatillada una sola vez en app/admin/layout.js, así que /admin/finanzas,
+// /admin/crm y /admin/referidos comparten la misma sesión sin pedir login
+// por separado. La cookie de sesión NUNCA guarda la contraseña en texto
+// plano — guarda un hash derivado de ella, calculado igual en login
+// (route.js) y en cada carga del layout para comparar. Si ADMIN_PASSWORD
 // cambia, cualquier cookie vieja deja de ser válida automáticamente.
 export const ADMIN_COOKIE_NAME = "admin_session";
 
