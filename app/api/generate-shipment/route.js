@@ -244,23 +244,27 @@ export async function POST(request) {
     }
 
     await markManualShipmentGenerated(ref, {
+      shipmentId: shipment.shipmentId,
       trackingNumber: shipment.trackingNumber,
       carrierName: shipment.carrierName,
       labelUrl: shipment.labelUrl,
       trackingUrl: shipment.trackingUrl,
     });
 
-    // Solo ACÁ se registra la deuda real al fabricante (Sheets + Redis,
-    // ver manufacturerFinance.js) — justo después de confirmar que
-    // Skydropx devolvió un trackingNumber real, única evidencia
-    // verificable de que el cuadro se fabricó y se entregó a la
-    // transportadora. Nunca lanza: un fallo acá no debe tumbar la
-    // página de éxito, la guía ya se generó y se guardó igual.
+    // Solo ACÁ se registra la deuda real al fabricante (Redis, ver
+    // manufacturerFinance.js) — justo después de confirmar que Skydropx
+    // devolvió un trackingNumber real, única evidencia verificable de que
+    // el cuadro se fabricó y se entregó a la transportadora. Nunca lanza:
+    // un fallo acá no debe tumbar la página de éxito, la guía ya se
+    // generó y se guardó igual.
     await recordManufacturerOrder({
       reference: ref,
       order: record.order,
       customer: record.customer,
       guideUrl: shipment.labelUrl,
+      shipmentId: shipment.shipmentId,
+      trackingNumber: shipment.trackingNumber,
+      carrierName: shipment.carrierName,
     });
 
     // Correo al cliente programado 2 horas después — no debe tumbar la

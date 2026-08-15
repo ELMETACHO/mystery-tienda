@@ -60,13 +60,24 @@ export async function saveManualShipmentRequest({
   try {
     // Solo lo que createManualShipment() realmente necesita (ver
     // app/lib/skydropx.js: sizeId para las dimensiones/peso, priceCOP para
-    // el declared_value) — NUNCA order.croppedImage/printImage. Esos son
-    // data URLs de varios MB cada uno; guardarlos acá 30 días por cada
-    // pedido inflaría Redis para nada, ya que la guía no necesita la foto.
+    // el declared_value) — NUNCA order.croppedImage/printImage completos de
+    // un pedido personalizado. Esos son data URLs de varios MB cada uno;
+    // guardarlos acá 30 días por cada pedido inflaría Redis para nada, ya
+    // que la guía no necesita la foto.
+    //
+    // thumbnailUrl es la EXCEPCIÓN segura: solo se guarda cuando el pedido
+    // viene del catálogo (order.productId), porque ahí order.croppedImage
+    // NO es un data URL pesado sino la miniatura liviana de Drive
+    // (product.thumbnailUrl, ver app/lib/catalog.js) — un link de unos
+    // pocos bytes, no una imagen completa. Para pedidos de /crear
+    // (sin productId) queda en null a propósito; el panel del fabricante
+    // (ver app/fabricante/page.js) muestra un ícono genérico en ese caso.
     const minimalOrder = {
       sizeId: order.sizeId,
       sizeLabel: order.sizeLabel,
       priceCOP: order.priceCOP,
+      productId: order.productId || null,
+      thumbnailUrl: order.productId ? order.croppedImage || null : null,
     };
 
     const record = {
@@ -122,7 +133,7 @@ export async function getManualShipmentRequest(reference) {
 // remanente.
 export async function markManualShipmentGenerated(
   reference,
-  { trackingNumber, carrierName, labelUrl, trackingUrl }
+  { trackingNumber, carrierName, labelUrl, trackingUrl, shipmentId }
 ) {
   const client = getRedisClient();
   if (!client) return false;
@@ -139,6 +150,7 @@ export async function markManualShipmentGenerated(
     const updated = {
       ...existing,
       status: "generated",
+      shipmentId: shipmentId || null,
       trackingNumber: trackingNumber || null,
       carrierName: carrierName || null,
       labelUrl: labelUrl || null,

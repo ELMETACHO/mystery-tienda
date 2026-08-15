@@ -54,7 +54,15 @@ function fabricanteCost(sizeId) {
 // cancelados, o que nunca llegan a fabricarse no generan deuda.
 // Nunca lanza — un fallo acá no debe tumbar la respuesta de éxito de la
 // guía ya generada en Skydropx.
-export async function recordManufacturerOrder({ reference, order, customer, guideUrl }) {
+export async function recordManufacturerOrder({
+  reference,
+  order,
+  customer,
+  guideUrl,
+  shipmentId,
+  trackingNumber,
+  carrierName,
+}) {
   const client = getRedisClient();
   if (!client) {
     console.error(
@@ -74,6 +82,24 @@ export async function recordManufacturerOrder({ reference, order, customer, guid
     monto,
     fecha,
     guideUrl: guideUrl || null,
+    // Solo para pedidos de catálogo (ver app/lib/manualShipments.js) —
+    // null para pedidos personalizados de /crear, que nunca guardan la
+    // foto completa. app/fabricante/page.js muestra un ícono genérico
+    // cuando viene en null.
+    thumbnailUrl: order.thumbnailUrl || null,
+    // shipmentId/trackingNumber/carrierName: necesarios para poder
+    // cancelar la guía después (ver markManufacturerOrderCancelled) sin
+    // tener que volver a buscarla en Skydropx.
+    shipmentId: shipmentId || null,
+    trackingNumber: trackingNumber || null,
+    carrierName: carrierName || null,
+    // "activo" | "cancelado" — ver markManufacturerOrderCancelled y
+    // markManufacturerOrderRegenerated. Los registros creados antes de
+    // este campo no lo tienen; se tratan como "activo" por defecto (ver
+    // app/fabricante/page.js: `o.status || "activo"`).
+    status: "activo",
+    cancelReason: null,
+    cancelledAt: null,
     paid: false,
   };
 
@@ -85,6 +111,99 @@ export async function recordManufacturerOrder({ reference, order, customer, guid
       "[manufacturerFinance] No se pudo registrar el pedido del fabricante en Redis:",
       err
     );
+  }
+}
+
+// Lee un solo pedido de fabricante:orders por reference — usado por los
+// botones "Cancelar guía"/"Generar guía nueva" del panel del fabricante
+// (ver app/api/fabricante-cancel-shipment y
+// app/api/fabricante-generate-shipment) para validar el estado actual
+// antes de actuar.
+export async function getManufacturerOrder(reference) {
+  const client = getRedisClient();
+  if (!client || !reference) return null;
+
+  try {
+    const raw = await client.hget(ORDERS_KEY, reference);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.error("[manufacturerFinance] No se pudo leer el pedido del fabricante:", err);
+    return null;
+  }
+}
+
+// Botón "Cancelar guía" del panel del fabricante: marca el pedido como
+// "cancelado" (NUNCA lo borra — se conserva el historial completo, motivo
+// incluido) y resta su monto de fabricante:balance, ya que sin guía real
+// no hay evidencia de que el cuadro se vaya a entregar. Solo resta si el
+// pedido seguía sin pagar (si el admin ya lo había marcado paid, ya salió
+// del balance pendiente antes, y no hay que tocarlo de nuevo). Devuelve
+// el registro actualizado, o null si no existía o Redis falla.
+export async function markManufacturerOrderCancelled({ reference, reason }) {
+  const client = getRedisClient();
+  if (!client || !reference) return null;
+
+  try {
+    const raw = await client.hget(ORDERS_KEY, reference);
+    if (!raw) return null;
+
+    const record = JSON.parse(raw);
+    const updated = {
+      ...record,
+      status: "cancelado",
+      cancelReason: reason,
+      cancelledAt: new Date().toISOString(),
+    };
+    await client.hset(ORDERS_KEY, reference, JSON.stringify(updated));
+    if (!record.paid) {
+      await client.decrby(BALANCE_KEY, record.monto);
+    }
+    return updated;
+  } catch (err) {
+    console.error("[manufacturerFinance] No se pudo cancelar el pedido del fabricante:", err);
+    return null;
+  }
+}
+
+// Botón "Generar guía nueva" (solo visible para pedidos "cancelado"):
+// actualiza el registro con los datos de la guía REAL nueva y vuelve a
+// sumar el monto a fabricante:balance — ahora sí hay una guía real de
+// nuevo, así que vuelve a ser una deuda real (mismo criterio que
+// recordManufacturerOrder). Solo suma si el pedido sigue sin pagar (ver
+// markManufacturerOrderCancelled).
+export async function markManufacturerOrderRegenerated({
+  reference,
+  guideUrl,
+  shipmentId,
+  trackingNumber,
+  carrierName,
+}) {
+  const client = getRedisClient();
+  if (!client || !reference) return null;
+
+  try {
+    const raw = await client.hget(ORDERS_KEY, reference);
+    if (!raw) return null;
+
+    const record = JSON.parse(raw);
+    const updated = {
+      ...record,
+      status: "activo",
+      guideUrl: guideUrl || null,
+      shipmentId: shipmentId || null,
+      trackingNumber: trackingNumber || null,
+      carrierName: carrierName || null,
+      cancelReason: null,
+      cancelledAt: null,
+    };
+    await client.hset(ORDERS_KEY, reference, JSON.stringify(updated));
+    if (!record.paid) {
+      await client.incrby(BALANCE_KEY, record.monto);
+    }
+    return updated;
+  } catch (err) {
+    console.error("[manufacturerFinance] No se pudo regenerar el pedido del fabricante:", err);
+    return null;
   }
 }
 
@@ -127,7 +246,7 @@ export async function recordCrmEntry({ order, customer, paymentMethod }) {
   }
 }
 
-// Para /admin/finanzas y /finanzas/fabricante: saldo total + pedidos
+// Para /admin/finanzas y /fabricante: saldo total + pedidos
 // pendientes de pago (más recientes primero) + el último pago registrado
 // (ver markManufacturerBalancePaid) — así la vista de solo lectura del
 // fabricante puede mostrar "recibiste tu último pago" cuando el saldo

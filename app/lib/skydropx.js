@@ -450,6 +450,13 @@ async function createShipment({ rate, order, customer, reference, isCod }) {
   }
 
   return {
+    // Id interno de Skydropx (UUID) del shipment — necesario para poder
+    // cancelarlo después (ver cancelShipment más abajo). No es lo mismo
+    // que trackingNumber (el número de guía de la transportadora); antes
+    // de agregar este campo no se guardaba en ningún lado, así que los
+    // pedidos con guía generada ANTES de este cambio no lo tienen — para
+    // esos, findShipmentIdByTrackingNumber() es el fallback.
+    shipmentId: shipmentId || null,
     trackingNumber,
     carrierName: attributes.carrier_name || rate.carrier_name || rate.provider_name || "",
     labelUrl,
@@ -493,4 +500,55 @@ export async function createManualShipment({ order, customer, reference, isCod }
   }
 
   return createShipment({ rate: bestRate, order, customer, reference, isCod });
+}
+
+// Cancela una guía ya generada. Endpoint descubierto probando contra la
+// cuenta real de producción (no está en la documentación pública de
+// Skydropx que se pudo consultar, que solo describe una API distinta,
+// "cancel_label_requests" en api.skydropx.com — esta cuenta usa la API
+// PRO en pro.skydropx.com/api-pro.skydropx.com). Devuelve
+// {success, status, reason} tal cual lo manda Skydropx; lanza si la
+// llamada falla o si success no viene true.
+export async function cancelShipment(shipmentId, { reason } = {}) {
+  const res = await skydropxFetch(`/api/v1/shipments/${shipmentId}/cancellations`, {
+    method: "POST",
+    body: JSON.stringify(reason ? { reason } : {}),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Skydropx: error cancelando la guía (${res.status}): ${text}`);
+  }
+
+  const body = await res.json();
+  if (!body.success) {
+    throw new Error(`Skydropx: la cancelación no se aprobó (status: ${body.status || "?"}).`);
+  }
+  return body;
+}
+
+// Fallback para guías generadas ANTES de guardar shipmentId (ver
+// createShipment): Skydropx no expone un filtro confiable por
+// order_number/tracking_number en GET /api/v1/shipments (probado en vivo:
+// el parámetro se ignora en vez de filtrar), así que hay que paginar la
+// lista completa de shipments de la cuenta hasta encontrar el que
+// coincide por master_tracking_number. Con el volumen de esta cuenta esto
+// es aceptable (mismo criterio que otros escaneos puntuales del
+// proyecto); si algún día crece mucho, lo correcto sería empezar a
+// guardar shipmentId en todos lados y borrar este fallback.
+export async function findShipmentIdByTrackingNumber(trackingNumber, { maxPages = 20 } = {}) {
+  if (!trackingNumber) return null;
+
+  for (let page = 1; page <= maxPages; page++) {
+    const res = await skydropxFetch(`/api/v1/shipments?page=${page}&per_page=50`);
+    if (!res.ok) return null;
+
+    const body = await res.json();
+    const data = body.data || [];
+    if (data.length === 0) return null;
+
+    const match = data.find((s) => s.attributes?.master_tracking_number === trackingNumber);
+    if (match) return match.id;
+  }
+  return null;
 }

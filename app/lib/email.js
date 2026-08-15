@@ -257,6 +257,7 @@ function adminEmailHtml({
   carrierName,
   shipmentError,
   manualShipmentUrl,
+  fabricanteUrl,
   anticipoPagado,
   saldoPendiente,
 }) {
@@ -418,6 +419,18 @@ function adminEmailHtml({
             <p style="margin:0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};">Correo: ${customer.email}</p>
           </td>
         </tr>
+
+        ${
+          fabricanteUrl
+            ? `
+        <tr>
+          <td style="padding:4px 20px 18px 20px;text-align:center;">
+            <a href="${fabricanteUrl}" style="display:inline-block;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.text};text-decoration:underline;">💰 Consultar ganancias</a>
+          </td>
+        </tr>
+        `
+            : ""
+        }
       </table>
     </td>
   </tr>
@@ -474,6 +487,17 @@ export async function sendOrderEmails({
     transaction.reference
   )}&token=${encodeURIComponent(generateManualShipmentToken(transaction.reference))}`;
 
+  // Link a /fabricante con el código de acceso ya incluido (mismo criterio
+  // que manualShipmentUrl arriba): el correo llega SOLO al fabricante
+  // (ADMIN_RECIPIENTS), así que es el mismo límite de confianza que ya
+  // asumimos para el botón de generar guía — pedirle que escriba el código
+  // a mano cada vez que quiere ver su saldo es fricción sin beneficio real
+  // de seguridad. Si FABRICANTE_ACCESS_CODE no está configurado, el link
+  // igual funciona, solo que le pide el código manualmente.
+  const fabricanteUrl = process.env.FABRICANTE_ACCESS_CODE
+    ? `${SITE_URL}/fabricante?code=${encodeURIComponent(process.env.FABRICANTE_ACCESS_CODE)}`
+    : `${SITE_URL}/fabricante`;
+
   const attachments = [];
   if (printBase64) {
     attachments.push({ filename: "cuadro-mystery.png", content: printBase64 });
@@ -496,6 +520,7 @@ export async function sendOrderEmails({
       carrierName,
       shipmentError,
       manualShipmentUrl,
+      fabricanteUrl,
       anticipoPagado,
       saldoPendiente,
     }),
@@ -519,6 +544,68 @@ export async function sendOrderEmails({
       anticipoPagado,
       saldoPendiente,
     }),
+  });
+}
+
+// ---------------------------------------------------------------------
+// Correo de aviso al admin — el fabricante canceló una guía desde su
+// panel (ver app/api/fabricante-cancel-shipment/route.js). Va SOLO a
+// ADMIN_EMAIL (no a ADMIN_RECIPIENTS, que incluye al propio fabricante) —
+// es un aviso PARA el admin SOBRE algo que hizo el fabricante, mandárselo
+// también a él sería redundante.
+// ---------------------------------------------------------------------
+
+function guideCancelledEmailHtml({ order, customer, reference, reason, trackingNumber, carrierName }) {
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgAdminOuter};padding:16px 10px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:#ffffff;border:1px solid ${BRAND.border};border-radius:8px;overflow:hidden;">
+        <tr>
+          <td style="background-color:${BRAND.warning};padding:14px 20px;">
+            <span style="font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:#ffffff;">⚠️ Guía cancelada por el fabricante</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px;">
+            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Cliente</p>
+            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${escapeHtml(customer.fullName)}</p>
+
+            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Ciudad</p>
+            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;color:${BRAND.muted};">${escapeHtml(customer.city)}</p>
+
+            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Tamaño</p>
+            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;color:${BRAND.muted};">${escapeHtml(order.sizeLabel || order.sizeId)}</p>
+
+            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Guía cancelada</p>
+            <p style="margin:0 0 12px 0;font-family:'Courier New',Courier,monospace;font-size:14px;color:${BRAND.ink};">${escapeHtml(trackingNumber || "-")} ${carrierName ? `(${escapeHtml(carrierName)})` : ""}</p>
+
+            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Referencia</p>
+            <p style="margin:0 0 12px 0;font-family:'Courier New',Courier,monospace;font-size:14px;color:${BRAND.ink};word-break:break-all;">${escapeHtml(reference)}</p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.warningBg};border-radius:6px;">
+              <tr>
+                <td style="padding:12px 14px;">
+                  <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.warning};text-transform:uppercase;letter-spacing:0.4px;">Motivo del fabricante</p>
+                  <p style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">${escapeHtml(reason)}</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+export async function sendGuideCancelledEmail({ order, customer, reference, reason, trackingNumber, carrierName }) {
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: ADMIN_EMAIL,
+    subject: "⚠️ Guía cancelada por el fabricante",
+    html: guideCancelledEmailHtml({ order, customer, reference, reason, trackingNumber, carrierName }),
   });
 }
 
