@@ -728,6 +728,12 @@ function shippingNotificationEmailHtml({
 // salga un par de horas después de que el fabricante confirme la guía —
 // no inmediatamente, para dar margen a que el cuadro efectivamente salga
 // hacia la transportadora. Si se omite, el correo sale de inmediato.
+// Devuelve el id que asigna Resend al correo (el mismo que después acepta
+// resend.emails.cancel(id)) — o null si el envío/programación falló, para
+// que el llamador sepa que no hay nada que guardar. Necesario para poder
+// cancelar el correo "va en camino" si el fabricante cancela la guía
+// antes de que Resend lo dispare (ver saveScheduledEmailId en
+// app/lib/manualShipments.js y app/api/fabricante-cancel-shipment/route.js).
 export async function sendShippingNotificationEmail({
   customer,
   trackingNumber,
@@ -737,7 +743,7 @@ export async function sendShippingNotificationEmail({
   saldoPendiente,
   scheduledAt,
 }) {
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to: customer.email,
     subject: "Tu cuadro va en camino",
@@ -750,6 +756,92 @@ export async function sendShippingNotificationEmail({
       saldoPendiente,
     }),
     ...(scheduledAt ? { scheduledAt } : {}),
+  });
+
+  if (error) {
+    console.error("[email] Falló el envío/programación de 'va en camino':", error);
+    return null;
+  }
+  return data?.id || null;
+}
+
+// Cancela un correo programado en Resend (usado cuando el fabricante
+// cancela una guía antes de que salga el aviso de "va en camino" — ver
+// app/api/fabricante-cancel-shipment/route.js). Resend devuelve error
+// cuando el correo ya no se puede cancelar (ya se envió, o el id no
+// existe/ya estaba cancelado) — eso NO es un fallo del servidor, es el
+// caso esperado que el llamador usa para decidir si hace falta mandar un
+// correo de corrección en su lugar.
+export async function cancelScheduledEmail(emailId) {
+  if (!emailId) return { cancelled: false, alreadySentOrInvalid: true };
+
+  const { error } = await resend.emails.cancel(emailId);
+  if (error) {
+    console.warn(
+      `[email] No se pudo cancelar el correo programado ${emailId} (probablemente ya se envió):`,
+      error
+    );
+    return { cancelled: false, alreadySentOrInvalid: true, error };
+  }
+  return { cancelled: true, alreadySentOrInvalid: false };
+}
+
+// ---------------------------------------------------------------------
+// Correo de corrección al cliente — se manda SOLO cuando el fabricante
+// cancela una guía y el aviso de "va en camino" original YA se había
+// enviado (cancelScheduledEmail no pudo evitarlo, ver
+// app/api/fabricante-cancel-shipment/route.js). A propósito NO menciona
+// "cancelación" ni detalles internos — es informativo y tranquilizador:
+// el cliente ya vio un número de guía real, así que hay que avisarle que
+// ese específico ya no sirve sin sonar alarmante.
+// ---------------------------------------------------------------------
+
+function guideCorrectionEmailHtml({ customer }) {
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgOuter};padding:32px 12px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td style="background-color:${BRAND.dark};padding:28px 32px;text-align:center;">
+            <span style="font-family:${FONT_STACK};font-size:26px;font-weight:bold;color:${BRAND.soft};letter-spacing:0.5px;">Mystery</span>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:32px 32px 8px 32px;">
+            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Hola ${escapeHtml(customer.fullName)}!</p>
+            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
+              El número de guía que recibiste antes ya no es válido — tuvimos que hacer un ajuste en el envío. Tu pedido sigue en proceso y te vamos a escribir de nuevo apenas tengamos la guía correcta, con el número actualizado.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:8px 32px 32px 32px;">
+            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">Gracias por tu paciencia. ¡Gracias por comprar en Mystery! 💜</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background-color:#fafafa;border-top:1px solid ${BRAND.border};padding:20px 32px;">
+            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Mystery · ${ADMIN_EMAIL}</p>
+            <p style="margin:0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">¿Dudas con tu pedido? Responde este correo, con gusto te ayudamos.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+export async function sendGuideCorrectionEmail({ customer }) {
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: customer.email,
+    subject: "Actualización sobre tu envío Mystery",
+    html: guideCorrectionEmailHtml({ customer }),
   });
 }
 

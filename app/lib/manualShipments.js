@@ -156,6 +156,14 @@ export async function markManualShipmentGenerated(
       labelUrl: labelUrl || null,
       trackingUrl: trackingUrl || null,
       generatedAt: new Date().toISOString(),
+      // Cualquier correo "va en camino" programado para una guía ANTERIOR
+      // ya no aplica a esta guía nueva — se limpia acá y
+      // saveScheduledEmailId() lo vuelve a llenar después de programar el
+      // correo fresco (ver app/api/generate-shipment/route.js y
+      // app/api/fabricante-generate-shipment/route.js). Si ese envío
+      // falla, es mejor quedar en null (sin id que cancelar después) que
+      // con un id viejo que ya no corresponde a esta guía.
+      scheduledEmailId: null,
     };
     await client.set(
       manualShipmentKey(reference),
@@ -166,6 +174,35 @@ export async function markManualShipmentGenerated(
     return true;
   } catch (err) {
     console.error("[manualShipments] No se pudo marcar la solicitud como generada:", err);
+    return false;
+  }
+}
+
+// Guarda el id que Resend devuelve al programar sendShippingNotificationEmail
+// (ver app/lib/email.js) — necesario para poder cancelar ese correo
+// programado si el fabricante cancela la guía antes de que salga (ver
+// app/api/fabricante-cancel-shipment/route.js). Nunca lanza: si esto
+// falla, en el peor caso el correo "va en camino" sale igual 2 horas
+// después aunque la guía ya se haya cancelado — se pierde la cancelación
+// automática, no el pedido.
+export async function saveScheduledEmailId(reference, emailId) {
+  const client = getRedisClient();
+  if (!client || !emailId) return false;
+
+  try {
+    const existing = await getManualShipmentRequest(reference);
+    if (!existing) return false;
+
+    const updated = { ...existing, scheduledEmailId: emailId };
+    await client.set(
+      manualShipmentKey(reference),
+      JSON.stringify(updated),
+      "EX",
+      MANUAL_SHIPMENT_TTL_SECONDS
+    );
+    return true;
+  } catch (err) {
+    console.error("[manualShipments] No se pudo guardar el id del correo programado:", err);
     return false;
   }
 }

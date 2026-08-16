@@ -2,6 +2,7 @@ import { isValidManualShipmentToken } from "../../lib/manualShipmentToken";
 import {
   getManualShipmentRequest,
   markManualShipmentGenerated,
+  saveScheduledEmailId,
 } from "../../lib/manualShipments";
 import { createManualShipment } from "../../lib/skydropx";
 import { sendShippingNotificationEmail } from "../../lib/email";
@@ -271,7 +272,7 @@ export async function POST(request) {
     // página de éxito si falla, así que se captura aparte y solo se
     // loguea (la guía ya se generó y se guardó igual).
     try {
-      await sendShippingNotificationEmail({
+      const scheduledEmailId = await sendShippingNotificationEmail({
         customer: record.customer,
         trackingNumber: shipment.trackingNumber,
         carrierName: shipment.carrierName,
@@ -280,6 +281,10 @@ export async function POST(request) {
         saldoPendiente: record.saldoPendiente,
         scheduledAt: "in 2 hours",
       });
+      // Se guarda para poder cancelar este correo si el fabricante
+      // cancela la guía antes de que pasen las 2 horas (ver
+      // app/api/fabricante-cancel-shipment/route.js).
+      await saveScheduledEmailId(ref, scheduledEmailId);
     } catch (emailErr) {
       console.error("[generate-shipment] Falló el correo de guía generada:", emailErr);
     }

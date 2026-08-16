@@ -1,7 +1,7 @@
 import { cancelShipment, findShipmentIdByTrackingNumber } from "../../lib/skydropx";
 import { getManualShipmentRequest } from "../../lib/manualShipments";
 import { getManufacturerOrder, markManufacturerOrderCancelled } from "../../lib/manufacturerFinance";
-import { sendGuideCancelledEmail } from "../../lib/email";
+import { sendGuideCancelledEmail, cancelScheduledEmail, sendGuideCorrectionEmail } from "../../lib/email";
 
 function isAuthenticated(code) {
   const expected = process.env.FABRICANTE_ACCESS_CODE;
@@ -39,9 +39,13 @@ export async function POST(request) {
     return Response.json({ error: "Esa guía ya está cancelada" }, { status: 400 });
   }
 
+  // Se necesita de todos modos (customer real con email, y
+  // scheduledEmailId del aviso "va en camino" ya programado) además de
+  // como fallback para el trackingNumber cuando falta shipmentId.
+  const manualRecord = await getManualShipmentRequest(reference);
+
   let shipmentId = order.shipmentId || null;
   if (!shipmentId) {
-    const manualRecord = await getManualShipmentRequest(reference);
     const trackingNumber = order.trackingNumber || manualRecord?.trackingNumber || null;
     shipmentId = await findShipmentIdByTrackingNumber(trackingNumber);
   }
@@ -71,6 +75,29 @@ export async function POST(request) {
     console.error(
       `[fabricante-cancel-shipment] La guía se canceló en Skydropx pero no se pudo actualizar Redis para reference=${reference}`
     );
+  }
+
+  // Blindaje frente al correo "va en camino" ya programado (ver
+  // app/lib/email.js): si todavía no ha salido, se cancela y el cliente
+  // nunca lo ve. Si Resend ya lo envió (o el id no existe/venció), en vez
+  // de dejar al cliente con un número de guía que ya no sirve, se manda
+  // un correo de corrección — sin mencionar "cancelación" para no
+  // alarmar, solo avisando que el pedido sigue en proceso. Nunca debe
+  // tumbar la respuesta de éxito: la guía ya está cancelada en Skydropx y
+  // el registro ya quedó actualizado, que es lo que importa para el
+  // fabricante.
+  if (manualRecord?.customer?.email) {
+    try {
+      const { cancelled } = await cancelScheduledEmail(manualRecord.scheduledEmailId);
+      if (!cancelled) {
+        await sendGuideCorrectionEmail({ customer: manualRecord.customer });
+      }
+    } catch (err) {
+      console.error(
+        "[fabricante-cancel-shipment] Falló el blindaje del correo 'va en camino':",
+        err
+      );
+    }
   }
 
   // Nunca debe tumbar la respuesta de éxito — la guía ya está cancelada

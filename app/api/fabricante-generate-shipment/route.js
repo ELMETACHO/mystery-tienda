@@ -1,6 +1,11 @@
 import { createManualShipment } from "../../lib/skydropx";
-import { getManualShipmentRequest, markManualShipmentGenerated } from "../../lib/manualShipments";
+import {
+  getManualShipmentRequest,
+  markManualShipmentGenerated,
+  saveScheduledEmailId,
+} from "../../lib/manualShipments";
 import { getManufacturerOrder, markManufacturerOrderRegenerated } from "../../lib/manufacturerFinance";
+import { sendShippingNotificationEmail } from "../../lib/email";
 
 function isAuthenticated(code) {
   const expected = process.env.FABRICANTE_ACCESS_CODE;
@@ -80,6 +85,26 @@ export async function POST(request) {
     trackingNumber: shipment.trackingNumber,
     carrierName: shipment.carrierName,
   });
+
+  // Aviso al cliente de la guía NUEVA — mismo patrón que
+  // app/api/generate-shipment/route.js (2 horas de margen, guardando el
+  // id para poder cancelarlo si esta guía también se llega a cancelar).
+  // Nunca debe tumbar la respuesta de éxito: la guía ya se generó y se
+  // guardó igual.
+  try {
+    const scheduledEmailId = await sendShippingNotificationEmail({
+      customer: manualRecord.customer,
+      trackingNumber: shipment.trackingNumber,
+      carrierName: shipment.carrierName,
+      trackingUrl: shipment.trackingUrl,
+      labelUrl: shipment.labelUrl,
+      saldoPendiente: manualRecord.saldoPendiente,
+      scheduledAt: "in 2 hours",
+    });
+    await saveScheduledEmailId(reference, scheduledEmailId);
+  } catch (emailErr) {
+    console.error("[fabricante-generate-shipment] Falló el correo de guía nueva:", emailErr);
+  }
 
   return Response.json({ ok: true, order: updated || order });
 }
