@@ -84,6 +84,7 @@ export async function POST(request) {
     shipmentId: shipment.shipmentId,
     trackingNumber: shipment.trackingNumber,
     carrierName: shipment.carrierName,
+    shippingCostCOP: shipment.shippingCostCOP,
   });
 
   // Aviso al cliente de la guía NUEVA — mismo patrón que

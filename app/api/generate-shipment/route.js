@@ -266,6 +266,7 @@ export async function POST(request) {
       shipmentId: shipment.shipmentId,
       trackingNumber: shipment.trackingNumber,
       carrierName: shipment.carrierName,
+      shippingCostCOP: shipment.shippingCostCOP,
     });
 
     // Correo al cliente programado 2 horas después — no debe tumbar la

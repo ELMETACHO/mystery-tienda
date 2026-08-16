@@ -8,6 +8,9 @@ import { getOrderCount } from "./loyalty";
 // fabricante:balance -> string numérico, saldo total pendiente en COP.
 // fabricante:orders  -> hash, field=reference, value=JSON del pedido
 // (cliente, ciudad, tamaño, monto, fecha, guideUrl, paid).
+// fabricante:payouts -> lista, cada elemento {amount, date} — historial
+// completo de pagos ya hechos (ver markManufacturerBalancePaid), más
+// antiguo primero.
 // crm:entries -> lista, cada elemento es el JSON de una entrada CRM
 // (nombre, teléfono, dirección, correo, tamaño, método de pago,
 // cupón/referido, fecha, total histórico de compras), más reciente al
@@ -33,7 +36,13 @@ function getRedisClient() {
 
 const BALANCE_KEY = "fabricante:balance";
 const ORDERS_KEY = "fabricante:orders";
-const LAST_PAYMENT_KEY = "fabricante:last-payment";
+// Lista con TODO el historial de pagos al fabricante (mismo patrón que
+// "payouts" en app/lib/referrals.js) — reemplaza al viejo
+// fabricante:last-payment (una sola entrada que se sobrescribía cada
+// vez). Necesario para el reporte financiero de /admin/reporte, que
+// necesita sumar pagos reales dentro de un rango de fechas, no solo
+// saber el último.
+const PAYOUTS_KEY = "fabricante:payouts";
 const CRM_KEY = "crm:entries";
 
 function sizeLabel(sizeId) {
@@ -62,6 +71,7 @@ export async function recordManufacturerOrder({
   shipmentId,
   trackingNumber,
   carrierName,
+  shippingCostCOP,
 }) {
   const client = getRedisClient();
   if (!client) {
@@ -93,6 +103,11 @@ export async function recordManufacturerOrder({
     shipmentId: shipmentId || null,
     trackingNumber: trackingNumber || null,
     carrierName: carrierName || null,
+    // Costo real que cobró Skydropx por esta guía (ver
+    // app/lib/skydropx.js) — gasto automático que se suma en el reporte
+    // financiero de /admin/reporte ("Costo de envío"), sin que el admin
+    // tenga que anotarlo a mano.
+    shippingCostCOP: shippingCostCOP ?? null,
     // "activo" | "cancelado" — ver markManufacturerOrderCancelled y
     // markManufacturerOrderRegenerated. Los registros creados antes de
     // este campo no lo tienen; se tratan como "activo" por defecto (ver
@@ -153,6 +168,12 @@ export async function markManufacturerOrderCancelled({ reference, reason }) {
       status: "cancelado",
       cancelReason: reason,
       cancelledAt: new Date().toISOString(),
+      // Skydropx reembolsa el costo de la guía al cancelarla (confirmado
+      // en vivo: payment_status pasa a "refunded") — ya no es un gasto
+      // real, así que se limpia acá para que el reporte financiero no lo
+      // siga sumando (ver app/lib/financeReport.js, que además filtra
+      // por status !== "cancelado" como red de seguridad extra).
+      shippingCostCOP: null,
     };
     await client.hset(ORDERS_KEY, reference, JSON.stringify(updated));
     if (!record.paid) {
@@ -177,6 +198,7 @@ export async function markManufacturerOrderRegenerated({
   shipmentId,
   trackingNumber,
   carrierName,
+  shippingCostCOP,
 }) {
   const client = getRedisClient();
   if (!client || !reference) return null;
@@ -195,6 +217,7 @@ export async function markManufacturerOrderRegenerated({
       carrierName: carrierName || null,
       cancelReason: null,
       cancelledAt: null,
+      shippingCostCOP: shippingCostCOP ?? null,
     };
     await client.hset(ORDERS_KEY, reference, JSON.stringify(updated));
     if (!record.paid) {
@@ -285,20 +308,56 @@ export async function recordCrmEntry({ order, customer, paymentMethod }) {
   }
 }
 
+// TODOS los pedidos del fabricante (pagados o no, activos o cancelados)
+// — a diferencia de getManufacturerPendingOrders (que solo trae los sin
+// pagar), esto lo usa el reporte financiero de /admin/reporte para sumar
+// shippingCostCOP por rango de fechas sin importar si ya se le pagó al
+// fabricante o no (son cosas independientes). Nunca lanza.
+export async function getAllManufacturerOrders() {
+  const client = getRedisClient();
+  if (!client) return [];
+
+  try {
+    const ordersRaw = await client.hgetall(ORDERS_KEY);
+    return Object.values(ordersRaw || {}).map((raw) => JSON.parse(raw));
+  } catch (err) {
+    console.error("[manufacturerFinance] No se pudieron leer todos los pedidos:", err);
+    return [];
+  }
+}
+
+// Todo el historial de pagos al fabricante, en el orden en que se
+// hicieron (más antiguo primero — mismo orden que payouts en
+// referrals.js). Usado por getManufacturerPendingOrders (para derivar
+// "el último pago") y por el reporte financiero de /admin/reporte (para
+// sumar pagos dentro de un rango de fechas). Nunca lanza.
+export async function getManufacturerPayouts() {
+  const client = getRedisClient();
+  if (!client) return [];
+
+  try {
+    const raw = await client.lrange(PAYOUTS_KEY, 0, -1);
+    return raw.map((r) => JSON.parse(r));
+  } catch (err) {
+    console.error("[manufacturerFinance] No se pudo leer el historial de pagos:", err);
+    return [];
+  }
+}
+
 // Para /admin/finanzas y /fabricante: saldo total + pedidos
-// pendientes de pago (más recientes primero) + el último pago registrado
-// (ver markManufacturerBalancePaid) — así la vista de solo lectura del
-// fabricante puede mostrar "recibiste tu último pago" cuando el saldo
-// está en $0, en vez de un silencio sin explicación.
+// pendientes de pago (más recientes primero) + el último pago del
+// historial (ver getManufacturerPayouts) — así la vista de solo lectura
+// del fabricante puede mostrar "recibiste tu último pago" cuando el
+// saldo está en $0, en vez de un silencio sin explicación.
 export async function getManufacturerPendingOrders() {
   const client = getRedisClient();
   if (!client) return { balance: 0, orders: [], lastPayment: null };
 
   try {
-    const [balanceRaw, ordersRaw, lastPaymentRaw] = await Promise.all([
+    const [balanceRaw, ordersRaw, payouts] = await Promise.all([
       client.get(BALANCE_KEY),
       client.hgetall(ORDERS_KEY),
-      client.get(LAST_PAYMENT_KEY),
+      getManufacturerPayouts(),
     ]);
 
     const orders = Object.values(ordersRaw || {})
@@ -309,7 +368,7 @@ export async function getManufacturerPendingOrders() {
     return {
       balance: Number(balanceRaw) || 0,
       orders,
-      lastPayment: lastPaymentRaw ? JSON.parse(lastPaymentRaw) : null,
+      lastPayment: payouts.length > 0 ? payouts[payouts.length - 1] : null,
     };
   } catch (err) {
     console.error("[manufacturerFinance] No se pudo leer el saldo del fabricante:", err);
@@ -335,11 +394,11 @@ export async function getCrmEntries() {
 }
 
 // Botón "✅ Ya pagué todo": resetea el balance a 0, marca todos los
-// pedidos pendientes como paid:true en Redis, y guarda el monto/fecha de
-// este pago en fabricante:last-payment (una sola entrada, se
-// sobrescribe cada vez) — así la vista de solo lectura del fabricante
-// puede confirmar "recibiste tu último pago" en vez de solo mostrar $0
-// sin contexto. Nunca borra el historial de pedidos.
+// pedidos pendientes como paid:true en Redis, y agrega una entrada al
+// historial completo de pagos (fabricante:payouts, ver
+// getManufacturerPayouts) — SIN perder los pagos anteriores, a
+// diferencia del viejo fabricante:last-payment que se sobrescribía.
+// Nunca borra el historial de pedidos.
 export async function markManufacturerBalancePaid() {
   const client = getRedisClient();
   if (!client) return false;
@@ -355,8 +414,8 @@ export async function markManufacturerBalancePaid() {
 
     const amount = Number(balanceRaw) || 0;
     if (amount > 0) {
-      await client.set(
-        LAST_PAYMENT_KEY,
+      await client.rpush(
+        PAYOUTS_KEY,
         JSON.stringify({ amount, date: new Date().toISOString() })
       );
     }

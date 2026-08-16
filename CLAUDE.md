@@ -84,9 +84,9 @@ Tienda online de cuadros personalizados en vinilo sobre madera (marca "Mystery")
 
 ## Decisiones de precio (definitivas, agosto 2026)
 
-- 30x40 cm: **$65.000 COP** (fabricante $12.000)
-- 40x50 cm: **$89.000 COP** (fabricante $18.000) — badge "Más elegido"
-- 50x70 cm: **$149.000 COP** (fabricante $28.000)
+- 30x40 cm: **$65.000 COP** (fabricante $15.000)
+- 40x50 cm: **$89.000 COP** (fabricante $20.000) — badge "Más elegido"
+- 50x70 cm: **$149.000 COP** (fabricante $30.000)
 - Todos con envío incluido ("envío gratis" como estrategia de conversión,
   en vez de cobrarlo aparte).
 - Lógica de precios: aplicamos psicología de precios (anclaje con el 50x70

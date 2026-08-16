@@ -17,6 +17,12 @@ const SECTIONS = [
     description: "Comisiones pendientes de los embajadores — marcar como pagadas.",
     icon: "🤝",
   },
+  {
+    href: "/admin/reporte",
+    title: "Reporte financiero",
+    description: "Ingresos, costos, comisiones y utilidad neta por período.",
+    icon: "📊",
+  },
 ];
 
 export default function AdminHubPage() {

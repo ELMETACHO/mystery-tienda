@@ -7,6 +7,7 @@ import { processCatalogProductPurchase } from "../../lib/catalogPurchase";
 import { grantDiscountCode, markDiscountUsed } from "../../lib/discount";
 import { recordReferralSale } from "../../lib/referrals";
 import { recordCrmEntry } from "../../lib/manufacturerFinance";
+import { saveCompletedOrder } from "../../lib/completedOrders";
 
 // Confirma un pedido "Pago contraentrega": el cliente paga un anticipo
 // fijo (COD_DEPOSIT_COP) por Wompi para cubrir costos de producción, y el
@@ -115,6 +116,20 @@ export async function POST(request) {
       { error: "El anticipo se confirmó pero falló el envío de correos" },
       { status: 500 }
     );
+  }
+
+  // Registro para la campaña de reseñas Y el reporte financiero (ver
+  // completedOrders.js) — mismo registro que usa el flujo de pago
+  // completo (confirmApprovedOrder.js), así ambos alimentan el mismo
+  // reporte de /admin/reporte sin duplicar lógica. paymentMethod: "cod"
+  // le indica al reporte que solo el anticipo (COD_DEPOSIT_COP) pasó
+  // realmente por Wompi, no el priceCOP completo. Nunca lanza — un
+  // fallo acá no debe tumbar la respuesta de éxito, el anticipo ya se
+  // confirmó y los correos ya salieron.
+  try {
+    await saveCompletedOrder({ order, customer, transaction, paymentMethod: "cod" });
+  } catch (err) {
+    console.error("[confirm-cod-order] No se pudo guardar el registro para el reporte:", err);
   }
 
   return Response.json({

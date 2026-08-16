@@ -464,6 +464,13 @@ async function createShipment({ rate, order, customer, reference, isCod }) {
     // "https://envia.co/") — no siempre es un deep-link directo al número
     // de guía, pero es lo único que devuelve la API además del label_url.
     trackingUrl: packageAttrs.tracking_url_provider || null,
+    // Costo REAL que cobra Skydropx por esta guía (attributes.total, ej.
+    // "9045.0") — confirmado viendo la respuesta real de la API al
+    // consultar un shipment. Se guarda junto al pedido (ver
+    // recordManufacturerOrder en app/lib/manufacturerFinance.js) para
+    // sumarlo como gasto automático en el reporte financiero de
+    // /admin/reporte, en vez de tener que anotarlo a mano.
+    shippingCostCOP: attributes.total != null ? Math.round(Number(attributes.total)) : null,
   };
 }
 

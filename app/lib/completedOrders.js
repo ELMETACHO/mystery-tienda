@@ -38,7 +38,7 @@ const COMPLETED_ORDERS_KEY = "completed-orders";
 // Nunca lanza: registrar esto es un "extra" para la campaña de
 // reseñas, no debe poder tumbar la confirmación de un pago real si
 // Redis falla — mismo principio que el resto de confirmApprovedOrder.
-export async function saveCompletedOrder({ order, customer, transaction }) {
+export async function saveCompletedOrder({ order, customer, transaction, paymentMethod }) {
   const client = getRedisClient();
   if (!client) {
     console.error("[completedOrders] REDIS_URL no está configurado; no se guardó el registro.");
@@ -58,6 +58,16 @@ export async function saveCompletedOrder({ order, customer, transaction }) {
       productId: order.productId || null,
       thumbnailUrl: order.productId ? order.croppedImage : null,
       sizeLabel: order.sizeLabel,
+      // Precio TOTAL del pedido (con descuento aplicado si corresponde)
+      // — para pedidos "cod" esto NO es lo que Wompi cobró (solo cobró
+      // el anticipo, ver COD_DEPOSIT_COP), es el valor real de la venta
+      // completa (anticipo + saldo en efectivo). Necesario para el
+      // reporte financiero de /admin/reporte (ver
+      // app/lib/financeReport.js), que usa priceCOP para ingresos y
+      // paymentMethod para saber sobre qué monto calcular la comisión
+      // real de Wompi (el anticipo, no el total, en pedidos cod).
+      priceCOP: order.priceCOP,
+      paymentMethod: paymentMethod || "wompi", // "wompi" | "cod"
       purchasedAt: new Date().toISOString(),
       reviewEmailSentAt: null,
       reviewSubmittedAt: null,

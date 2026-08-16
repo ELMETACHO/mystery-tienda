@@ -100,12 +100,12 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
       printImageBase64Override: printImageBase64,
     });
 
-    // Registro para la campaña de reseñas (ver completedOrders.js) — se
-    // guarda DESPUÉS de que los correos de confirmación ya salieron
-    // bien, nunca antes: si esto falla, no debe hacer que se libere el
-    // reclamo de idempotencia ni que se reintente todo el envío de
-    // correos de confirmación solo por esto.
-    await saveCompletedOrder({ order, customer, transaction });
+    // Registro para la campaña de reseñas Y el reporte financiero (ver
+    // completedOrders.js) — se guarda DESPUÉS de que los correos de
+    // confirmación ya salieron bien, nunca antes: si esto falla, no debe
+    // hacer que se libere el reclamo de idempotencia ni que se reintente
+    // todo el envío de correos de confirmación solo por esto.
+    await saveCompletedOrder({ order, customer, transaction, paymentMethod: "wompi" });
 
     return { alreadyProcessed: false, isReturningCustomer };
   } catch (err) {

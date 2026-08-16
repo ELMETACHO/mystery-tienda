@@ -4,11 +4,10 @@
 // Skydropx (ver app/lib/skydropx.js).
 //
 // fabricanteCostCOP: lo que se le debe al fabricante por cada cuadro de
-// ese tamaño (definitivo, agosto 2026 — ver CLAUDE.md) — es el "Monto
-// adeudado" que se registra en Redis (fabricante:orders) y en la
-// pestaña "Fabricante" del Sheet de finanzas (ver
-// app/lib/manufacturerFinance.js), nunca priceCOP (eso es lo que paga
-// el cliente, no lo que se le debe al fabricante).
+// ese tamaño (corregido, agosto 2026 — antes 12.000/18.000/28.000) — es
+// el "Monto adeudado" que se registra en Redis (fabricante:orders), nunca
+// priceCOP (eso es lo que paga el cliente, no lo que se le debe al
+// fabricante).
 export const SIZES = [
   {
     id: "30x40",
@@ -17,7 +16,7 @@ export const SIZES = [
     minWidth: 1200,
     minHeight: 1600,
     priceCOP: 65000,
-    fabricanteCostCOP: 12000,
+    fabricanteCostCOP: 15000,
     packageCm: { length: 35, width: 45, height: 5 },
     weightKg: 1.0,
   },
@@ -28,7 +27,7 @@ export const SIZES = [
     minWidth: 1600,
     minHeight: 2000,
     priceCOP: 89000,
-    fabricanteCostCOP: 18000,
+    fabricanteCostCOP: 20000,
     packageCm: { length: 45, width: 55, height: 5 },
     weightKg: 1.5,
   },
@@ -39,7 +38,7 @@ export const SIZES = [
     minWidth: 2000,
     minHeight: 2800,
     priceCOP: 149000,
-    fabricanteCostCOP: 28000,
+    fabricanteCostCOP: 30000,
     packageCm: { length: 55, width: 75, height: 5 },
     weightKg: 2.15,
   },

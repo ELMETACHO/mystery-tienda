@@ -604,11 +604,16 @@ export async function sendGuideCancelledEmail({ order, customer, reference, reas
 
 // ---------------------------------------------------------------------
 // Correo de "solicitud de pago" — botón "Cobrar saldo" en /fabricante
-// (ver app/api/fabricante-request-payment/route.js). Va a
-// bigmysteryof@gmail.com (MANUFACTURER_EMAIL), a diferencia de
-// sendGuideCancelledEmail: acá SÍ es el destino correcto, es la bandeja
-// que Oscar revisa para este tipo de aviso puntual.
+// (ver app/api/fabricante-request-payment/route.js). Va SIEMPRE a
+// bigmysteryof@gmail.com — la bandeja de Oscar para este aviso puntual,
+// fija a propósito y NUNCA acoplada a MANUFACTURER_EMAIL: ese env var es
+// el correo del fabricante REAL (usado para copiarlo en los pedidos y
+// como contacto de origen en Skydropx), así que si se reutilizara acá el
+// aviso de "me deben plata" terminaría mandándosele al propio fabricante
+// en vez de a Oscar.
 // ---------------------------------------------------------------------
+
+const OWNER_PAYMENT_REQUEST_EMAIL = "bigmysteryof@gmail.com";
 
 function paymentRequestEmailHtml({ amount }) {
   return `
@@ -638,10 +643,9 @@ function paymentRequestEmailHtml({ amount }) {
 }
 
 export async function sendFabricantePaymentRequestEmail({ amount }) {
-  const to = process.env.MANUFACTURER_EMAIL || "bigmysteryof@gmail.com";
   await resend.emails.send({
     from: FROM_EMAIL,
-    to,
+    to: OWNER_PAYMENT_REQUEST_EMAIL,
     subject: "PAGO A FABRICANTE - MYSTERY CUADROS",
     html: paymentRequestEmailHtml({ amount }),
   });
