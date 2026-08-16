@@ -207,9 +207,30 @@ export async function markManufacturerOrderRegenerated({
   }
 }
 
-// Agrega una entrada al CRM (crm:entries) — datos de contacto/compra del
-// cliente, independientes del saldo del fabricante (no toca
-// fabricante:balance/fabricante:orders). Nunca lanza.
+// Comparación tolerante a formato: "+57 320 264 6716" y "3202646716"
+// deben contar como el mismo teléfono, "Nombre@Correo.com " y
+// "nombre@correo.com" como el mismo correo — sin esto, entradas del
+// mismo cliente con formato ligeramente distinto no se detectarían como
+// duplicadas.
+function normalizePhoneForMatch(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+function normalizeEmailForMatch(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+// Agrega o actualiza una entrada del CRM (crm:entries) — datos de
+// contacto/compra del cliente, independientes del saldo del fabricante
+// (no toca fabricante:balance/fabricante:orders). Nunca lanza.
+//
+// UNA fila por cliente, no una por pedido: antes de insertar se busca si
+// ya existe una entrada con el MISMO teléfono O el MISMO correo (ver
+// normalizePhoneForMatch/normalizeEmailForMatch) — si existe, se
+// SOBRESCRIBE con los datos de esta compra (fecha más reciente, tamaño
+// comprado, método de pago, cupón/referido y totalHistorico actualizados)
+// en vez de agregar una fila nueva. totalHistorico ya viene correcto de
+// getOrderCount (contador real en loyalty.js, no una suma manual), así
+// que sobrescribir es seguro incluso si se pierde alguna fila vieja.
 export async function recordCrmEntry({ order, customer, paymentMethod }) {
   const client = getRedisClient();
   if (!client) {
@@ -226,12 +247,14 @@ export async function recordCrmEntry({ order, customer, paymentMethod }) {
   const metodoPago = paymentMethod === "cod" ? "Contraentrega" : "Pago completo";
   const cuponOReferido = order.discountCode || order.referralCode || "";
   const fecha = new Date().toISOString();
+  const telefono = `${customer.phonePrefix || ""}${customer.phone || ""}`;
+  const correo = customer.email;
 
   const entry = {
     nombre: customer.fullName,
-    telefono: `${customer.phonePrefix || ""}${customer.phone || ""}`,
+    telefono,
     direccion,
-    correo: customer.email,
+    correo,
     sizeId: order.sizeId,
     metodoPago,
     cuponOReferido,
@@ -240,7 +263,23 @@ export async function recordCrmEntry({ order, customer, paymentMethod }) {
   };
 
   try {
-    await client.rpush(CRM_KEY, JSON.stringify(entry));
+    const raw = await client.lrange(CRM_KEY, 0, -1);
+    const normalizedPhone = normalizePhoneForMatch(telefono);
+    const normalizedEmail = normalizeEmailForMatch(correo);
+
+    const matchIndex = raw.findIndex((r) => {
+      const existing = JSON.parse(r);
+      return (
+        (normalizedPhone && normalizedPhone === normalizePhoneForMatch(existing.telefono)) ||
+        (normalizedEmail && normalizedEmail === normalizeEmailForMatch(existing.correo))
+      );
+    });
+
+    if (matchIndex === -1) {
+      await client.rpush(CRM_KEY, JSON.stringify(entry));
+    } else {
+      await client.lset(CRM_KEY, matchIndex, JSON.stringify(entry));
+    }
   } catch (err) {
     console.error("[manufacturerFinance] No se pudo registrar la entrada CRM en Redis:", err);
   }

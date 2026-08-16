@@ -56,6 +56,13 @@ export default function CrmApp() {
 
       {error && <p className="text-sm text-red-400">{error}</p>}
 
+      {entries !== null && entries.length > 0 && (
+        <div className="rounded-2xl border border-accent/30 bg-accent/10 p-5 shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)]">
+          <p className="text-sm text-zinc-400">Total de contactos</p>
+          <p className="text-2xl font-bold text-accent-soft sm:text-3xl">{entries.length}</p>
+        </div>
+      )}
+
       {entries === null ? (
         <p className="text-sm text-zinc-500">Cargando...</p>
       ) : entries.length === 0 ? (
@@ -63,10 +70,10 @@ export default function CrmApp() {
           Todavía no hay entradas en el CRM.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <div className="overflow-x-auto rounded-2xl border border-accent/30 bg-accent/5 shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)]">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
-              <tr className="border-b border-white/10 bg-white/5 text-xs uppercase tracking-wide text-zinc-400">
+              <tr className="border-b border-accent/20 bg-accent/10 text-xs uppercase tracking-wide text-accent-soft">
                 <th className="px-4 py-3 font-medium">Nombre</th>
                 <th className="px-4 py-3 font-medium">Teléfono</th>
                 <th className="px-4 py-3 font-medium">Dirección</th>
@@ -80,8 +87,11 @@ export default function CrmApp() {
             </thead>
             <tbody>
               {entries.map((e, i) => (
-                <tr key={i} className="border-b border-white/5 last:border-0">
-                  <td className="px-4 py-3 text-zinc-100">{e.nombre}</td>
+                <tr
+                  key={i}
+                  className="border-b border-white/5 transition-colors last:border-0 hover:bg-accent/5"
+                >
+                  <td className="px-4 py-3 font-medium text-zinc-100">{e.nombre}</td>
                   <td className="px-4 py-3 text-zinc-300">{e.telefono || "-"}</td>
                   <td className="px-4 py-3 text-zinc-300">{e.direccion || "-"}</td>
                   <td className="px-4 py-3 text-zinc-300">{e.correo}</td>
@@ -89,7 +99,11 @@ export default function CrmApp() {
                   <td className="px-4 py-3 text-zinc-300">{e.metodoPago}</td>
                   <td className="px-4 py-3 text-zinc-300">{e.cuponOReferido || "-"}</td>
                   <td className="px-4 py-3 text-zinc-500">{formatDate(e.fecha)}</td>
-                  <td className="px-4 py-3 text-zinc-300">{e.totalHistorico}</td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-full bg-accent/15 px-2.5 py-1 text-xs font-semibold text-accent-soft">
+                      {e.totalHistorico}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>

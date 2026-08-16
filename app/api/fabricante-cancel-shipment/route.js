@@ -78,19 +78,35 @@ export async function POST(request) {
   }
 
   // Blindaje frente al correo "va en camino" ya programado (ver
-  // app/lib/email.js): si todavía no ha salido, se cancela y el cliente
-  // nunca lo ve. Si Resend ya lo envió (o el id no existe/venció), en vez
-  // de dejar al cliente con un número de guía que ya no sirve, se manda
-  // un correo de corrección — sin mencionar "cancelación" para no
-  // alarmar, solo avisando que el pedido sigue en proceso. Nunca debe
-  // tumbar la respuesta de éxito: la guía ya está cancelada en Skydropx y
-  // el registro ya quedó actualizado, que es lo que importa para el
-  // fabricante.
+  // app/lib/email.js) — la ventana real es de 2 horas desde que se generó
+  // la guía (sendShippingNotificationEmail se programa con scheduledAt:
+  // "in 2 hours", ver app/api/generate-shipment/route.js), así que ESO
+  // es lo que decide qué hacer, no la respuesta de cancelScheduledEmail:
+  //   - Todavía no pasaron 2 horas: el correo NO pudo haber salido
+  //     todavía. Solo se cancela el programado (para que nunca salga) y
+  //     listo — nunca hay que mandar corrección, porque el cliente nunca
+  //     llegó a ver un número de guía.
+  //   - Ya pasaron 2 horas: Resend ya debió haberlo disparado (o está a
+  //     punto), así que no tiene sentido intentar cancelarlo — se asume
+  //     enviado directamente y se manda la corrección, sin mencionar
+  //     "cancelación" para no alarmar, solo avisando que el pedido sigue
+  //     en proceso.
+  // Nunca debe tumbar la respuesta de éxito: la guía ya está cancelada en
+  // Skydropx y el registro ya quedó actualizado, que es lo que importa
+  // para el fabricante.
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+  const generatedAtMs = manualRecord?.generatedAt ? new Date(manualRecord.generatedAt).getTime() : null;
+  // Sin generatedAt (no debería pasar para una guía con guideUrl) se
+  // asume lo más conservador: que ya se envió, para no arriesgarse a
+  // dejar al cliente sin avisar.
+  const alreadySent = generatedAtMs === null || Date.now() - generatedAtMs >= TWO_HOURS_MS;
+
   if (manualRecord?.customer?.email) {
     try {
-      const { cancelled } = await cancelScheduledEmail(manualRecord.scheduledEmailId);
-      if (!cancelled) {
+      if (alreadySent) {
         await sendGuideCorrectionEmail({ customer: manualRecord.customer });
+      } else {
+        await cancelScheduledEmail(manualRecord.scheduledEmailId);
       }
     } catch (err) {
       console.error(

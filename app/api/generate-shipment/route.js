@@ -175,7 +175,7 @@ function resultPage({ ok, trackingNumber, carrierName, labelUrl, errorMessage })
             ? `<p style="margin:16px 0 0 0;text-align:center;"><a href="${escapeHtml(labelUrl)}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;border-radius:999px;padding:11px 24px;">Ver etiqueta</a></p>`
             : ""
         }
-        <p style="margin:16px 0 0 0;font-size:13px;color:${BRAND.muted};">El cliente recibirá el correo de "va en camino" en 2 horas.</p>
+        <p style="margin:16px 0 0 0;font-size:11px;color:${BRAND.muted};opacity:0.75;">El cliente recibirá el correo de "va en camino" en 2 horas.</p>
       `,
     });
   }

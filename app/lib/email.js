@@ -328,6 +328,11 @@ function adminEmailHtml({
                     : ""
                 }
                 ${
+                  fabricanteUrl
+                    ? `<p style="margin:12px 0 0 0;"><a href="${fabricanteUrl}" style="display:inline-block;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.text};text-decoration:underline;">💰 Ver mis ganancias</a></p>`
+                    : ""
+                }
+                ${
                   shipmentError
                     ? `<p style="margin:10px 0 0 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.warning};">Último intento fallido — motivo: ${escapeHtml(shipmentError)}</p>`
                     : ""
@@ -419,18 +424,6 @@ function adminEmailHtml({
             <p style="margin:0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};">Correo: ${customer.email}</p>
           </td>
         </tr>
-
-        ${
-          fabricanteUrl
-            ? `
-        <tr>
-          <td style="padding:4px 20px 18px 20px;text-align:center;">
-            <a href="${fabricanteUrl}" style="display:inline-block;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.text};text-decoration:underline;">💰 Consultar ganancias</a>
-          </td>
-        </tr>
-        `
-            : ""
-        }
       </table>
     </td>
   </tr>
