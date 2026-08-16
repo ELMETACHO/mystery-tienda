@@ -58,7 +58,12 @@ function OrderRow({ order, code, onUpdated }) {
   };
 
   const handleGenerateNew = async () => {
-    if (!confirm("¿Generar una guía nueva para este pedido?")) return;
+    if (
+      !confirm(
+        "¿Estás seguro de generar una guía nueva? Recuerda que si lo haces, el pedido debe entregarse a la transportadora HOY mismo."
+      )
+    )
+      return;
     setIsSubmitting(true);
     setError("");
     setMessage("");
@@ -205,6 +210,8 @@ function FabricanteContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState(null);
+  const [isRequestingPayment, setIsRequestingPayment] = useState(false);
+  const [paymentRequestMessage, setPaymentRequestMessage] = useState("");
 
   const lookupCode = useCallback(async (rawCode) => {
     const code = rawCode.trim();
@@ -240,6 +247,29 @@ function FabricanteContent() {
   const handleLookup = (e) => {
     e.preventDefault();
     lookupCode(codeInput);
+  };
+
+  const handleRequestPayment = async () => {
+    setIsRequestingPayment(true);
+    setPaymentRequestMessage("");
+    try {
+      const res = await fetch("/api/fabricante-request-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: activeCode }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setPaymentRequestMessage(json.error || "No se pudo enviar la solicitud");
+        return;
+      }
+      setPaymentRequestMessage("✅ Solicitud enviada");
+    } catch (err) {
+      console.error(err);
+      setPaymentRequestMessage("No se pudo enviar la solicitud. Intenta de nuevo.");
+    } finally {
+      setIsRequestingPayment(false);
+    }
   };
 
   const handleOrderUpdated = (updated) => {
@@ -281,11 +311,30 @@ function FabricanteContent() {
 
       {data && (
         <div className="flex w-full flex-col gap-4 animate-ready-in">
-          <div className="rounded-2xl border border-accent/30 bg-accent/10 p-5 text-center shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)] sm:p-6">
-            <p className="text-sm text-zinc-400">Total pendiente</p>
-            <p className="text-2xl font-bold text-accent-soft sm:text-3xl">
-              {formatCOP(data.balance)}
-            </p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-5 text-center shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)] sm:p-6">
+            <div>
+              <p className="text-sm text-zinc-400">Total pendiente</p>
+              <p className="text-2xl font-bold text-accent-soft sm:text-3xl">
+                {formatCOP(data.balance)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleRequestPayment}
+              disabled={isRequestingPayment}
+              className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {isRequestingPayment ? "Enviando..." : "💰 Cobrar saldo"}
+            </button>
+            {paymentRequestMessage && (
+              <p
+                className={`text-xs font-medium ${
+                  paymentRequestMessage.startsWith("✅") ? "text-emerald-300" : "text-red-400"
+                }`}
+              >
+                {paymentRequestMessage}
+              </p>
+            )}
           </div>
 
           {data.balance === 0 && data.lastPayment && (

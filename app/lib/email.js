@@ -603,6 +603,51 @@ export async function sendGuideCancelledEmail({ order, customer, reference, reas
 }
 
 // ---------------------------------------------------------------------
+// Correo de "solicitud de pago" — botón "Cobrar saldo" en /fabricante
+// (ver app/api/fabricante-request-payment/route.js). Va a
+// bigmysteryof@gmail.com (MANUFACTURER_EMAIL), a diferencia de
+// sendGuideCancelledEmail: acá SÍ es el destino correcto, es la bandeja
+// que Oscar revisa para este tipo de aviso puntual.
+// ---------------------------------------------------------------------
+
+function paymentRequestEmailHtml({ amount }) {
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgOuter};padding:32px 12px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td style="background-color:${BRAND.dark};padding:24px 28px;text-align:center;">
+            <span style="font-family:${FONT_STACK};font-size:22px;font-weight:bold;color:${BRAND.soft};letter-spacing:0.5px;">Mystery</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px;">
+            <p style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:16px;line-height:23px;color:${BRAND.ink};">Fabricante solicitó pago: <strong style="color:${BRAND.text};">${formatCOP(amount)}</strong></p>
+            <p style="margin:0 0 24px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.muted};">Confírmalo desde el panel de administración cuando le hayas transferido.</p>
+            <p style="margin:0;text-align:center;">
+              <a href="${SITE_URL}/admin" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:15px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Ir a /admin</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+export async function sendFabricantePaymentRequestEmail({ amount }) {
+  const to = process.env.MANUFACTURER_EMAIL || "bigmysteryof@gmail.com";
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "PAGO A FABRICANTE - MYSTERY CUADROS",
+    html: paymentRequestEmailHtml({ amount }),
+  });
+}
+
+// ---------------------------------------------------------------------
 // Correo de "guía generada" al cliente — disparado desde
 // app/api/generate-shipment/route.js justo después de que
 // createManualShipment() devuelve tracking_number + label_url reales
