@@ -16,7 +16,6 @@ Tienda online de cuadros personalizados en vinilo sobre madera (marca "Mystery")
 - **pdfjs-dist** para convertir la primera página de un PDF subido a imagen.
 - **heic2any** para convertir fotos HEIC/HEIF (iPhone) a JPEG en el navegador antes de procesarlas.
 - **canvas-confetti** para la animación de celebración en la confirmación de pago.
-- **eruda** + `app/DevTools.js`: panel de consola visible en móvil, **solo en desarrollo** (`NODE_ENV === "development"`) — recordar quitarlo (junto con la dependencia y `allowedDevOrigins` en `next.config.mjs`) antes de producción.
 
 ## Estructura de páginas
 
@@ -69,7 +68,6 @@ Tienda online de cuadros personalizados en vinilo sobre madera (marca "Mystery")
 
 **Pendiente / placeholder:**
 - **El sitio ya está publicado en producción en Vercel** y se probó el flujo completo end-to-end en vivo (catálogo, compras, correos) — deja de ser un ítem pendiente.
-- Quitar `eruda`/`app/DevTools.js`/`allowedDevOrigins` de `next.config.mjs` antes de producción (confirmar si ya se hizo en el deploy actual).
 - Catálogo real para Home (Recientes/Más vendidos/testimonios son contenido de ejemplo, marcado en el código).
 - Aplicar el código de descuento `MYSTERY10%` en un pago real (hoy solo se muestra el mensaje al cliente recurrente, no hay lógica de canje).
 - Miniatura de imagen en el correo al cliente (se quitó por incompatibilidad de `cid:` en Gmail; pendiente resolver con una URL pública si se quiere).

@@ -1,9 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // TEMPORAL: permite acceder al dev server desde el iPhone en la misma red
-  // (vía IP LAN) para probar con Eruda. Recordar quitar junto con Eruda antes
-  // de producción, o mantenerlo acotado si se conserva para futuras pruebas.
-  allowedDevOrigins: ["192.168.2.8"],
   // Desactivado tras diagnosticar (agosto 2026) que esta caché persiste en
   // disco (.next/dev/cache/turbopack) ENTRE reinicios del servidor — a
   // diferencia de lo que parece, un `Ctrl+C` + `npm run dev` normal NO la

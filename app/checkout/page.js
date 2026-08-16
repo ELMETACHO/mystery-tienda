@@ -278,7 +278,6 @@ export default function CheckoutPage() {
     await saveOrder(fullOrder);
 
     const reference = `mystery-${Date.now()}`;
-    const amountInCents = fullOrder.priceCOP * 100;
     const currency = "COP";
 
     // Guardado en Redis por `reference`, ANTES de pagar — red de
@@ -295,15 +294,29 @@ export default function CheckoutPage() {
       console.error("[checkout] No se pudo guardar el pedido pendiente:", err);
     });
 
+    // El monto NUNCA se calcula en el navegador para el pago real: se le
+    // manda al servidor solo lo necesario para que él mismo recalcule el
+    // precio (tamaño + código de descuento/referido) y devuelva el
+    // amountInCents correcto junto con la firma — ver
+    // app/api/wompi-signature/route.js. El widget de Wompi se abre con
+    // ESE valor devuelto, nunca con uno calculado acá.
     let signature;
+    let amountInCents;
     try {
       const res = await fetch("/api/wompi-signature", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reference, amountInCents, currency }),
+        body: JSON.stringify({
+          reference,
+          currency,
+          sizeId: fullOrder.sizeId,
+          discountCode: fullOrder.discountCode,
+          referralCode: fullOrder.referralCode,
+          customerEmail: customer.email,
+        }),
       });
       if (!res.ok) throw new Error("No se pudo generar la firma");
-      ({ signature } = await res.json());
+      ({ signature, amountInCents } = await res.json());
     } catch (err) {
       console.error(err);
       setPayError("No se pudo iniciar el pago. Intenta de nuevo.");
@@ -425,18 +438,22 @@ export default function CheckoutPage() {
     await saveOrder(fullOrder);
 
     const reference = `mystery-cod-${Date.now()}`;
-    const amountInCents = COD_DEPOSIT_COP * 100;
     const currency = "COP";
 
+    // Mismo criterio que handlePay: el servidor decide el monto (acá
+    // siempre COD_DEPOSIT_COP, ver isCod en app/api/wompi-signature) y lo
+    // devuelve junto con la firma — nunca se abre el widget con un monto
+    // calculado en el navegador.
     let signature;
+    let amountInCents;
     try {
       const res = await fetch("/api/wompi-signature", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reference, amountInCents, currency }),
+        body: JSON.stringify({ reference, currency, isCod: true }),
       });
       if (!res.ok) throw new Error("No se pudo generar la firma");
-      ({ signature } = await res.json());
+      ({ signature, amountInCents } = await res.json());
     } catch (err) {
       console.error(err);
       setPayError("No se pudo iniciar el pago del anticipo. Intenta de nuevo.");
