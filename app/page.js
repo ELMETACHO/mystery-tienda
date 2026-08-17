@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getBestSellingProducts, getRecentProducts } from "./lib/catalog";
 import FoldText from "./components/FoldText";
 import CategoryScroller from "./components/CategoryScroller";
-import ProductGrid from "./components/ProductGrid";
+import ProductScroller from "./components/ProductScroller";
 
 // Esta página lee el catálogo real (Redis) en cada visita — nunca debe
 // quedar cacheada mostrando productos viejos/borrados.
@@ -261,13 +261,15 @@ export default async function Home() {
         </section>
 
         {/* 3. RECIENTES — productos reales del catálogo (Redis), más
-            nuevos primero. */}
+            nuevos primero. Fila con scroll horizontal nativo (ver
+            ProductScroller) — mismo patrón que CategoryScroller, sin
+            animación ni bucle. */}
         <section id="recientes" className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <div className="mb-4">
               <h2 className="text-lg font-semibold sm:text-xl">Recientes</h2>
             </div>
-            <ProductGrid items={recientes} />
+            <ProductScroller items={recientes} />
           </div>
         </section>
 
@@ -280,7 +282,7 @@ export default async function Home() {
             <div className="mb-4 flex items-end justify-between">
               <h2 className="text-lg font-semibold sm:text-xl">Más vendidos</h2>
             </div>
-            <ProductGrid items={masVendidos} />
+            <ProductScroller items={masVendidos} />
           </div>
         </section>
 
