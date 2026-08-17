@@ -173,8 +173,15 @@ export default async function Home() {
       {/* 1. NAVBAR FIJA */}
       <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-background/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <Link href="/" className="text-lg font-bold tracking-tight">
-            Mystery
+          <Link href="/" className="shrink-0" aria-label="Mystery — Inicio">
+            <Image
+              src="/images/Logo/logo-navbar.png"
+              alt="Mystery"
+              width={150}
+              height={101}
+              priority
+              className="h-8 w-auto sm:h-9"
+            />
           </Link>
           <nav className="flex items-center gap-4 overflow-x-auto text-sm text-zinc-300 sm:gap-6">
             <a href="#personalizados" className="whitespace-nowrap hover:text-white">
