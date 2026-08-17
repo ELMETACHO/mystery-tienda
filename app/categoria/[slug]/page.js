@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProductsByCategory } from "../../lib/catalog";
 import { ESTUDIO_CATEGORIES } from "../../lib/estudioCategories";
-import ProductGrid from "../../components/ProductGrid";
+import ProductScroller from "../../components/ProductScroller";
 
 // Esta página lee el catálogo real (Redis) en cada visita — nunca debe
 // quedar cacheada mostrando productos viejos/borrados (mismo motivo que
@@ -35,7 +35,7 @@ export default async function CategoriaPage({ params }) {
         Colombia completamente gratis.
       </p>
 
-      <ProductGrid
+      <ProductScroller
         items={products}
         emptyMessage={`Todavía no hay diseños en ${category.label}. Vuelve pronto.`}
       />
