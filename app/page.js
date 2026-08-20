@@ -164,8 +164,8 @@ const TESTIMONIOS = [
 
 export default async function Home() {
   const [recientes, masVendidos] = await Promise.all([
-    getRecentProducts(8),
-    getBestSellingProducts(8),
+    getRecentProducts(200),
+    getBestSellingProducts(200),
   ]);
 
   return (
