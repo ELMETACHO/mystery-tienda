@@ -1,9 +1,19 @@
 import Image from "next/image";
-import Link from "next/link";
+import { getRecentProducts } from "../lib/catalog";
+import CrearFlow from "../components/CrearFlow";
+import ProductScroller from "../components/ProductScroller";
+import CountdownBanner from "../components/ads/CountdownBanner";
+import ViewersCounter from "../components/ads/ViewersCounter";
+import StickyBuyButton from "../components/ads/StickyBuyButton";
 
 // Landing exclusiva para tráfico pagado de TikTok — un solo scroll, sin
 // navbar/footer completo, sin nada que distraiga del CTA. No comparte
-// layout con el Home (ver app/page.js): vive sola, un solo objetivo.
+// layout con el Home (ver app/page.js): vive sola, un solo objetivo. El
+// flujo de /crear vive embebido acá mismo (ver sección "crear-embed" más
+// abajo, y app/components/CrearFlow.jsx) para que comprar no implique salir
+// de la página del anuncio.
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Mystery — Tu foto favorita, en un cuadro real",
   description: "Sube tu foto y recíbela en cuadro de vinilo sobre madera en tu casa.",
@@ -19,161 +29,156 @@ export const viewport = {
 
 const EJEMPLOS = [
   { src: "/images/page-ads/PARED1.png", alt: "Cuadro Mystery entregado, colgado en la pared de un cliente" },
-  { src: "/images/page-ads/PARED2.png", alt: "Cuadro Mystery entregado, colgado sobre la cama de un cliente" },
+  { src: "/images/page-ads/PARED2.png", alt: "Cuadro Mystery entregado, colgado en la pared de un cliente" },
   { src: "/images/page-ads/PARED3.png", alt: "Cuadro Mystery entregado, colgado en la pared de un cliente" },
 ];
 
-const PASOS = ["Sube tu foto", "Elige el tamaño", "Recíbelo en casa"];
+export default async function AdsLanding() {
+  const recientes = await getRecentProducts(200);
 
-export default function AdsLanding() {
   return (
     <div className="flex min-h-full flex-col">
-      <main className="flex-1 pb-28">
-        {/* HERO — se entiende sin leer nada más que el título. */}
-        <section className="relative overflow-hidden px-4 pt-10 pb-8 text-center">
-          <div
-            className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full opacity-20 blur-3xl"
-            style={{ background: "var(--accent)" }}
-          />
-          <div className="relative z-10 mx-auto flex max-w-md flex-col items-center gap-4">
-            <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
-              Tu foto favorita, en un cuadro real
-            </h1>
-            <p className="text-sm text-zinc-400">
-              Vinilo sobre madera. Impreso y enviado a tu casa.
-            </p>
-            <div className="relative mt-2 aspect-[4/5] w-full max-w-xs overflow-hidden rounded-2xl border border-white/10 shadow-lg shadow-accent/20">
-              {/* Video en vez de GIF: el archivo original pesaba 95MB (GIF
-                  no comprime bien con tantos cuadros); convertido a MP4
-                  (h264) queda en ~0.9MB con la misma animación. autoPlay +
-                  muted + loop + playsInline es la combinación que arranca
-                  sola y en bucle continuo sin gesto del usuario tanto en
-                  Safari iOS como en Chrome Android — sin esos tres atributos
-                  juntos, iOS bloquea el autoplay. poster evita el flash en
-                  blanco mientras carga el video. */}
-              <video
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="auto"
-                poster="/images/page-ads/hero-poster.jpg"
-                className="h-full w-full object-cover"
-                aria-label="Cuadro personalizado Mystery, animación de muestra"
+      {/* 1. HEADER FIJO — position:fixed (no sticky, mismo criterio que el
+          botón inferior: sticky puede "despegarse" en Safari durante el
+          scroll). Solo esta franja, nada más. */}
+      <div className="fixed inset-x-0 top-0 z-50 bg-black px-4 py-2.5 text-center">
+        <p className="text-xs font-semibold text-red-500 sm:text-sm">
+          🚚 Envío gratis a todo el país - Paga al recibir
+        </p>
+      </div>
+
+      <main className="flex-1 pb-28 pt-11">
+        {/* 2. NOMBRE DE MARCA — primer contenido debajo del header fijo. */}
+        <div className="px-4 pb-4 pt-5 text-center">
+          <p className="text-lg font-black tracking-tight text-white sm:text-xl">
+            MYSTERY CUADROS
+          </p>
+        </div>
+
+        {/* 3. IMAGEN/GIF GRANDE — video en vez de GIF: el archivo original
+            (generado en Freepik) pesaba 95MB, inviable para una landing
+            optimizada para velocidad. Convertido a MP4 (h264, ~0.9MB) con
+            la misma animación. autoPlay + muted + loop + playsInline es la
+            combinación que arranca sola y en bucle continuo sin gesto del
+            usuario tanto en Safari iOS como en Chrome Android. poster evita
+            el flash en blanco mientras carga. */}
+        <section className="px-4 pb-5">
+          <div className="relative mx-auto aspect-[4/5] w-full max-w-xs overflow-hidden rounded-2xl border border-white/10 shadow-lg shadow-accent/20 sm:max-w-sm">
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              poster="/images/page-ads/hero-poster.jpg"
+              className="h-full w-full object-cover"
+              aria-label="Cuadro personalizado Mystery, animación de muestra"
+            >
+              <source src="/images/page-ads/hero-loop.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </section>
+
+        {/* 4. URGENCIA — cuenta regresiva de 1 hora, por sesión (ver
+            CountdownBanner). */}
+        <section className="px-4 pb-3">
+          <CountdownBanner />
+        </section>
+
+        {/* 5. PRUEBA SOCIAL EN VIVO — número pseudo-aleatorio, no un
+            conteo real (ver ViewersCounter). */}
+        <section className="px-4 pb-6">
+          <ViewersCounter />
+        </section>
+
+        {/* 6. INFORMACIÓN DEL PRODUCTO */}
+        <section className="px-4 pb-6 text-center">
+          <h1 className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
+            Cuadro decorativo de excelente calidad en madera y vinilo laminado.
+          </h1>
+          <p className="mt-2 text-xl font-bold text-accent-soft sm:text-2xl">
+            Desde $65.000 COP
+          </p>
+        </section>
+
+        {/* 7. FLUJO DE /crear EMBEBIDO — mismo componente que usa /crear
+            (app/components/CrearFlow.jsx), en modo "compact": misma lógica
+            de subida/recorte/tamaño/confirmación, sin la cabecera grande
+            que no tiene sentido en medio de esta página. */}
+        <section id="crear-embed" className="scroll-mt-12 px-4 pb-8">
+          <h2 className="mb-4 text-center text-xl font-bold tracking-tight sm:text-2xl">
+            Tu cuadro con cualquier imagen
+          </h2>
+          <CrearFlow compact />
+        </section>
+
+        {/* 8. TESTIMONIOS — sin reseñas reales todavía, se muestran cuadros
+            entregados como ejemplo visual (no citas de texto inventadas). */}
+        <section className="px-4 pb-8">
+          <h2 className="mb-3 text-center text-sm font-semibold text-zinc-300">
+            Así se ven en la pared
+          </h2>
+          <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
+            {EJEMPLOS.map((ej) => (
+              <div
+                key={ej.src}
+                className="relative aspect-[4/5] overflow-hidden rounded-xl border border-white/10"
               >
-                <source src="/images/page-ads/hero-loop.mp4" type="video/mp4" />
-              </video>
-            </div>
+                <Image src={ej.src} alt={ej.alt} fill sizes="33vw" className="object-cover" />
+              </div>
+            ))}
           </div>
         </section>
 
-        {/* PRUEBA SOCIAL — breve, sin adornos. */}
+        {/* 9. TEXTO LARGO DEL PRODUCTO — texto exacto pedido. */}
         <section className="px-4 pb-8">
-          <div className="mx-auto flex max-w-md items-center justify-center gap-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-center">
-            <div>
-              <p className="text-xl font-black text-accent-soft">+1.000</p>
-              <p className="text-xs text-zinc-400">cuadros entregados</p>
-            </div>
-            <div className="h-8 w-px bg-white/10" />
-            <div>
-              <p className="text-xl font-black text-accent-soft">+5 años</p>
-              <p className="text-xs text-zinc-400">de experiencia</p>
-            </div>
-          </div>
-        </section>
-
-        {/* EJEMPLOS REALES DEL CATÁLOGO */}
-        <section className="px-4 pb-8">
-          <div className="mx-auto max-w-md">
-            <h2 className="mb-3 text-center text-sm font-semibold text-zinc-300">
-              Así se ven en la pared
-            </h2>
-            <div className="grid grid-cols-3 gap-2">
-              {EJEMPLOS.map((ej) => (
-                <div
-                  key={ej.src}
-                  className="relative aspect-[4/5] overflow-hidden rounded-xl border border-white/10"
-                >
-                  <Image
-                    src={ej.src}
-                    alt={ej.alt}
-                    fill
-                    sizes="33vw"
-                    className="object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CÓMO FUNCIONA — 3 pasos, sin íconos SVG pesados. */}
-        <section className="px-4 pb-8">
-          <div className="mx-auto max-w-md rounded-2xl border border-white/10 bg-white/5 px-5 py-6">
-            <h2 className="mb-4 text-center text-sm font-semibold text-zinc-300">
-              Cómo funciona
-            </h2>
-            <ol className="flex flex-col gap-3">
-              {PASOS.map((paso, i) => (
-                <li key={paso} className="flex items-center gap-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/20 text-sm font-bold text-accent-soft">
-                    {i + 1}
-                  </span>
-                  <span className="text-sm text-zinc-200">{paso}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        {/* URGENCIA / OFERTA */}
-        <section className="px-4 pb-8">
-          <div className="mx-auto max-w-md rounded-2xl border border-accent/30 bg-accent/10 px-5 py-4 text-center">
-            <p className="text-sm font-semibold text-accent-soft">
-              🚚 Envío gratis por tiempo limitado a todo el país
+          <div className="mx-auto max-w-md rounded-2xl border border-white/10 bg-white/5 px-5 py-5">
+            <p className="text-sm leading-relaxed text-zinc-300">
+              Hacemos cuadros en vinilo laminado de excelente calidad sobre madera.
+              Tienen un marco atrás de 3cm de profundidad para colgarlos. El envío
+              es gratuito. No te preocupes por la calidad, ¡todas las imágenes
+              sirven! Si tu imagen tiene poca calidad la aumentamos con
+              Inteligencia Artificial sin afectar o cambiar detalles de la imagen.
+              Seguirá siendo la misma, ¡pero mejor! Puedes pagar al recibir —
+              tenemos alianza con Servientrega, Envía, Interrapidísimo y más, esto
+              te da la confianza de que puedes pagar tu cuadro en la puerta de tu
+              casa (anticipo de $20.000). Entrega en 3-5 días hábiles.
             </p>
           </div>
         </section>
 
-        {/* BLOQUE DE CONFIANZA — discreto, exigido por políticas de anuncios
-            de ecommerce de TikTok (contacto + garantía/devoluciones
-            visibles). Mismo contenido de garantía que el FAQ del Home. */}
+        {/* 10. CATÁLOGO — mismo ProductScroller de "Recientes" del Home,
+            con sus botones de compra normales. */}
+        <section className="pb-8">
+          <div className="mx-auto max-w-6xl px-4">
+            <h2 className="mb-4 text-center text-xl font-bold tracking-tight sm:text-2xl">
+              ¿Quieres comprar nuestros diseños?
+            </h2>
+            <ProductScroller items={recientes} />
+          </div>
+        </section>
+
+        {/* 11. GARANTÍA / FOOTER — discreto, exigido por políticas de
+            anuncios de ecommerce de TikTok (contacto + garantía visibles). */}
         <section className="px-4">
           <div className="mx-auto max-w-md border-t border-white/10 pt-5 text-center">
             <p className="text-xs text-zinc-500">
-              Garantía ante daños de fábrica o de transporte. Escríbenos y lo
-              solucionamos.
-            </p>
-            <p className="mt-2 text-xs text-zinc-500">
-              Contacto:{" "}
+              Tienes garantía ante daños de fábrica o de transporte. Tu cuadro
+              está asegurado. Escríbenos a:{" "}
               <a href="mailto:pedidos@elmetacho.com" className="underline underline-offset-2">
                 pedidos@elmetacho.com
               </a>
             </p>
             <p className="mt-3 text-[11px] text-zinc-600">
-              © {new Date().getFullYear()} Mystery. Todos los derechos reservados.
+              © 2026 Mystery. Todos los derechos reservados.
             </p>
           </div>
         </section>
       </main>
 
-      {/* CTA FIJO — siempre visible mientras se hace scroll, en cualquier
-          navegador móvil. position: fixed (no sticky) anclado a inset-x-0
-          bottom-0 es lo único que se comporta igual en Safari iOS y Chrome
-          Android durante el scroll; sticky en un contenedor con overflow
-          puede "despegarse" en Safari. Padding con env(safe-area-inset-bottom)
-          para no quedar tapado por el home indicator de iPhone. */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-background/95 px-4 pt-3 backdrop-blur-md"
-        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-      >
-        <Link
-          href="/crear"
-          className="flex w-full items-center justify-center rounded-full bg-accent px-6 py-4 text-base font-bold text-white shadow-lg shadow-accent/30 active:bg-accent-soft"
-        >
-          Comprar ahora
-        </Link>
-      </div>
+      {/* 12. CTA FIJO — ya no navega a /crear, hace scroll suave hasta la
+          sección embebida del punto 7 dentro de esta misma página. */}
+      <StickyBuyButton targetId="crear-embed" />
     </div>
   );
 }
