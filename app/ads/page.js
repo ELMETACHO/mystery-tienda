@@ -5,6 +5,8 @@ import ProductScroller from "../components/ProductScroller";
 import CountdownBanner from "../components/ads/CountdownBanner";
 import ViewersCounter from "../components/ads/ViewersCounter";
 import StickyBuyButton from "../components/ads/StickyBuyButton";
+import RecentPurchaseToast from "../components/ads/RecentPurchaseToast";
+import FooterLegalAccordion from "../components/ads/FooterLegalAccordion";
 
 // Landing exclusiva para tráfico pagado de TikTok — un solo scroll, sin
 // navbar/footer completo, sin nada que distraiga del CTA. No comparte
@@ -165,16 +167,26 @@ export default async function AdsLanding() {
             <p className="text-xs text-zinc-500">
               Tienes garantía ante daños de fábrica o de transporte. Tu cuadro
               está asegurado. Escríbenos a:{" "}
-              <a href="mailto:pedidos@elmetacho.com" className="underline underline-offset-2">
-                pedidos@elmetacho.com
+              {/* pedidos@mysterycuadros.com: buzón nuevo en Zoho, todavía por
+                  crear/confirmar del lado del dueño — si no existe aún al
+                  publicar, los correos a esta dirección rebotarán. */}
+              <a href="mailto:pedidos@mysterycuadros.com" className="underline underline-offset-2">
+                pedidos@mysterycuadros.com
               </a>
             </p>
             <p className="mt-3 text-[11px] text-zinc-600">
               © 2026 Mystery. Todos los derechos reservados.
             </p>
+
+            <FooterLegalAccordion />
           </div>
         </section>
       </main>
+
+      {/* Aviso discreto de compra reciente — ventas reales, ver
+          RecentPurchaseToast. Independiente del botón fijo (posiciones
+          distintas), no interfiere con su ocultamiento por scroll. */}
+      <RecentPurchaseToast />
 
       {/* 12. CTA FIJO — ya no navega a /crear, hace scroll suave hasta la
           sección embebida del punto 7 dentro de esta misma página. */}
