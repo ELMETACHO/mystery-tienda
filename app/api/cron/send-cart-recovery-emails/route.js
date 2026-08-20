@@ -4,10 +4,14 @@ import { generateCartRecoveryToken } from "../../../lib/cartRecoveryToken";
 import { sendCartRecoveryEmail } from "../../../lib/email";
 import { claimCartRecoveryEmail, releaseCartRecoveryEmailClaim } from "../../../lib/idempotency";
 
-// Disparado por Vercel Cron cada hora (ver vercel.json) — mismo criterio
-// de autenticación que /api/cron/send-review-emails: solo Vercel conoce
-// CRON_SECRET, así nadie externo puede disparar el envío masivo llamando
-// la ruta directamente.
+// Vercel Hobby (el plan actual) solo permite cron jobs nativos de una
+// vez al día — no alcanza para el timing de 1-2h que necesita la
+// recuperación de carrito. Por eso esta ruta NO está en vercel.json (a
+// diferencia de send-review-emails, que sí puede ser diario/nativo): en
+// su lugar, un cron externo (cron-job.org) llama este endpoint cada
+// hora desde afuera de Vercel. Misma protección de todas formas: solo
+// quien conoce CRON_SECRET (configurado como header Authorization en
+// cron-job.org) puede disparar el envío masivo.
 function isAuthorizedCronRequest(request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
