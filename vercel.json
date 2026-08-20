@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/send-review-emails",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/send-cart-recovery-emails",
+      "schedule": "0 * * * *"
     }
   ]
 }

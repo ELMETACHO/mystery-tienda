@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Script from "next/script";
 import { COD_DEPOSIT_COP, formatCOP, loadOrder, saveOrder } from "../lib/order";
 import { lookupPostalCode } from "../lib/postalCodes";
@@ -104,8 +104,9 @@ const INPUT_CLASS =
 const PAY_BUTTON_CLASS =
   "mt-1 w-full rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-accent/50 transition-all duration-200 hover:shadow-[0_0_36px_rgba(168,85,247,0.85)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:animate-none";
 
-export default function CheckoutPage() {
+function CheckoutForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [order, setOrder] = useState(null);
   const [isLoadingOrder, setIsLoadingOrder] = useState(true);
   const [customer, setCustomer] = useState(emptyCustomer);
@@ -134,6 +135,49 @@ export default function CheckoutPage() {
     let cancelled = false;
 
     (async () => {
+      // Link de recuperación de carrito abandonado (ver
+      // /api/cron/send-cart-recovery-emails y email.js): trae order y
+      // customer directo de Redis por reference/token en vez de
+      // IndexedDB, así funciona aunque el cliente abra el correo en
+      // otro dispositivo o navegador distinto al que usó para /crear.
+      const resumeReference = searchParams.get("resume");
+      const resumeToken = searchParams.get("token");
+
+      if (resumeReference && resumeToken) {
+        try {
+          const res = await fetch(
+            `/api/resume-pending-order?reference=${encodeURIComponent(resumeReference)}&token=${encodeURIComponent(resumeToken)}`
+          );
+          if (cancelled) return;
+
+          if (res.ok) {
+            const { order: resumedOrder, customer: resumedCustomer } = await res.json();
+            if (resumedOrder?.croppedImage) {
+              // Se guarda también en IndexedDB para que el resto del
+              // flujo (recargar la página, volver de Wompi, etc.) siga
+              // funcionando exactamente igual que con un pedido normal.
+              await saveOrder(resumedOrder);
+              setOrder(resumedOrder);
+              if (resumedCustomer) {
+                setCustomer((prev) => ({ ...prev, ...resumedCustomer }));
+              }
+              setIsLoadingOrder(false);
+              return;
+            }
+          } else {
+            console.error(
+              "[checkout] No se pudo retomar el pedido pendiente:",
+              await res.text().catch(() => res.status)
+            );
+          }
+        } catch (err) {
+          console.error("[checkout] Error retomando pedido pendiente:", err);
+        }
+        // Si el link de recuperación falló por lo que sea (vencido,
+        // token inválido, error de red), sigue el flujo normal abajo en
+        // vez de dejar al cliente atascado en "Cargando tu pedido...".
+      }
+
       const stored = await loadOrder();
       if (cancelled) return;
 
@@ -148,7 +192,7 @@ export default function CheckoutPage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, searchParams]);
 
   // Código postal derivado automáticamente de departamento + ciudad contra
   // el catálogo canónico de Skydropx (ver app/lib/postalCodes.js) — antes
@@ -981,5 +1025,22 @@ export default function CheckoutPage() {
         </div>
       </div>
     </>
+  );
+}
+
+// useSearchParams (para el link de recuperación de carrito) exige un
+// límite de Suspense alrededor de quien lo llama — sin esto, Next.js
+// falla el build ("should be wrapped in a suspense boundary").
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6">
+          <p className="text-zinc-400">Cargando tu pedido...</p>
+        </div>
+      }
+    >
+      <CheckoutForm />
+    </Suspense>
   );
 }

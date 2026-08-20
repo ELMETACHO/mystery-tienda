@@ -945,3 +945,84 @@ export async function sendReviewRequestEmail({ order, token }) {
     html: reviewRequestEmailHtml({ order, reviewUrl }),
   });
 }
+
+// Correo único de recuperación de carrito abandonado (ver
+// /api/cron/send-cart-recovery-emails) — tono cálido, sin presión ni
+// descuento todavía; esto es el primer correo simple, no una secuencia.
+// `order`/`customer` acá SÍ son los objetos completos guardados en el
+// pending-order (ver pendingOrders.js), no un registro resumido como en
+// completedOrders.js — por eso hay sizeLabel/priceCOP directo del order.
+function cartRecoveryEmailHtml({ customer, order, resumeUrl }) {
+  const firstName = (customer.fullName || "").trim().split(/\s+/)[0] || "";
+
+  return `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgOuter};padding:32px 12px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
+        <tr>
+          <td style="background-color:${BRAND.dark};padding:28px 32px;text-align:center;">
+            <span style="font-family:${FONT_STACK};font-size:26px;font-weight:bold;color:${BRAND.soft};letter-spacing:0.5px;">Mystery</span>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:32px 32px 8px 32px;">
+            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">
+              ${firstName ? `¡Hola, ${firstName}!` : "¡Hola!"} Tu cuadro te está esperando
+            </p>
+            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
+              Notamos que empezaste a crear tu cuadro personalizado${
+                order.sizeLabel ? ` (${order.sizeLabel})` : ""
+              } pero no alcanzaste a terminar el pago. Sigue exactamente donde lo dejaste — no tienes que subir tu foto ni ajustarla de nuevo.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:8px 32px 24px 32px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.lilac};border-radius:10px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <p style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">
+                    ${order.sizeLabel ? `<strong>Tamaño:</strong> ${order.sizeLabel}<br>` : ""}
+                    ${
+                      typeof order.priceCOP === "number"
+                        ? `<strong>Total:</strong> ${formatCOP(order.priceCOP)}`
+                        : ""
+                    }
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:0 32px 32px 32px;" align="center">
+            <a href="${resumeUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:16px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Continuar con mi pedido</a>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:0 32px 28px 32px;">
+            <p style="margin:0;font-family:${FONT_STACK};font-size:12px;line-height:18px;color:${BRAND.faint};text-align:center;">Si el botón no funciona, copia y pega este link en tu navegador:<br>${resumeUrl}</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+export async function sendCartRecoveryEmail({ order, customer, reference, token }) {
+  const resumeUrl = `${SITE_URL}/checkout?resume=${encodeURIComponent(reference)}&token=${encodeURIComponent(token)}`;
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: customer.email,
+    subject: "Tu cuadro personalizado te está esperando",
+    html: cartRecoveryEmailHtml({ customer, order, resumeUrl }),
+  });
+}

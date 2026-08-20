@@ -31,6 +31,10 @@ function reviewEmailClaimKey(reference) {
   return `review-email-claim:${reference}`;
 }
 
+function cartRecoveryEmailClaimKey(reference) {
+  return `cart-recovery-email-claim:${reference}`;
+}
+
 // 30 días: más que suficiente para cubrir cualquier reintento real de
 // Wompi (máximo 24h) con margen amplio, sin acumular estas keys para
 // siempre.
@@ -42,6 +46,11 @@ const CONFIRMED_TX_TTL_SECONDS = 60 * 60 * 24 * 30;
 // concurrentes del cron no manden el correo dos veces antes de que
 // cualquiera termine de marcar reviewEmailSentAt.
 const REVIEW_EMAIL_CLAIM_TTL_SECONDS = 60 * 60 * 6;
+
+// Mismo rol que REVIEW_EMAIL_CLAIM_TTL_SECONDS pero para el cron de
+// recuperación de carrito, que corre con más frecuencia (cada hora, no
+// una vez al día) — igual sobra con cubrir una sola corrida.
+const CART_RECOVERY_EMAIL_CLAIM_TTL_SECONDS = 60 * 30;
 
 // SET ... NX: solo UNA llamada concurrente puede "reclamar" un
 // transactionId — devuelve true si esta llamada fue la primera (debe
@@ -126,5 +135,42 @@ export async function releaseReviewEmailClaim(reference) {
     await client.del(reviewEmailClaimKey(reference));
   } catch (err) {
     console.error("[idempotency] No se pudo liberar el reclamo de correo de reseña:", err);
+  }
+}
+
+// Mismo patrón SET NX que claimReviewEmail, pero para el cron de
+// recuperación de carrito (app/api/cron/send-cart-recovery-emails).
+export async function claimCartRecoveryEmail(reference) {
+  const client = getRedisClient();
+  if (!client) {
+    console.error("[idempotency] REDIS_URL no está configurado; no se puede garantizar idempotencia.");
+    return true;
+  }
+
+  try {
+    const result = await client.set(
+      cartRecoveryEmailClaimKey(reference),
+      "1",
+      "EX",
+      CART_RECOVERY_EMAIL_CLAIM_TTL_SECONDS,
+      "NX"
+    );
+    return result === "OK";
+  } catch (err) {
+    console.error("[idempotency] No se pudo reclamar el envío de correo de recuperación de carrito:", err);
+    return true;
+  }
+}
+
+// Libera el reclamo si el envío falló — así la próxima corrida (una
+// hora después) puede reintentar ese pedido.
+export async function releaseCartRecoveryEmailClaim(reference) {
+  const client = getRedisClient();
+  if (!client) return;
+
+  try {
+    await client.del(cartRecoveryEmailClaimKey(reference));
+  } catch (err) {
+    console.error("[idempotency] No se pudo liberar el reclamo de correo de recuperación de carrito:", err);
   }
 }
