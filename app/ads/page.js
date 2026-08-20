@@ -18,9 +18,9 @@ export const viewport = {
 };
 
 const EJEMPLOS = [
-  { src: "/images/page-ads/mystery-mockup-1786943551418.png", alt: "Cuadro personalizado: astronauta con foto propia" },
-  { src: "/images/page-ads/mystery-mockup-1787188764534.png", alt: "Cuadro personalizado con foto propia, estilo poster" },
-  { src: "/images/page-ads/mystery-mockup-1787188645407.png", alt: "Cuadro personalizado con foto propia, estilo collage" },
+  { src: "/images/page-ads/PARED1.png", alt: "Cuadro Mystery entregado, colgado en la pared de un cliente" },
+  { src: "/images/page-ads/PARED2.png", alt: "Cuadro Mystery entregado, colgado sobre la cama de un cliente" },
+  { src: "/images/page-ads/PARED3.png", alt: "Cuadro Mystery entregado, colgado en la pared de un cliente" },
 ];
 
 const PASOS = ["Sube tu foto", "Elige el tamaño", "Recíbelo en casa"];
@@ -43,14 +43,26 @@ export default function AdsLanding() {
               Vinilo sobre madera. Impreso y enviado a tu casa.
             </p>
             <div className="relative mt-2 aspect-[4/5] w-full max-w-xs overflow-hidden rounded-2xl border border-white/10 shadow-lg shadow-accent/20">
-              <Image
-                src="/images/page-ads/mystery-mockup-1786943551418.png"
-                alt="Cuadro personalizado Mystery ya entregado, foto propia impresa en vinilo sobre madera"
-                fill
-                priority
-                sizes="(min-width: 640px) 384px, 90vw"
-                className="object-cover"
-              />
+              {/* Video en vez de GIF: el archivo original pesaba 95MB (GIF
+                  no comprime bien con tantos cuadros); convertido a MP4
+                  (h264) queda en ~0.9MB con la misma animación. autoPlay +
+                  muted + loop + playsInline es la combinación que arranca
+                  sola y en bucle continuo sin gesto del usuario tanto en
+                  Safari iOS como en Chrome Android — sin esos tres atributos
+                  juntos, iOS bloquea el autoplay. poster evita el flash en
+                  blanco mientras carga el video. */}
+              <video
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                poster="/images/page-ads/hero-poster.jpg"
+                className="h-full w-full object-cover"
+                aria-label="Cuadro personalizado Mystery, animación de muestra"
+              >
+                <source src="/images/page-ads/hero-loop.mp4" type="video/mp4" />
+              </video>
             </div>
           </div>
         </section>
