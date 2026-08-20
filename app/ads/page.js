@@ -167,9 +167,6 @@ export default async function AdsLanding() {
             <p className="text-xs text-zinc-500">
               Tienes garantía ante daños de fábrica o de transporte. Tu cuadro
               está asegurado. Escríbenos a:{" "}
-              {/* pedidos@mysterycuadros.com: buzón nuevo en Zoho, todavía por
-                  crear/confirmar del lado del dueño — si no existe aún al
-                  publicar, los correos a esta dirección rebotarán. */}
               <a href="mailto:pedidos@mysterycuadros.com" className="underline underline-offset-2">
                 pedidos@mysterycuadros.com
               </a>
