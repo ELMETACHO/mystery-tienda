@@ -21,6 +21,27 @@ function todayISODate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// El input de "Monto en COP" es texto, no type="number": un <input
+// type="number"> interpreta el "." como separador DECIMAL (formato
+// inglés) — escribir "10.000" ahí se leía como el número 10, no como
+// diez mil pesos. Estos dos helpers son locales a este archivo nada
+// más (no tocar formatCOP() de app/lib/order.js, que ya funciona bien
+// en el resto del sitio): quitan todo lo que no sea dígito y vuelven a
+// insertar los puntos de miles mientras se escribe, sin decimales (los
+// pesos colombianos no se manejan con centavos en la práctica).
+function digitsOnly(value) {
+  return value.replace(/\D/g, "");
+}
+
+function formatThousands(digits) {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+function parseExpenseAmount(formattedValue) {
+  const digits = digitsOnly(formattedValue);
+  return digits ? Number(digits) : 0;
+}
+
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("es-CO", {
     day: "numeric",
@@ -77,9 +98,11 @@ export default function ReporteApp() {
     loadReport(period);
   }, [period, loadReport]);
 
+  const expenseAmountValue = parseExpenseAmount(amount);
+
   const handleAddExpense = async (e) => {
     e.preventDefault();
-    if (!amount || Number(amount) <= 0 || !date) return;
+    if (!expenseAmountValue || expenseAmountValue <= 0 || !date) return;
 
     setIsSubmittingExpense(true);
     setExpenseError("");
@@ -87,7 +110,7 @@ export default function ReporteApp() {
       const res = await fetch("/api/admin-add-expense", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, amount: Number(amount), date, description }),
+        body: JSON.stringify({ category, amount: expenseAmountValue, date, description }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "No se pudo guardar el gasto");
@@ -202,12 +225,11 @@ export default function ReporteApp() {
                 />
               </div>
               <input
-                type="number"
-                min="1"
-                step="1"
-                placeholder="Monto en COP"
+                type="text"
+                inputMode="numeric"
+                placeholder="Monto en COP (ej: 10.000)"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => setAmount(formatThousands(digitsOnly(e.target.value)))}
                 className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/30"
               />
               <input
@@ -220,7 +242,7 @@ export default function ReporteApp() {
               {expenseError && <p className="text-xs text-red-400">{expenseError}</p>}
               <button
                 type="submit"
-                disabled={isSubmittingExpense || !amount || Number(amount) <= 0}
+                disabled={isSubmittingExpense || !expenseAmountValue || expenseAmountValue <= 0}
                 className="self-start rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {isSubmittingExpense ? "Guardando..." : "Agregar gasto"}
