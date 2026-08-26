@@ -2,14 +2,12 @@ import { cancelShipment, findShipmentIdByTrackingNumber } from "../../lib/skydro
 import { getManualShipmentRequest } from "../../lib/manualShipments";
 import { getManufacturerOrder, markManufacturerOrderCancelled } from "../../lib/manufacturerFinance";
 import { sendGuideCancelledEmail, cancelScheduledEmail, sendGuideCorrectionEmail } from "../../lib/email";
-
-function isAuthenticated(code) {
-  const expected = process.env.FABRICANTE_ACCESS_CODE;
-  return Boolean(expected) && code === expected;
-}
+import { getFabricanteByAccessCode } from "../../lib/fabricantes";
 
 // Botón "Cancelar guía" de /fabricante. Mismo código de acceso que
 // /api/fabricante-status (sin ADMIN_PASSWORD) — ver app/fabricante/page.js.
+// El código identifica a qué fabricante pertenece el pedido: nunca se
+// confía en un fabricanteId suelto del cliente, siempre se revalida acá.
 //
 // Resuelve el shipmentId de Skydropx en dos pasos: primero el que ya
 // guardamos junto al pedido (ver recordManufacturerOrder, solo presente
@@ -21,7 +19,8 @@ function isAuthenticated(code) {
 export async function POST(request) {
   const { code, reference, reason } = await request.json().catch(() => ({}));
 
-  if (!isAuthenticated(code)) {
+  const fabricante = getFabricanteByAccessCode(code);
+  if (!fabricante) {
     return Response.json({ error: "Código incorrecto" }, { status: 401 });
   }
   if (!reference) {
@@ -31,7 +30,7 @@ export async function POST(request) {
     return Response.json({ error: "El motivo es obligatorio" }, { status: 400 });
   }
 
-  const order = await getManufacturerOrder(reference);
+  const order = await getManufacturerOrder(fabricante.id, reference);
   if (!order) {
     return Response.json({ error: "No se encontró ese pedido" }, { status: 404 });
   }
@@ -70,7 +69,11 @@ export async function POST(request) {
     );
   }
 
-  const updated = await markManufacturerOrderCancelled({ reference, reason: reason.trim() });
+  const updated = await markManufacturerOrderCancelled({
+    fabricanteId: fabricante.id,
+    reference,
+    reason: reason.trim(),
+  });
   if (!updated) {
     console.error(
       `[fabricante-cancel-shipment] La guía se canceló en Skydropx pero no se pudo actualizar Redis para reference=${reference}`

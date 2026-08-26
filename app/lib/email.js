@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { formatCOP } from "./order";
 import { generateManualShipmentToken } from "./manualShipmentToken";
+import { getFabricanteForFrameType } from "./fabricantes";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -33,9 +34,15 @@ console.log(
   `[DEBUG SITE_URL] process.env.SITE_URL=${JSON.stringify(process.env.SITE_URL)} | process.env.NODE_ENV=${JSON.stringify(process.env.NODE_ENV)} | valor final=${JSON.stringify(SITE_URL)}`
 );
 const ADMIN_EMAIL = "contacto@elmetacho.com";
-const ADMIN_RECIPIENTS = [ADMIN_EMAIL, process.env.MANUFACTURER_EMAIL].filter(
-  Boolean
-);
+
+// El correo de "nuevo pedido" ya NO va a un solo MANUFACTURER_EMAIL fijo:
+// desde Premium/Tradicional (agosto 2026) va SOLO al fabricante que
+// corresponde a order.frameType (ver getFabricanteForFrameType) — nunca a
+// ambos, nunca al equivocado.
+function adminRecipientsForFrameType(frameType) {
+  const fabricante = getFabricanteForFrameType(frameType);
+  return [ADMIN_EMAIL, fabricante?.email].filter(Boolean);
+}
 
 // Sin cuenta de Instagram real configurada todavía — mismo placeholder que
 // se usa en el resto del sitio (Home, /checkout/confirmacion).
@@ -294,6 +301,26 @@ function adminEmailHtml({
       </table>
     `;
 
+  // Aviso de tipo de cuadro: Tradicional NUNCA lleva marco trasero (avisar
+  // explícito para que el fabricante no lo agregue por costumbre), Premium
+  // SIEMPRE lo lleva (recordatorio de verificación antes de despachar).
+  const isPremium = order.frameType !== "tradicional";
+  const frameTypeBanner = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${isPremium ? BRAND.lilac : BRAND.warningBg};border-radius:6px;">
+      <tr>
+        <td style="padding:10px 14px;">
+          <p style="margin:0;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${isPremium ? BRAND.text : BRAND.warning};">
+            ${
+              isPremium
+                ? "🖼️ Premium — este pedido SIEMPRE lleva marco trasero de 3cm. Confirmar antes de despachar."
+                : "⚠️ Tradicional — este diseño NO lleva marco trasero."
+            }
+          </p>
+        </td>
+      </tr>
+    </table>
+  `;
+
   // La guía de Skydropx YA NO se genera automáticamente al pagar (ver
   // CLAUDE.md) — el fabricante la dispara cuando el cuadro esté listo,
   // desde el botón de este correo. Aplica a AMBOS métodos de pago (antes
@@ -385,6 +412,12 @@ function adminEmailHtml({
           </td>
         </tr>
 
+        <tr>
+          <td style="padding:0 20px 16px 20px;">
+            ${frameTypeBanner}
+          </td>
+        </tr>
+
         ${trackingRow}
 
         <!-- Nota de la imagen adjunta, justo después del bloque prioritario. -->
@@ -409,7 +442,7 @@ function adminEmailHtml({
             <p style="margin:0 0 12px 0;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:bold;color:${BRAND.ink};word-break:break-all;">${transaction.reference}</p>
 
             <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Tamaño</p>
-            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">${order.sizeLabel}</p>
+            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">${order.sizeLabel} · ${isPremium ? "Premium" : "Tradicional"}</p>
 
             <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Precio</p>
             <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">${formatCOP(order.priceCOP)}</p>
@@ -480,15 +513,18 @@ export async function sendOrderEmails({
     transaction.reference
   )}&token=${encodeURIComponent(generateManualShipmentToken(transaction.reference))}`;
 
-  // Link a /fabricante con el código de acceso ya incluido (mismo criterio
-  // que manualShipmentUrl arriba): el correo llega SOLO al fabricante
-  // (ADMIN_RECIPIENTS), así que es el mismo límite de confianza que ya
-  // asumimos para el botón de generar guía — pedirle que escriba el código
-  // a mano cada vez que quiere ver su saldo es fricción sin beneficio real
-  // de seguridad. Si FABRICANTE_ACCESS_CODE no está configurado, el link
-  // igual funciona, solo que le pide el código manualmente.
-  const fabricanteUrl = process.env.FABRICANTE_ACCESS_CODE
-    ? `${SITE_URL}/fabricante?code=${encodeURIComponent(process.env.FABRICANTE_ACCESS_CODE)}`
+  // Link a /fabricante con el código de acceso del fabricante correspondiente
+  // a este pedido (order.frameType) ya incluido (mismo criterio que
+  // manualShipmentUrl arriba): el correo llega SOLO a ese fabricante (ver
+  // adminRecipientsForFrameType), así que es el mismo límite de confianza
+  // que ya asumimos para el botón de generar guía — pedirle que escriba el
+  // código a mano cada vez que quiere ver su saldo es fricción sin
+  // beneficio real de seguridad. Si el fabricante no tiene accessCode
+  // configurado, el link igual funciona, solo que le pide el código
+  // manualmente.
+  const fabricanteForOrder = getFabricanteForFrameType(order.frameType);
+  const fabricanteUrl = fabricanteForOrder?.accessCode
+    ? `${SITE_URL}/fabricante?code=${encodeURIComponent(fabricanteForOrder.accessCode)}`
     : `${SITE_URL}/fabricante`;
 
   const attachments = [];
@@ -501,7 +537,7 @@ export async function sendOrderEmails({
 
   await resend.emails.send({
     from: FROM_EMAIL,
-    to: ADMIN_RECIPIENTS,
+    to: adminRecipientsForFrameType(order.frameType),
     subject: `Nuevo pedido Mystery - ${customer.fullName}`,
     html: adminEmailHtml({
       order,
@@ -543,9 +579,9 @@ export async function sendOrderEmails({
 // ---------------------------------------------------------------------
 // Correo de aviso al admin — el fabricante canceló una guía desde su
 // panel (ver app/api/fabricante-cancel-shipment/route.js). Va SOLO a
-// ADMIN_EMAIL (no a ADMIN_RECIPIENTS, que incluye al propio fabricante) —
-// es un aviso PARA el admin SOBRE algo que hizo el fabricante, mandárselo
-// también a él sería redundante.
+// ADMIN_EMAIL (no al fabricante que corresponde al pedido) — es un aviso
+// PARA el admin SOBRE algo que hizo el fabricante, mandárselo también a
+// él sería redundante.
 // ---------------------------------------------------------------------
 
 function guideCancelledEmailHtml({ order, customer, reference, reason, trackingNumber, carrierName }) {
@@ -615,7 +651,13 @@ export async function sendGuideCancelledEmail({ order, customer, reference, reas
 
 const OWNER_PAYMENT_REQUEST_EMAIL = "bigmysteryof@gmail.com";
 
-function paymentRequestEmailHtml({ amount }) {
+const FABRICANTE_DISPLAY_NAME = {
+  daniela: "Daniela (Premium)",
+  oscar: "Oscar (Tradicional)",
+};
+
+function paymentRequestEmailHtml({ amount, fabricanteId }) {
+  const fabricanteLabel = FABRICANTE_DISPLAY_NAME[fabricanteId] || "Fabricante";
   return `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgOuter};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
@@ -628,7 +670,7 @@ function paymentRequestEmailHtml({ amount }) {
         </tr>
         <tr>
           <td style="padding:28px;">
-            <p style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:16px;line-height:23px;color:${BRAND.ink};">Fabricante solicitó pago: <strong style="color:${BRAND.text};">${formatCOP(amount)}</strong></p>
+            <p style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:16px;line-height:23px;color:${BRAND.ink};">${fabricanteLabel} solicitó pago: <strong style="color:${BRAND.text};">${formatCOP(amount)}</strong></p>
             <p style="margin:0 0 24px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.muted};">Confírmalo desde el panel de administración cuando le hayas transferido.</p>
             <p style="margin:0;text-align:center;">
               <a href="${SITE_URL}/admin" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:15px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Ir a /admin</a>
@@ -642,12 +684,16 @@ function paymentRequestEmailHtml({ amount }) {
   `;
 }
 
-export async function sendFabricantePaymentRequestEmail({ amount }) {
+// El fabricanteId solo identifica DE QUIÉN es el saldo (para mostrarlo en
+// el cuerpo del correo) — el DESTINATARIO siempre es OWNER_PAYMENT_REQUEST_EMAIL,
+// nunca depende de qué fabricante lo solicitó (ver comentario arriba y
+// app/api/fabricante-request-payment/route.js).
+export async function sendFabricantePaymentRequestEmail({ amount, fabricanteId }) {
   await resend.emails.send({
     from: FROM_EMAIL,
     to: OWNER_PAYMENT_REQUEST_EMAIL,
     subject: "PAGO A FABRICANTE - MYSTERY CUADROS",
-    html: paymentRequestEmailHtml({ amount }),
+    html: paymentRequestEmailHtml({ amount, fabricanteId }),
   });
 }
 

@@ -1,12 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import { SIZES, formatCOP } from "../lib/order";
+import { SIZES, getPriceCOP, formatCOP } from "../lib/order";
 import { ESTUDIO_CATEGORIES } from "../lib/estudioCategories";
 
-// Precio de referencia para las tarjetas: el tamaño más barato de SIZES
-// (hoy 30x40) — cada producto ya no vende un tamaño ni un precio fijo,
-// el comprador elige el tamaño en /producto/[id].
-const CHEAPEST_SIZE_PRICE_COP = SIZES[0].priceCOP;
+// Precio de referencia para las tarjetas: el tamaño+tipo más barato (hoy
+// 30x40 Tradicional) — cada producto ya no vende un tamaño ni un precio
+// fijo, el comprador elige el tamaño y el tipo de cuadro en /producto/[id].
+const CHEAPEST_SIZE_PRICE_COP = getPriceCOP(SIZES[0].id, "tradicional");
 
 export function categoryLabel(categoryId) {
   return ESTUDIO_CATEGORIES.find((c) => c.id === categoryId)?.label || "Diseño";

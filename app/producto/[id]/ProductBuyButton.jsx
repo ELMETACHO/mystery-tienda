@@ -11,7 +11,7 @@ import { saveOrder } from "../../lib/order";
 // fijo por producto: lo elige el comprador (ver ProductSizeSelector),
 // así que sizeId/sizeLabel/priceCOP llegan como props en vez de leerse
 // de product.size/product.priceCOP.
-export default function ProductBuyButton({ product, sizeId, sizeLabel, priceCOP }) {
+export default function ProductBuyButton({ product, sizeId, sizeLabel, frameType, priceCOP }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -21,6 +21,7 @@ export default function ProductBuyButton({ product, sizeId, sizeLabel, priceCOP 
       await saveOrder({
         sizeId,
         sizeLabel,
+        frameType,
         priceCOP,
         // El mockup público de Drive es lo único con URL accesible sin
         // autenticación desde el navegador — se usa para la vista del

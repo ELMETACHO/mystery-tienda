@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import { DEFAULT_FRAME_TYPE } from "./order";
 
 // Datos completos de order/customer guardados por `reference`, para que el
 // fabricante pueda generar la guía de Skydropx días después de la compra
@@ -75,6 +76,7 @@ export async function saveManualShipmentRequest({
     const minimalOrder = {
       sizeId: order.sizeId,
       sizeLabel: order.sizeLabel,
+      frameType: order.frameType || DEFAULT_FRAME_TYPE,
       priceCOP: order.priceCOP,
       productId: order.productId || null,
       thumbnailUrl: order.productId ? order.croppedImage || null : null,

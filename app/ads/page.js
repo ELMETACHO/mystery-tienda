@@ -99,7 +99,7 @@ export default async function AdsLanding() {
             Cuadro decorativo de excelente calidad en madera y vinilo laminado.
           </h1>
           <p className="mt-2 text-xl font-bold text-accent-soft sm:text-2xl">
-            Desde $65.000 COP
+            Desde $55.000 COP
           </p>
         </section>
 
