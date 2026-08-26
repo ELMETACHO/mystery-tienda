@@ -1,7 +1,19 @@
 import Redis from "ioredis";
 import { COD_DEPOSIT_COP } from "./order";
 import { getCompletedOrders } from "./completedOrders";
-import { getManufacturerPayouts, getAllManufacturerOrders } from "./manufacturerFinance";
+import {
+  FABRICANTE_IDS,
+  getManufacturerPayouts,
+  getAllManufacturerOrdersCombined,
+} from "./manufacturerFinance";
+
+// Historial de pagos combinado de TODOS los fabricantes — Premium y
+// Tradicional se suman al mismo "costo de fabricación" del reporte
+// general (Tradicional siempre aporta $0, ver getFabricanteCommissionCOP).
+async function getAllManufacturerPayoutsCombined() {
+  const results = await Promise.all(FABRICANTE_IDS.map((id) => getManufacturerPayouts(id)));
+  return results.flat();
+}
 import { getAllReferrals } from "./referrals";
 
 // Reporte financiero de /admin/reporte — combina datos que YA existían
@@ -135,10 +147,10 @@ export async function computeFinanceReport(period) {
   const [completedOrders, payouts, referrals, allExpenses, manufacturerOrders] =
     await Promise.all([
       getCompletedOrders(),
-      getManufacturerPayouts(),
+      getAllManufacturerPayoutsCombined(),
       getAllReferrals(),
       getExpenses(),
-      getAllManufacturerOrders(),
+      getAllManufacturerOrdersCombined(),
     ]);
 
   // Solo pedidos con priceCOP guardado (agregado agosto 2026 — pedidos

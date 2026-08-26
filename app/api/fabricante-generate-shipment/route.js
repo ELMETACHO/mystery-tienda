@@ -6,11 +6,7 @@ import {
 } from "../../lib/manualShipments";
 import { getManufacturerOrder, markManufacturerOrderRegenerated } from "../../lib/manufacturerFinance";
 import { sendShippingNotificationEmail } from "../../lib/email";
-
-function isAuthenticated(code) {
-  const expected = process.env.FABRICANTE_ACCESS_CODE;
-  return Boolean(expected) && code === expected;
-}
+import { getFabricanteByAccessCode } from "../../lib/fabricantes";
 
 // Botón "Generar guía nueva" de /fabricante — SOLO para pedidos que están
 // en estado "cancelado" (ver markManufacturerOrderCancelled). Reutiliza
@@ -21,14 +17,15 @@ function isAuthenticated(code) {
 export async function POST(request) {
   const { code, reference } = await request.json().catch(() => ({}));
 
-  if (!isAuthenticated(code)) {
+  const fabricante = getFabricanteByAccessCode(code);
+  if (!fabricante) {
     return Response.json({ error: "Código incorrecto" }, { status: 401 });
   }
   if (!reference) {
     return Response.json({ error: "Falta la referencia del pedido" }, { status: 400 });
   }
 
-  const order = await getManufacturerOrder(reference);
+  const order = await getManufacturerOrder(fabricante.id, reference);
   if (!order) {
     return Response.json({ error: "No se encontró ese pedido" }, { status: 404 });
   }
@@ -79,6 +76,7 @@ export async function POST(request) {
   });
 
   const updated = await markManufacturerOrderRegenerated({
+    fabricanteId: fabricante.id,
     reference,
     guideUrl: shipment.labelUrl,
     shipmentId: shipment.shipmentId,

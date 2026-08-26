@@ -354,6 +354,7 @@ function CheckoutForm() {
           reference,
           currency,
           sizeId: fullOrder.sizeId,
+          frameType: fullOrder.frameType,
           discountCode: fullOrder.discountCode,
           referralCode: fullOrder.referralCode,
           customerEmail: customer.email,

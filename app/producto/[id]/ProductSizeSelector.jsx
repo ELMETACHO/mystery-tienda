@@ -1,21 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { SIZES, formatCOP } from "../../lib/order";
+import { SIZES, DEFAULT_FRAME_TYPE, getPriceCOP, formatCOP } from "../../lib/order";
 import ProductBuyButton from "./ProductBuyButton";
 import FreeShippingBanner from "../../components/FreeShippingBanner";
+import FrameTypeSelector from "../../components/FrameTypeSelector";
 
 // Mismo patrón de selección que /crear (app/crear/page.js): tarjetas por
 // tamaño, precio que se actualiza según SIZES, no un valor fijo del
 // producto — ahora el catálogo vende los 3 tamaños, elegidos acá.
 export default function ProductSizeSelector({ product }) {
   const [sizeId, setSizeId] = useState("40x50");
+  const [frameType, setFrameType] = useState(DEFAULT_FRAME_TYPE);
   const size = SIZES.find((s) => s.id === sizeId);
+  const priceCOP = getPriceCOP(sizeId, frameType);
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-3xl font-bold text-accent-soft">{formatCOP(size.priceCOP)}</p>
+      <p className="text-3xl font-bold text-accent-soft">{formatCOP(priceCOP)}</p>
       <FreeShippingBanner />
+
+      <FrameTypeSelector frameType={frameType} onChange={setFrameType} />
 
       <div className="flex flex-col gap-2">
         {SIZES.map((s) => {
@@ -40,14 +45,20 @@ export default function ProductSizeSelector({ product }) {
                 )}
               </span>
               <span className={`text-sm font-bold ${isSelected ? "text-accent-soft" : "text-zinc-400"}`}>
-                {formatCOP(s.priceCOP)}
+                {formatCOP(getPriceCOP(s.id, frameType))}
               </span>
             </button>
           );
         })}
       </div>
 
-      <ProductBuyButton product={product} sizeId={size.id} sizeLabel={size.label} priceCOP={size.priceCOP} />
+      <ProductBuyButton
+        product={product}
+        sizeId={size.id}
+        sizeLabel={size.label}
+        frameType={frameType}
+        priceCOP={priceCOP}
+      />
     </div>
   );
 }

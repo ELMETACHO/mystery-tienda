@@ -1,20 +1,26 @@
 import Redis from "ioredis";
-import { SIZES } from "./order";
+import { SIZES, FRAME_TYPES, getFabricanteCommissionCOP } from "./order";
 import { getOrderCount } from "./loyalty";
 
-// Fuente de verdad única del saldo pendiente al fabricante y del CRM:
+// Fuente de verdad única del saldo pendiente a cada fabricante y del CRM:
 // Redis (ya no se espeja nada en Google Sheets).
 //
-// fabricante:balance -> string numérico, saldo total pendiente en COP.
-// fabricante:orders  -> hash, field=reference, value=JSON del pedido
+// Claves indexadas por fabricanteId ("daniela" | "oscar", ver FRAME_TYPES en
+// app/lib/order.js) desde agosto 2026 (Premium/Tradicional, dos
+// fabricantes independientes) — antes de este cambio existía una única
+// clave global; no había datos reales que migrar (todo era pruebas), así
+// que se cortó limpio y ambos paneles arrancan en $0.
+//
+// fabricante:<id>:balance -> string numérico, saldo total pendiente en COP.
+// fabricante:<id>:orders  -> hash, field=reference, value=JSON del pedido
 // (cliente, ciudad, tamaño, monto, fecha, guideUrl, paid).
-// fabricante:payouts -> lista, cada elemento {amount, date} — historial
+// fabricante:<id>:payouts -> lista, cada elemento {amount, date} — historial
 // completo de pagos ya hechos (ver markManufacturerBalancePaid), más
 // antiguo primero.
 // crm:entries -> lista, cada elemento es el JSON de una entrada CRM
 // (nombre, teléfono, dirección, correo, tamaño, método de pago,
 // cupón/referido, fecha, total histórico de compras), más reciente al
-// final (se lee con lrange + reverse).
+// final (se lee con lrange + reverse) — global, no depende del fabricante.
 
 let redisClient;
 
@@ -34,26 +40,32 @@ function getRedisClient() {
   return redisClient;
 }
 
-const BALANCE_KEY = "fabricante:balance";
-const ORDERS_KEY = "fabricante:orders";
-// Lista con TODO el historial de pagos al fabricante (mismo patrón que
-// "payouts" en app/lib/referrals.js) — reemplaza al viejo
-// fabricante:last-payment (una sola entrada que se sobrescribía cada
-// vez). Necesario para el reporte financiero de /admin/reporte, que
-// necesita sumar pagos reales dentro de un rango de fechas, no solo
-// saber el último.
-const PAYOUTS_KEY = "fabricante:payouts";
+export const FABRICANTE_IDS = Object.values(FRAME_TYPES).map((t) => t.fabricanteId);
+
+function assertFabricanteId(fabricanteId) {
+  if (!FABRICANTE_IDS.includes(fabricanteId)) {
+    throw new Error(`fabricanteId desconocido: ${fabricanteId}`);
+  }
+}
+
+function balanceKey(fabricanteId) {
+  return `fabricante:${fabricanteId}:balance`;
+}
+function ordersKey(fabricanteId) {
+  return `fabricante:${fabricanteId}:orders`;
+}
+function payoutsKey(fabricanteId) {
+  return `fabricante:${fabricanteId}:payouts`;
+}
 const CRM_KEY = "crm:entries";
 
 function sizeLabel(sizeId) {
   return SIZES.find((s) => s.id === sizeId)?.label || sizeId;
 }
 
-function fabricanteCost(sizeId) {
-  return SIZES.find((s) => s.id === sizeId)?.fabricanteCostCOP || 0;
-}
-
-// Registra el pedido en fabricante:orders + suma el costo al balance.
+// Registra el pedido en fabricante:<id>:orders + suma la comisión al
+// balance de ese fabricante. El fabricanteId se resuelve a partir de
+// order.frameType (ver getFabricanteForFrameType en app/lib/fabricantes.js).
 //
 // Se llama SOLO desde app/api/generate-shipment/route.js, DESPUÉS de
 // que Skydropx confirmó un trackingNumber real — nunca desde la
@@ -64,6 +76,7 @@ function fabricanteCost(sizeId) {
 // Nunca lanza — un fallo acá no debe tumbar la respuesta de éxito de la
 // guía ya generada en Skydropx.
 export async function recordManufacturerOrder({
+  fabricanteId,
   reference,
   order,
   customer,
@@ -80,8 +93,16 @@ export async function recordManufacturerOrder({
     );
     return;
   }
+  try {
+    assertFabricanteId(fabricanteId);
+  } catch (err) {
+    console.error("[manufacturerFinance]", err.message);
+    return;
+  }
 
-  const monto = fabricanteCost(order.sizeId);
+  // La comisión es fija por tipo de cuadro (Premium=$15.000, Tradicional=$0),
+  // no por tamaño — ver getFabricanteCommissionCOP en app/lib/order.js.
+  const monto = getFabricanteCommissionCOP(order.frameType);
   const fecha = new Date().toISOString();
 
   const record = {
@@ -89,6 +110,7 @@ export async function recordManufacturerOrder({
     cliente: customer.fullName,
     ciudad: customer.city,
     sizeId: order.sizeId,
+    frameType: order.frameType,
     monto,
     fecha,
     guideUrl: guideUrl || null,
@@ -115,12 +137,14 @@ export async function recordManufacturerOrder({
     status: "activo",
     cancelReason: null,
     cancelledAt: null,
-    paid: false,
+    paid: monto === 0, // comisión $0 (Tradicional) nunca queda "pendiente de pago"
   };
 
   try {
-    await client.incrby(BALANCE_KEY, monto);
-    await client.hset(ORDERS_KEY, reference, JSON.stringify(record));
+    if (monto > 0) {
+      await client.incrby(balanceKey(fabricanteId), monto);
+    }
+    await client.hset(ordersKey(fabricanteId), reference, JSON.stringify(record));
   } catch (err) {
     console.error(
       "[manufacturerFinance] No se pudo registrar el pedido del fabricante en Redis:",
@@ -129,17 +153,18 @@ export async function recordManufacturerOrder({
   }
 }
 
-// Lee un solo pedido de fabricante:orders por reference — usado por los
+// Lee un solo pedido de fabricante:<id>:orders por reference — usado por los
 // botones "Cancelar guía"/"Generar guía nueva" del panel del fabricante
 // (ver app/api/fabricante-cancel-shipment y
 // app/api/fabricante-generate-shipment) para validar el estado actual
 // antes de actuar.
-export async function getManufacturerOrder(reference) {
+export async function getManufacturerOrder(fabricanteId, reference) {
   const client = getRedisClient();
   if (!client || !reference) return null;
 
   try {
-    const raw = await client.hget(ORDERS_KEY, reference);
+    assertFabricanteId(fabricanteId);
+    const raw = await client.hget(ordersKey(fabricanteId), reference);
     return raw ? JSON.parse(raw) : null;
   } catch (err) {
     console.error("[manufacturerFinance] No se pudo leer el pedido del fabricante:", err);
@@ -149,17 +174,18 @@ export async function getManufacturerOrder(reference) {
 
 // Botón "Cancelar guía" del panel del fabricante: marca el pedido como
 // "cancelado" (NUNCA lo borra — se conserva el historial completo, motivo
-// incluido) y resta su monto de fabricante:balance, ya que sin guía real
+// incluido) y resta su monto de fabricante:<id>:balance, ya que sin guía real
 // no hay evidencia de que el cuadro se vaya a entregar. Solo resta si el
 // pedido seguía sin pagar (si el admin ya lo había marcado paid, ya salió
 // del balance pendiente antes, y no hay que tocarlo de nuevo). Devuelve
 // el registro actualizado, o null si no existía o Redis falla.
-export async function markManufacturerOrderCancelled({ reference, reason }) {
+export async function markManufacturerOrderCancelled({ fabricanteId, reference, reason }) {
   const client = getRedisClient();
   if (!client || !reference) return null;
 
   try {
-    const raw = await client.hget(ORDERS_KEY, reference);
+    assertFabricanteId(fabricanteId);
+    const raw = await client.hget(ordersKey(fabricanteId), reference);
     if (!raw) return null;
 
     const record = JSON.parse(raw);
@@ -175,9 +201,9 @@ export async function markManufacturerOrderCancelled({ reference, reason }) {
       // por status !== "cancelado" como red de seguridad extra).
       shippingCostCOP: null,
     };
-    await client.hset(ORDERS_KEY, reference, JSON.stringify(updated));
+    await client.hset(ordersKey(fabricanteId), reference, JSON.stringify(updated));
     if (!record.paid) {
-      await client.decrby(BALANCE_KEY, record.monto);
+      await client.decrby(balanceKey(fabricanteId), record.monto);
     }
     return updated;
   } catch (err) {
@@ -188,11 +214,12 @@ export async function markManufacturerOrderCancelled({ reference, reason }) {
 
 // Botón "Generar guía nueva" (solo visible para pedidos "cancelado"):
 // actualiza el registro con los datos de la guía REAL nueva y vuelve a
-// sumar el monto a fabricante:balance — ahora sí hay una guía real de
+// sumar el monto a fabricante:<id>:balance — ahora sí hay una guía real de
 // nuevo, así que vuelve a ser una deuda real (mismo criterio que
 // recordManufacturerOrder). Solo suma si el pedido sigue sin pagar (ver
 // markManufacturerOrderCancelled).
 export async function markManufacturerOrderRegenerated({
+  fabricanteId,
   reference,
   guideUrl,
   shipmentId,
@@ -204,7 +231,8 @@ export async function markManufacturerOrderRegenerated({
   if (!client || !reference) return null;
 
   try {
-    const raw = await client.hget(ORDERS_KEY, reference);
+    assertFabricanteId(fabricanteId);
+    const raw = await client.hget(ordersKey(fabricanteId), reference);
     if (!raw) return null;
 
     const record = JSON.parse(raw);
@@ -219,9 +247,9 @@ export async function markManufacturerOrderRegenerated({
       cancelledAt: null,
       shippingCostCOP: shippingCostCOP ?? null,
     };
-    await client.hset(ORDERS_KEY, reference, JSON.stringify(updated));
+    await client.hset(ordersKey(fabricanteId), reference, JSON.stringify(updated));
     if (!record.paid) {
-      await client.incrby(BALANCE_KEY, record.monto);
+      await client.incrby(balanceKey(fabricanteId), record.monto);
     }
     return updated;
   } catch (err) {
@@ -244,7 +272,8 @@ function normalizeEmailForMatch(value) {
 
 // Agrega o actualiza una entrada del CRM (crm:entries) — datos de
 // contacto/compra del cliente, independientes del saldo del fabricante
-// (no toca fabricante:balance/fabricante:orders). Nunca lanza.
+// (no toca fabricante:<id>:balance/fabricante:<id>:orders, y no depende
+// de frameType: es global a la tienda). Nunca lanza.
 //
 // UNA fila por cliente, no una por pedido: antes de insertar se busca si
 // ya existe una entrada con el MISMO teléfono O el MISMO correo (ver
@@ -279,6 +308,7 @@ export async function recordCrmEntry({ order, customer, paymentMethod }) {
     direccion,
     correo,
     sizeId: order.sizeId,
+    frameType: order.frameType,
     metodoPago,
     cuponOReferido,
     fecha,
@@ -308,17 +338,18 @@ export async function recordCrmEntry({ order, customer, paymentMethod }) {
   }
 }
 
-// TODOS los pedidos del fabricante (pagados o no, activos o cancelados)
+// TODOS los pedidos de UN fabricante (pagados o no, activos o cancelados)
 // — a diferencia de getManufacturerPendingOrders (que solo trae los sin
 // pagar), esto lo usa el reporte financiero de /admin/reporte para sumar
 // shippingCostCOP por rango de fechas sin importar si ya se le pagó al
 // fabricante o no (son cosas independientes). Nunca lanza.
-export async function getAllManufacturerOrders() {
+export async function getAllManufacturerOrders(fabricanteId) {
   const client = getRedisClient();
   if (!client) return [];
 
   try {
-    const ordersRaw = await client.hgetall(ORDERS_KEY);
+    assertFabricanteId(fabricanteId);
+    const ordersRaw = await client.hgetall(ordersKey(fabricanteId));
     return Object.values(ordersRaw || {}).map((raw) => JSON.parse(raw));
   } catch (err) {
     console.error("[manufacturerFinance] No se pudieron leer todos los pedidos:", err);
@@ -326,17 +357,26 @@ export async function getAllManufacturerOrders() {
   }
 }
 
-// Todo el historial de pagos al fabricante, en el orden en que se
+// Combina getAllManufacturerOrders() de TODOS los fabricantes — usado por
+// /admin/reporte para el total general de costos de fabricación/envío sin
+// importar el tipo de cuadro.
+export async function getAllManufacturerOrdersCombined() {
+  const results = await Promise.all(FABRICANTE_IDS.map((id) => getAllManufacturerOrders(id)));
+  return results.flat();
+}
+
+// Todo el historial de pagos a UN fabricante, en el orden en que se
 // hicieron (más antiguo primero — mismo orden que payouts en
 // referrals.js). Usado por getManufacturerPendingOrders (para derivar
 // "el último pago") y por el reporte financiero de /admin/reporte (para
 // sumar pagos dentro de un rango de fechas). Nunca lanza.
-export async function getManufacturerPayouts() {
+export async function getManufacturerPayouts(fabricanteId) {
   const client = getRedisClient();
   if (!client) return [];
 
   try {
-    const raw = await client.lrange(PAYOUTS_KEY, 0, -1);
+    assertFabricanteId(fabricanteId);
+    const raw = await client.lrange(payoutsKey(fabricanteId), 0, -1);
     return raw.map((r) => JSON.parse(r));
   } catch (err) {
     console.error("[manufacturerFinance] No se pudo leer el historial de pagos:", err);
@@ -346,18 +386,19 @@ export async function getManufacturerPayouts() {
 
 // Para /admin/finanzas y /fabricante: saldo total + pedidos
 // pendientes de pago (más recientes primero) + el último pago del
-// historial (ver getManufacturerPayouts) — así la vista de solo lectura
-// del fabricante puede mostrar "recibiste tu último pago" cuando el
-// saldo está en $0, en vez de un silencio sin explicación.
-export async function getManufacturerPendingOrders() {
+// historial (ver getManufacturerPayouts) de UN fabricante — así la vista
+// de solo lectura del fabricante puede mostrar "recibiste tu último pago"
+// cuando el saldo está en $0, en vez de un silencio sin explicación.
+export async function getManufacturerPendingOrders(fabricanteId) {
   const client = getRedisClient();
   if (!client) return { balance: 0, orders: [], lastPayment: null };
 
   try {
+    assertFabricanteId(fabricanteId);
     const [balanceRaw, ordersRaw, payouts] = await Promise.all([
-      client.get(BALANCE_KEY),
-      client.hgetall(ORDERS_KEY),
-      getManufacturerPayouts(),
+      client.get(balanceKey(fabricanteId)),
+      client.hgetall(ordersKey(fabricanteId)),
+      getManufacturerPayouts(fabricanteId),
     ]);
 
     const orders = Object.values(ordersRaw || {})
@@ -393,20 +434,21 @@ export async function getCrmEntries() {
   }
 }
 
-// Botón "✅ Ya pagué todo": resetea el balance a 0, marca todos los
-// pedidos pendientes como paid:true en Redis, y agrega una entrada al
-// historial completo de pagos (fabricante:payouts, ver
-// getManufacturerPayouts) — SIN perder los pagos anteriores, a
-// diferencia del viejo fabricante:last-payment que se sobrescribía.
-// Nunca borra el historial de pedidos.
-export async function markManufacturerBalancePaid() {
+// Botón "✅ Ya pagué todo" en el panel de UN fabricante: resetea SU
+// balance a 0, marca SUS pedidos pendientes como paid:true en Redis, y
+// agrega una entrada a SU historial completo de pagos
+// (fabricante:<id>:payouts, ver getManufacturerPayouts) — SIN perder los
+// pagos anteriores. Nunca borra el historial de pedidos. No afecta al
+// otro fabricante.
+export async function markManufacturerBalancePaid(fabricanteId) {
   const client = getRedisClient();
   if (!client) return false;
 
   try {
+    assertFabricanteId(fabricanteId);
     const [balanceRaw, ordersRaw] = await Promise.all([
-      client.get(BALANCE_KEY),
-      client.hgetall(ORDERS_KEY),
+      client.get(balanceKey(fabricanteId)),
+      client.hgetall(ordersKey(fabricanteId)),
     ]);
     const pending = Object.entries(ordersRaw || {})
       .map(([reference, raw]) => ({ reference, ...JSON.parse(raw) }))
@@ -415,17 +457,17 @@ export async function markManufacturerBalancePaid() {
     const amount = Number(balanceRaw) || 0;
     if (amount > 0) {
       await client.rpush(
-        PAYOUTS_KEY,
+        payoutsKey(fabricanteId),
         JSON.stringify({ amount, date: new Date().toISOString() })
       );
     }
 
-    await client.set(BALANCE_KEY, 0);
+    await client.set(balanceKey(fabricanteId), 0);
 
     for (const o of pending) {
       const updated = { ...o, paid: true };
       delete updated.reference;
-      await client.hset(ORDERS_KEY, o.reference, JSON.stringify(updated));
+      await client.hset(ordersKey(fabricanteId), o.reference, JSON.stringify(updated));
     }
 
     return true;

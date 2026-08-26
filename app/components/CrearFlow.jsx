@@ -15,7 +15,8 @@ import {
   getDefaultCropArea,
   pdfFirstPageToImage,
 } from "../crear/cropImage";
-import { SIZES, formatCOP, saveOrder } from "../lib/order";
+import { SIZES, DEFAULT_FRAME_TYPE, getPriceCOP, formatCOP, saveOrder } from "../lib/order";
+import FrameTypeSelector from "./FrameTypeSelector";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
 
@@ -278,6 +279,7 @@ export default function CrearFlow({ compact = false }) {
   const [error, setError] = useState("");
 
   const [sizeId, setSizeId] = useState(SIZES[0].id);
+  const [frameType, setFrameType] = useState(DEFAULT_FRAME_TYPE);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
@@ -455,7 +457,8 @@ export default function CrearFlow({ compact = false }) {
     setReadyOrder({
       sizeId: selectedSize.id,
       sizeLabel: selectedSize.label,
-      priceCOP: selectedSize.priceCOP,
+      frameType,
+      priceCOP: getPriceCOP(selectedSize.id, frameType),
       croppedImage,
       printImage,
       isLowResolution,
@@ -809,6 +812,8 @@ export default function CrearFlow({ compact = false }) {
                 y quedan visibles junto al mockup, sin scroll, para ver el
                 efecto de cada cambio de inmediato. En desktop (sm+) vuelven
                 a apilarse como antes, sin cambios de comportamiento. */}
+            <FrameTypeSelector frameType={frameType} onChange={setFrameType} />
+
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-1 sm:gap-6">
               <div>
                 <h2 className="mb-3 text-sm font-medium text-zinc-300">Ajuste</h2>
@@ -869,7 +874,7 @@ export default function CrearFlow({ compact = false }) {
                             isSelected ? "text-accent-soft" : "text-zinc-400"
                           }`}
                         >
-                          {formatCOP(size.priceCOP)}
+                          {formatCOP(getPriceCOP(size.id, frameType))}
                         </span>
                       </button>
                     );

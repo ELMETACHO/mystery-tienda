@@ -7,6 +7,7 @@ import {
 import { createManualShipment } from "../../lib/skydropx";
 import { sendShippingNotificationEmail } from "../../lib/email";
 import { recordManufacturerOrder } from "../../lib/manufacturerFinance";
+import { getFabricanteForFrameType } from "../../lib/fabricantes";
 
 // Botón "✅ Ya está listo — generar guía ahora" del correo al fabricante
 // (ver app/lib/email.js) — dispara la creación REAL de la guía de
@@ -259,6 +260,7 @@ export async function POST(request) {
     // un fallo acá no debe tumbar la página de éxito, la guía ya se
     // generó y se guardó igual.
     await recordManufacturerOrder({
+      fabricanteId: getFabricanteForFrameType(record.order.frameType).id,
       reference: ref,
       order: record.order,
       customer: record.customer,

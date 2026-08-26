@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { SIZES, COD_DEPOSIT_COP } from "../../lib/order";
+import { SIZES, COD_DEPOSIT_COP, DEFAULT_FRAME_TYPE, getPriceCOP } from "../../lib/order";
 import { validateDiscountCode } from "../../lib/discount";
 import { hasPreviousOrders } from "../../lib/loyalty";
 import { getReferral, REFERRAL_DISCOUNT_PERCENT } from "../../lib/referrals";
@@ -19,10 +19,17 @@ import { getReferral, REFERRAL_DISCOUNT_PERCENT } from "../../lib/referrals";
 // widget de Wompi, nunca el que calculó en el navegador. Si alguien
 // intenta forzar el widget con otro monto, la firma ya no coincide y
 // Wompi rechaza la transacción del lado de ellos.
-async function resolveAmountInCents({ isCod, sizeId, discountCode, referralCode, customerEmail }) {
+async function resolveAmountInCents({
+  isCod,
+  sizeId,
+  frameType,
+  discountCode,
+  referralCode,
+  customerEmail,
+}) {
   if (isCod) {
     // El anticipo de contraentrega es un monto fijo — nunca cambia con
-    // descuentos (ver app/checkout/page.js, handlePayCod).
+    // descuentos ni con frameType (ver app/checkout/page.js, handlePayCod).
     return COD_DEPOSIT_COP * 100;
   }
 
@@ -30,6 +37,10 @@ async function resolveAmountInCents({ isCod, sizeId, discountCode, referralCode,
   if (!size) {
     throw new Error(`Tamaño desconocido: ${sizeId}`);
   }
+  // frameType puede faltar en pedidos viejos ya en vuelo antes de este
+  // cambio — se asume Premium (el único tipo que existía hasta ahora).
+  const resolvedFrameType = frameType || DEFAULT_FRAME_TYPE;
+  const basePriceCOP = getPriceCOP(sizeId, resolvedFrameType);
 
   let percent = 0;
 
@@ -53,13 +64,21 @@ async function resolveAmountInCents({ isCod, sizeId, discountCode, referralCode,
     }
   }
 
-  const priceCOP = percent > 0 ? Math.round(size.priceCOP * (1 - percent / 100)) : size.priceCOP;
+  const priceCOP = percent > 0 ? Math.round(basePriceCOP * (1 - percent / 100)) : basePriceCOP;
   return priceCOP * 100;
 }
 
 export async function POST(request) {
-  const { reference, currency, sizeId, discountCode, referralCode, customerEmail, isCod } =
-    await request.json().catch(() => ({}));
+  const {
+    reference,
+    currency,
+    sizeId,
+    frameType,
+    discountCode,
+    referralCode,
+    customerEmail,
+    isCod,
+  } = await request.json().catch(() => ({}));
 
   if (!reference || !currency) {
     return Response.json({ error: "Faltan reference o currency" }, { status: 400 });
@@ -81,6 +100,7 @@ export async function POST(request) {
     amountInCents = await resolveAmountInCents({
       isCod: Boolean(isCod),
       sizeId,
+      frameType: frameType || null,
       discountCode: discountCode || null,
       referralCode: referralCode || null,
       customerEmail: customerEmail || null,

@@ -197,10 +197,13 @@ function OrderRow({ order, code, onUpdated }) {
 }
 
 // Vista de solo lectura para el fabricante, protegida con un código
-// simple (FABRICANTE_ACCESS_CODE, ver app/api/fabricante-status/route.js)
-// en vez de ADMIN_PASSWORD — mismo patrón que /referidos/panel. Sin CRM
-// ni botón de marcar como pagado; SÍ puede cancelar/regenerar sus propias
-// guías (ver OrderRow arriba).
+// simple por fabricante (FABRICANTE_ACCESS_CODE_PREMIUM /
+// FABRICANTE_ACCESS_CODE_TRADICIONAL, ver app/api/fabricante-status/route.js
+// y app/lib/fabricantes.js) en vez de ADMIN_PASSWORD — mismo patrón que
+// /referidos/panel. El código identifica a qué fabricante pertenece, así
+// que cada uno solo ve sus propios pedidos. Sin CRM ni botón de marcar
+// como pagado; SÍ puede cancelar/regenerar sus propias guías (ver
+// OrderRow arriba).
 function FabricanteContent() {
   const searchParams = useSearchParams();
   const codeFromUrl = searchParams.get("code");
