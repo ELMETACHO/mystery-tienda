@@ -8,6 +8,7 @@ import { grantDiscountCode, markDiscountUsed } from "../../lib/discount";
 import { recordReferralSale } from "../../lib/referrals";
 import { recordCrmEntry } from "../../lib/manufacturerFinance";
 import { saveCompletedOrder } from "../../lib/completedOrders";
+import { checkRateLimit, rateLimitResponse } from "../../lib/rateLimit";
 
 // Confirma un pedido "Pago contraentrega": el cliente paga un anticipo
 // fijo (COD_DEPOSIT_COP) por Wompi para cubrir costos de producción, y el
@@ -25,6 +26,9 @@ import { saveCompletedOrder } from "../../lib/completedOrders";
 // ahora" que dispara /api/generate-shipment cuando el cuadro esté
 // realmente listo para despachar.
 export async function POST(request) {
+  const { limited, retryAfter } = await checkRateLimit(request, "confirm-cod-order");
+  if (limited) return rateLimitResponse(retryAfter);
+
   const { transactionId, order, customer } = await request.json();
 
   if (!transactionId || !order || !customer) {

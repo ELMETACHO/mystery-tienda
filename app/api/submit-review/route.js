@@ -1,12 +1,16 @@
 import { isValidReviewToken } from "../../lib/reviewToken";
 import { getCompletedOrderByReference, markReviewSubmitted } from "../../lib/completedOrders";
 import { saveReview } from "../../lib/reviews";
+import { checkRateLimit, rateLimitResponse } from "../../lib/rateLimit";
 
 // El token se revalida ACÁ, independientemente de que /resena ya lo
 // haya validado al renderizar — un request a esta ruta puede llegar
 // sin haber pasado nunca por esa página (ej. alguien reenviando el
 // mismo POST), así que nunca se confía en el estado de otra petición.
 export async function POST(request) {
+  const { limited, retryAfter } = await checkRateLimit(request, "submit-review");
+  if (limited) return rateLimitResponse(retryAfter);
+
   const { ref, token, rating, comment } = await request.json().catch(() => ({}));
 
   if (!ref || !token) {

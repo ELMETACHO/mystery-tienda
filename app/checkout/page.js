@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import Script from "next/script";
 import { COD_DEPOSIT_COP, formatCOP, loadOrder, saveOrder } from "../lib/order";
 import { lookupPostalCode } from "../lib/postalCodes";
@@ -1020,6 +1021,13 @@ function CheckoutForm() {
               {paymentMethod === "cod"
                 ? `Anticipo de ${formatCOP(COD_DEPOSIT_COP)} + excedente al recibir · Tarjeta / PSE con Wompi. Sin costo adicional por pagar contraentrega.`
                 : "Tarjeta / PSE con Wompi — sandbox de pruebas, no se realizan cobros reales."}
+            </p>
+            <p className="text-center text-xs text-zinc-600">
+              Al pagar aceptas nuestras{" "}
+              <Link href="/politicas" className="underline-offset-2 hover:text-zinc-400 hover:underline">
+                políticas de privacidad y devolución
+              </Link>
+              .
             </p>
           </div>
         </div>

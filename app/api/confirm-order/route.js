@@ -1,7 +1,11 @@
 import { fetchWompiTransaction } from "../../lib/wompi";
 import { confirmApprovedOrder } from "../../lib/confirmApprovedOrder";
+import { checkRateLimit, rateLimitResponse } from "../../lib/rateLimit";
 
 export async function POST(request) {
+  const { limited, retryAfter } = await checkRateLimit(request, "confirm-order");
+  if (limited) return rateLimitResponse(retryAfter);
+
   const { transactionId, order, customer } = await request.json();
 
   if (!transactionId || !order || !customer) {

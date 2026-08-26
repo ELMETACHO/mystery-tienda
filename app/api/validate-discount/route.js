@@ -1,6 +1,7 @@
 import { validateDiscountCode } from "../../lib/discount";
 import { hasPreviousOrders } from "../../lib/loyalty";
 import { getReferral, REFERRAL_DISCOUNT_PERCENT } from "../../lib/referrals";
+import { checkRateLimit, rateLimitResponse } from "../../lib/rateLimit";
 
 // Mismo mensaje genérico para "no existe", "ya usado", "correo sin
 // compras previas" y "tampoco es un código de referido" — no darle a
@@ -13,6 +14,9 @@ const INVALID_MESSAGE = "Código inválido o ya utilizado";
 // Se prueba primero como descuento y, si no aplica, como referido —
 // nunca los dos a la vez.
 export async function POST(request) {
+  const { limited, retryAfter } = await checkRateLimit(request, "validate-discount");
+  if (limited) return rateLimitResponse(retryAfter);
+
   const { email, code } = await request.json().catch(() => ({}));
 
   if (!email || !code) {

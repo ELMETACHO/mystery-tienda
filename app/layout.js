@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -11,9 +12,34 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL =
+  process.env.SITE_URL ||
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:3000"
+    : "https://tienda.elmetacho.com");
+
+const TITLE = "Mystery — Cuadros personalizados";
+const DESCRIPTION = "Cuadros personalizados en vinilo sobre madera. Tu foto en la pared.";
+
 export const metadata = {
-  title: "Mystery — Cuadros personalizados",
-  description: "Cuadros personalizados en vinilo sobre madera. Tu foto en la pared.",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: SITE_URL,
+    siteName: "Mystery",
+    images: [{ url: "/images/mockups/mockup1.png", width: 1086, height: 1448, alt: "Cuadro personalizado Mystery" }],
+    locale: "es_CO",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ["/images/mockups/mockup1.png"],
+  },
 };
 
 export default function RootLayout({ children }) {
@@ -24,6 +50,7 @@ export default function RootLayout({ children }) {
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}
+        <Analytics />
       </body>
     </html>
   );

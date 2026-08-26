@@ -491,10 +491,10 @@ export default async function Home() {
           <div className="grid grid-cols-2 gap-8 sm:flex sm:gap-16">
             <div className="flex flex-col gap-2 text-sm">
               <span className="mb-1 font-medium text-zinc-300">Ayuda</span>
-              <Link href="#" className="text-zinc-500 hover:text-white">
+              <Link href="/politicas" className="text-zinc-500 hover:text-white">
                 Garantías
               </Link>
-              <Link href="#" className="text-zinc-500 hover:text-white">
+              <Link href="/politicas" className="text-zinc-500 hover:text-white">
                 Devoluciones
               </Link>
               <Link href="#" className="text-zinc-500 hover:text-white">
