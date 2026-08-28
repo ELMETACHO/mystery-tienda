@@ -435,7 +435,11 @@ export default function CrearFlow({ compact = false }) {
     const finalCrop =
       croppedAreaPixels || getDefaultCropArea(imageDimensions, selectedSize.ratio);
 
-    const croppedImage = await getCroppedImage(imageSrc, finalCrop);
+    // JPEG (no PNG): las fotos de celular sin comprimir pueden pesar
+    // 10-20MB y superan el límite de payload (~4.5MB) de las funciones
+    // serverless de Vercel al enviarse en el body de /api/confirm-order,
+    // /api/confirm-cod-order y /api/save-pending-order (ver CLAUDE.md).
+    const croppedImage = await getCroppedImage(imageSrc, finalCrop, "jpeg");
     console.log("Tamaño elegido:", selectedSize.label);
     console.log("Resolución original:", imageDimensions);
     console.log("Resolución baja para este tamaño:", isLowResolution);
@@ -448,7 +452,7 @@ export default function CrearFlow({ compact = false }) {
     const widthCm = Number(selectedSize.id.split("x")[0]);
     const pxPerCm = finalCrop.width / widthCm;
     const bleedPx = Math.round(pxPerCm * 1);
-    const printImage = await getCroppedImageWithBleed(imageSrc, finalCrop, bleedPx, pxPerCm);
+    const printImage = await getCroppedImageWithBleed(imageSrc, finalCrop, bleedPx, pxPerCm, "jpeg");
     console.log("[sangrado] px/cm:", pxPerCm.toFixed(1), "bleedPx por lado:", bleedPx);
 
     // No navegamos todavía: mostramos primero la pantalla de confirmación

@@ -14,8 +14,14 @@ export function getDefaultCropArea({ width, height }, aspect) {
   };
 }
 
-// Genera la imagen recortada final a partir del área seleccionada en react-easy-crop.
-export function getCroppedImage(imageSrc, croppedAreaPixels) {
+// Genera la imagen recortada final a partir del área seleccionada en
+// react-easy-crop. `format` = "png" (por defecto, sin pérdida — usado por
+// /estudio para los archivos maestros del catálogo) o "jpeg" (usado por
+// /crear: una foto de celular en PNG sin comprimir puede pesar 10-20MB, muy
+// por encima del límite de payload de ~4.5MB de las funciones serverless
+// de Vercel — ver CLAUDE.md — así que el pedido del cliente viaja como
+// JPEG comprimido en vez de PNG).
+export function getCroppedImage(imageSrc, croppedAreaPixels, format = "png") {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
@@ -38,7 +44,7 @@ export function getCroppedImage(imageSrc, croppedAreaPixels) {
         croppedAreaPixels.height
       );
 
-      resolve(canvas.toDataURL("image/png"));
+      canvasToDataUrlWithDensity(canvas, null, format).then(resolve, reject);
     };
     image.onerror = reject;
   });
@@ -219,38 +225,109 @@ function insertPngPhysChunk(pngBytes, pixelsPerMeter) {
   return result;
 }
 
-// Codifica el canvas a PNG y, si se conoce pxPerCm, le inyecta el chunk
-// pHYs correspondiente antes de devolver el dataURL final. Sin pxPerCm
-// (llamadas que no necesitan densidad física), se comporta igual que
-// antes: canvas.toDataURL("image/png") sin metadata.
-function canvasToPngDataUrlWithDensity(canvas, pxPerCm) {
-  return new Promise((resolve, reject) => {
-    if (!pxPerCm) {
-      resolve(canvas.toDataURL("image/png"));
-      return;
-    }
+// Calidad JPEG para /crear: visualmente indistinguible del original para
+// impresión en vinilo sobre madera (no es impresión de arte fino) y
+// reduce el tamaño del archivo entre 5-15x frente al PNG sin comprimir —
+// una foto de iPhone de 10-20MB en PNG normalmente baja a 1-3MB en JPEG a
+// esta calidad, muy por debajo del límite de payload de Vercel.
+const JPEG_QUALITY = 0.85;
 
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        reject(new Error("No se pudo generar el PNG."));
+// --- Densidad física en JPEG (segmento APP0/JFIF) ------------------------
+//
+// A diferencia del PNG (que no reserva espacio para densidad y hay que
+// insertar un chunk nuevo, ver insertPngPhysChunk arriba), todo JPEG que
+// sale de canvas.toBlob ya incluye un segmento APP0 JFIF con campos de
+// densidad reservados (por defecto "sin unidades") — solo hace falta
+// sobrescribir esos bytes existentes, sin insertar nada ni recalcular
+// checksums (JFIF no usa CRC). Estructura del segmento (offsets desde el
+// inicio del archivo): 0-1 SOI (FFD8), 2-3 marcador APP0 (FFE0), 4-5
+// longitud, 6-9 "JFIF", 10 terminador nulo, 11-12 versión, 13 unidad,
+// 14-15 densidad X, 16-17 densidad Y.
+function insertJpegDensity(jpegBytes, pxPerCm) {
+  const isJpeg = jpegBytes[0] === 0xff && jpegBytes[1] === 0xd8;
+  const hasApp0 = jpegBytes[2] === 0xff && jpegBytes[3] === 0xe0;
+  const identifier = hasApp0
+    ? String.fromCharCode(jpegBytes[6], jpegBytes[7], jpegBytes[8], jpegBytes[9])
+    : "";
+
+  if (!isJpeg || !hasApp0 || identifier !== "JFIF") {
+    // No se pudo encontrar el segmento esperado (encoder distinto al
+    // habitual) — se devuelve el JPEG intacto, sin densidad embebida, en
+    // vez de fallar: los píxeles reales (lo único que importa para
+    // imprimir en el tamaño correcto) siguen siendo los correctos.
+    return jpegBytes;
+  }
+
+  const view = new DataView(jpegBytes.buffer, jpegBytes.byteOffset, jpegBytes.byteLength);
+  const pixelsPerCm = Math.round(pxPerCm);
+  view.setUint8(13, 2); // unidad: 2 = píxeles por centímetro
+  view.setUint16(14, pixelsPerCm, false);
+  view.setUint16(16, pixelsPerCm, false);
+  return jpegBytes;
+}
+
+// Codifica el canvas al `format` pedido y, si se conoce pxPerCm, le
+// inyecta la densidad física correspondiente antes de devolver el dataURL
+// final. Sin pxPerCm (llamadas que no necesitan densidad física), se
+// comporta igual que un toDataURL plano, sin metadata.
+function canvasToDataUrlWithDensity(canvas, pxPerCm, format = "png") {
+  if (format === "png") {
+    return new Promise((resolve, reject) => {
+      if (!pxPerCm) {
+        resolve(canvas.toDataURL("image/png"));
         return;
       }
-      try {
-        const arrayBuffer = await blob.arrayBuffer();
-        // px/cm × 100 = px/metro — conversión directa, sin pasar por
-        // pulgadas/DPI (pHYs guarda píxeles por metro, no por pulgada).
-        const pixelsPerMeter = Math.round(pxPerCm * 100);
-        const withPhys = insertPngPhysChunk(new Uint8Array(arrayBuffer), pixelsPerMeter);
-        const finalBlob = new Blob([withPhys], { type: "image/png" });
 
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error || new Error("No se pudo leer el PNG final."));
-        reader.readAsDataURL(finalBlob);
-      } catch (err) {
-        reject(err);
-      }
-    }, "image/png");
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          reject(new Error("No se pudo generar el PNG."));
+          return;
+        }
+        try {
+          const arrayBuffer = await blob.arrayBuffer();
+          // px/cm × 100 = px/metro — conversión directa, sin pasar por
+          // pulgadas/DPI (pHYs guarda píxeles por metro, no por pulgada).
+          const pixelsPerMeter = Math.round(pxPerCm * 100);
+          const withPhys = insertPngPhysChunk(new Uint8Array(arrayBuffer), pixelsPerMeter);
+          const finalBlob = new Blob([withPhys], { type: "image/png" });
+
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error || new Error("No se pudo leer el PNG final."));
+          reader.readAsDataURL(finalBlob);
+        } catch (err) {
+          reject(err);
+        }
+      }, "image/png");
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) {
+          reject(new Error("No se pudo generar el JPEG."));
+          return;
+        }
+        try {
+          const arrayBuffer = await blob.arrayBuffer();
+          let bytes = new Uint8Array(arrayBuffer);
+          if (pxPerCm) {
+            bytes = insertJpegDensity(bytes, pxPerCm);
+          }
+          const finalBlob = new Blob([bytes], { type: "image/jpeg" });
+
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error || new Error("No se pudo leer el JPEG final."));
+          reader.readAsDataURL(finalBlob);
+        } catch (err) {
+          reject(err);
+        }
+      },
+      "image/jpeg",
+      JPEG_QUALITY
+    );
   });
 }
 
@@ -262,11 +339,13 @@ function canvasToPngDataUrlWithDensity(canvas, pxPerCm) {
 // sigue usando getCroppedImage() sin sangrado.
 //
 // pxPerCm (opcional) es la densidad real del recorte (píxeles del
-// recorte / cm del tamaño físico vendido) — si se pasa, el PNG resultante
-// incrusta esa densidad como metadata (chunk pHYs) para que cualquier
-// software que lo abra muestre el tamaño físico correcto en cm/pulgadas,
-// en vez de asumir 72 DPI por defecto.
-export function getCroppedImageWithBleed(imageSrc, croppedAreaPixels, bleedPx, pxPerCm) {
+// recorte / cm del tamaño físico vendido) — si se pasa, el archivo
+// resultante incrusta esa densidad como metadata (chunk pHYs en PNG,
+// segmento JFIF en JPEG) para que cualquier software que lo abra muestre
+// el tamaño físico correcto en cm/pulgadas, en vez de asumir 72 DPI por
+// defecto. `format` = "png" (por defecto, usado por /estudio) o "jpeg"
+// (usado por /crear — ver nota de JPEG_QUALITY arriba).
+export function getCroppedImageWithBleed(imageSrc, croppedAreaPixels, bleedPx, pxPerCm, format = "png") {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
@@ -286,7 +365,7 @@ export function getCroppedImageWithBleed(imageSrc, croppedAreaPixels, bleedPx, p
 
       drawWithEdgeClamp(ctx, image, expandedRect);
 
-      canvasToPngDataUrlWithDensity(canvas, pxPerCm).then(resolve, reject);
+      canvasToDataUrlWithDensity(canvas, pxPerCm, format).then(resolve, reject);
     };
     image.onerror = reject;
   });

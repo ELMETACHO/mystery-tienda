@@ -499,6 +499,19 @@ export async function sendOrderEmails({
     );
   }
 
+  // printImageBase64Override (catálogo, ver catalogPurchase.js) siempre es
+  // PNG — es el archivo maestro que sube /estudio. Para pedidos de /crear
+  // (foto propia), order.printImage/croppedImage ahora se generan como
+  // JPEG (ver cropImage.js) para no exceder el límite de payload de
+  // Vercel, así que la extensión real del adjunto depende de cuál de los
+  // dos terminó usándose.
+  const printExtension = printImageBase64Override
+    ? "png"
+    : order.printImage?.startsWith("data:image/jpeg") ||
+        (!order.printImage && order.croppedImage?.startsWith("data:image/jpeg"))
+      ? "jpg"
+      : "png";
+
   // Etiqueta de envío (PDF) — solo presente cuando la guía ya se generó
   // (ver app/api/generate-shipment/route.js); en el correo inicial del
   // pedido normalmente todavía no existe.
@@ -529,7 +542,7 @@ export async function sendOrderEmails({
 
   const attachments = [];
   if (printBase64) {
-    attachments.push({ filename: "cuadro-mystery.png", content: printBase64 });
+    attachments.push({ filename: `cuadro-mystery.${printExtension}`, content: printBase64 });
   }
   if (labelBase64) {
     attachments.push({ filename: "guia-envio.pdf", content: labelBase64 });
