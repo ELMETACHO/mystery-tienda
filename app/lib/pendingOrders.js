@@ -50,7 +50,7 @@ const PENDING_ORDER_TTL_SECONDS = 60 * 60 * 24 * 2;
 // checkout/page.js, que sigue enviando order/customer directo en el
 // body de /api/confirm-order) — este guardado es solo la red de
 // seguridad para el webhook, no una dependencia dura del flujo normal.
-export async function savePendingOrder({ reference, order, customer }) {
+export async function savePendingOrder({ reference, order, customer, paymentMethod = "wompi" }) {
   const client = getRedisClient();
   if (!client) {
     console.error("[pendingOrders] REDIS_URL no está configurado; no se guardó el pedido pendiente.");
@@ -64,6 +64,10 @@ export async function savePendingOrder({ reference, order, customer }) {
         reference,
         order,
         customer,
+        // "wompi" (pago completo) o "cod" (anticipo contraentrega) — le
+        // dice a /api/wompi-webhook cuál función de confirmación llamar
+        // (ver confirmApprovedOrder.js vs. confirmApprovedCodOrder.js).
+        paymentMethod,
         createdAt: new Date().toISOString(),
         cartRecoveryEmailSentAt: null,
       }),

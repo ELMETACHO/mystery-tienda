@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import { getPendingOrder } from "../../lib/pendingOrders";
 import { confirmApprovedOrder } from "../../lib/confirmApprovedOrder";
+import { confirmApprovedCodOrder } from "../../lib/confirmApprovedCodOrder";
 
 // Notificación server-to-server de Wompi ("Eventos"): se entera de un
 // pago aprobado sin depender de que el navegador del cliente siga
@@ -78,16 +79,23 @@ export async function POST(request) {
     // No hay nada que podamos confirmar sin order/customer — no tiene
     // sentido que Wompi reintente (no va a aparecer un pedido pendiente
     // por reintentar), así que se reconoce con 200 igual, pero se loguea
-    // fuerte para revisar a mano (ej. pedidos de antes de este cambio,
-    // o el pago contraentrega, que todavía no guarda pedido pendiente).
+    // fuerte para revisar a mano (ej. pedidos de antes de este cambio).
     console.error(
       `[wompi-webhook] No hay pedido pendiente guardado para reference=${transaction.reference} (transactionId=${transaction.id})`
     );
     return Response.json({ ok: true, missingPendingOrder: true });
   }
 
+  // paymentMethod viene de /api/save-pending-order (ver checkout/page.js:
+  // handlePay guarda "wompi", handlePayCod guarda "cod") — decide cuál
+  // función de confirmación llamar, cada una con su propia semántica de
+  // correos/CRM/saldo pendiente. Pedidos guardados antes de este campo
+  // existir caen en "wompi" por defecto (comportamiento previo).
+  const confirmFn =
+    pending.paymentMethod === "cod" ? confirmApprovedCodOrder : confirmApprovedOrder;
+
   try {
-    await confirmApprovedOrder({
+    await confirmFn({
       order: pending.order,
       customer: pending.customer,
       transaction,

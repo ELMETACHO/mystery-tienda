@@ -8,13 +8,13 @@ import { savePendingOrder } from "../../lib/pendingOrders";
 // especial: solo persiste lo mismo que el cliente ya tenía en su
 // propio IndexedDB.
 export async function POST(request) {
-  const { reference, order, customer } = await request.json().catch(() => ({}));
+  const { reference, order, customer, paymentMethod } = await request.json().catch(() => ({}));
 
   if (!reference || !order || !customer) {
     return Response.json({ error: "Datos incompletos" }, { status: 400 });
   }
 
-  const saved = await savePendingOrder({ reference, order, customer });
+  const saved = await savePendingOrder({ reference, order, customer, paymentMethod });
   // No es fatal si falla: el checkout debe poder seguir igual (el
   // camino normal de confirmación no depende de esto). Se informa el
   // resultado igual por si el llamador quiere loguearlo.

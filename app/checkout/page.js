@@ -486,6 +486,23 @@ function CheckoutForm() {
     const reference = `mystery-cod-${Date.now()}`;
     const currency = "COP";
 
+    // Mismo patrón que handlePay: guardado en Redis por `reference` ANTES
+    // de pagar — red de seguridad para que /api/wompi-webhook pueda
+    // confirmar el anticipo aunque el cliente nunca regrese a esta
+    // pestaña (antes, este flujo contraentrega no tenía NINGÚN respaldo
+    // de webhook — si /api/confirm-cod-order fallaba en el navegador, el
+    // pedido se perdía por completo pese al cobro real). paymentMethod:
+    // "cod" le indica al webhook que confirme como anticipo, no como
+    // pago completo. No es fatal si falla: el camino normal no depende
+    // de esto.
+    fetch("/api/save-pending-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reference, order: fullOrder, customer, paymentMethod: "cod" }),
+    }).catch((err) => {
+      console.error("[checkout] No se pudo guardar el pedido pendiente (contraentrega):", err);
+    });
+
     // Mismo criterio que handlePay: el servidor decide el monto (acá
     // siempre COD_DEPOSIT_COP, ver isCod en app/api/wompi-signature) y lo
     // devuelve junto con la firma — nunca se abre el widget con un monto

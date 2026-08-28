@@ -1,13 +1,5 @@
 import { fetchWompiTransaction } from "../../lib/wompi";
-import { sendOrderEmails } from "../../lib/email";
-import { recordOrderAndCheckReturning } from "../../lib/loyalty";
-import { COD_DEPOSIT_COP } from "../../lib/order";
-import { saveManualShipmentRequest } from "../../lib/manualShipments";
-import { processCatalogProductPurchase } from "../../lib/catalogPurchase";
-import { grantDiscountCode, markDiscountUsed } from "../../lib/discount";
-import { recordReferralSale } from "../../lib/referrals";
-import { recordCrmEntry } from "../../lib/manufacturerFinance";
-import { saveCompletedOrder } from "../../lib/completedOrders";
+import { confirmApprovedCodOrder } from "../../lib/confirmApprovedCodOrder";
 import { checkRateLimit, rateLimitResponse } from "../../lib/rateLimit";
 
 // Confirma un pedido "Pago contraentrega": el cliente paga un anticipo
@@ -53,87 +45,23 @@ export async function POST(request) {
     );
   }
 
-  const anticipoPagado = COD_DEPOSIT_COP;
-  const saldoPendiente = order.priceCOP - COD_DEPOSIT_COP;
-
-  // Nunca lanza (ver manualShipments.js) — si esto falla, el pedido sigue
-  // su curso igual; el único efecto es que el botón del correo del
-  // fabricante no podrá generar la guía más adelante (se loguea fuerte
-  // ahí mismo para detectarlo).
-  await saveManualShipmentRequest({
-    reference: transaction.reference,
-    order,
-    customer,
-    paymentMethod: "cod",
-    saldoPendiente,
-  });
-
-  const isReturningCustomer = await recordOrderAndCheckReturning({
-    email: customer.email,
-    reference: transaction.reference,
-    amountCOP: order.priceCOP,
-  });
-
-  // Mismo patrón que /api/confirm-order (ver confirmApprovedOrder.js):
-  // otorgar el código no reemplaza uno ya existente, y marcarlo usado
-  // revalida code/used contra el registro real en Redis.
-  if (isReturningCustomer) {
-    await grantDiscountCode(customer.email);
-  }
-  if (order.discountCode) {
-    await markDiscountUsed(customer.email, order.discountCode);
-  }
-
-  // Mismo punto que el descuento: si el pedido trae un código de
-  // referido, acredita la comisión según el tamaño comprado — nunca
-  // bloquea la confirmación si el código no existe o Redis falla.
-  if (order.referralCode) {
-    await recordReferralSale({ code: order.referralCode, sizeId: order.sizeId });
-  }
-
-  // Registro CRM (ver manufacturerFinance.js) — la DEUDA al fabricante
-  // ya NO se registra acá, se mueve al momento en que se genera la guía
-  // real de Skydropx (ver app/api/generate-shipment/route.js). Nunca
-  // lanza.
-  await recordCrmEntry({ order, customer, paymentMethod: "cod" });
-
-  // Si el pedido viene de /producto/[id] (catálogo), incrementa el
-  // contador de ventas de ese producto y trae el archivo real de
-  // "Original (Portafolio)" desde Drive para adjuntarlo — no hace nada
-  // para pedidos normales de /crear (sin order.productId).
-  const { printImageBase64 } = await processCatalogProductPurchase(order);
-
+  // confirmApprovedCodOrder es idempotente (mismo lock que
+  // confirmApprovedOrder.js) — si el webhook (/api/wompi-webhook) ya
+  // confirmó esta misma transacción antes de que el cliente regresara a
+  // esta pestaña, acá simplemente no se repite el trabajo ni los correos.
+  let isReturningCustomer, anticipoPagado, saldoPendiente;
   try {
-    await sendOrderEmails({
+    ({ isReturningCustomer, anticipoPagado, saldoPendiente } = await confirmApprovedCodOrder({
       order,
       customer,
       transaction,
-      isReturningCustomer,
-      paymentMethod: "cod",
-      anticipoPagado,
-      saldoPendiente,
-      printImageBase64Override: printImageBase64,
-    });
+    }));
   } catch (err) {
-    console.error("[confirm-cod-order] Falló el envío de correos:", err);
+    console.error("[confirm-cod-order] Falló la confirmación:", err);
     return Response.json(
       { error: "El anticipo se confirmó pero falló el envío de correos" },
       { status: 500 }
     );
-  }
-
-  // Registro para la campaña de reseñas Y el reporte financiero (ver
-  // completedOrders.js) — mismo registro que usa el flujo de pago
-  // completo (confirmApprovedOrder.js), así ambos alimentan el mismo
-  // reporte de /admin/reporte sin duplicar lógica. paymentMethod: "cod"
-  // le indica al reporte que solo el anticipo (COD_DEPOSIT_COP) pasó
-  // realmente por Wompi, no el priceCOP completo. Nunca lanza — un
-  // fallo acá no debe tumbar la respuesta de éxito, el anticipo ya se
-  // confirmó y los correos ya salieron.
-  try {
-    await saveCompletedOrder({ order, customer, transaction, paymentMethod: "cod" });
-  } catch (err) {
-    console.error("[confirm-cod-order] No se pudo guardar el registro para el reporte:", err);
   }
 
   return Response.json({
