@@ -10,7 +10,7 @@ import { formatCOP, SIZES } from "../../lib/order";
 const WHATSAPP_NUMBER = "573202646716";
 
 const INPUT_CLASS =
-  "rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm";
+  "rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-3.5 text-base outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm";
 
 function sizeLabel(sizeId) {
   return SIZES.find((s) => s.id === sizeId)?.label || sizeId;
@@ -125,18 +125,19 @@ function ReferidosPanelContent() {
     : [];
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
       <div
-        className="pointer-events-none absolute -top-32 left-1/2 h-96 w-[36rem] -translate-x-1/2 rounded-full opacity-20 blur-3xl"
-        style={{ background: "var(--accent)" }}
+        aria-hidden="true"
+        className="fixed inset-0 z-0 bg-cover bg-center"
+        style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
       />
 
-      <div className="relative mx-auto flex w-full max-w-xl flex-1 flex-col items-center gap-6 px-4 py-16 sm:px-6 sm:py-24">
+      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col items-center gap-6 px-4 py-16 sm:px-6 sm:py-24">
         <div className="flex flex-col items-center gap-2 text-center">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
             Tu panel de referido
           </h1>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-[#33456b]">
             Ingresa tu código para ver tus ventas y tu comisión acumulada.
           </p>
         </div>
@@ -158,37 +159,37 @@ function ReferidosPanelContent() {
           </button>
         </form>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         {referral && (
           <div className="flex w-full flex-col gap-4 animate-ready-in">
-            <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)] sm:p-6">
+            <div className="flex flex-col gap-4 rounded-2xl border border-black/10 bg-[#fffaf0] p-5 shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)] sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-zinc-400">Embajador</p>
-                  <p className="text-lg font-semibold text-white">{referral.name}</p>
+                  <p className="text-sm text-[#33456b]">Embajador</p>
+                  <p className="text-lg font-semibold text-[#1b2a4a]">{referral.name}</p>
                 </div>
-                <span className="rounded-full bg-accent/15 px-3 py-1 font-mono text-xs font-medium tracking-wider text-accent-soft">
+                <span className="rounded-full bg-accent/15 px-3 py-1 font-mono text-xs font-medium tracking-wider text-accent">
                   {referral.code}
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-4 sm:gap-3">
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
-                  <p className="text-[11px] text-zinc-400 sm:text-xs">Ventas</p>
-                  <p className="text-lg font-bold text-white sm:text-xl">
+              <div className="grid grid-cols-3 gap-2 border-t border-black/10 pt-4 sm:gap-3">
+                <div className="rounded-xl border border-black/10 bg-[#fffaf0] p-3 text-center">
+                  <p className="text-[11px] text-[#33456b] sm:text-xs">Ventas</p>
+                  <p className="text-lg font-bold text-[#1b2a4a] sm:text-xl">
                     {referral.totalSales}
                   </p>
                 </div>
                 <div className="rounded-xl border border-accent/30 bg-accent/10 p-3 text-center">
-                  <p className="text-[11px] text-zinc-400 sm:text-xs">Sin cobrar</p>
-                  <p className="text-lg font-bold text-accent-soft sm:text-xl">
+                  <p className="text-[11px] text-[#33456b] sm:text-xs">Sin cobrar</p>
+                  <p className="text-lg font-bold text-accent sm:text-xl">
                     {formatCOP(referral.totalCommission)}
                   </p>
                 </div>
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center">
-                  <p className="text-[11px] text-zinc-400 sm:text-xs">Cobrado</p>
-                  <p className="text-lg font-bold text-emerald-400 sm:text-xl">
+                  <p className="text-[11px] text-[#33456b] sm:text-xs">Cobrado</p>
+                  <p className="text-lg font-bold text-emerald-700 sm:text-xl">
                     {formatCOP(totalPaid)}
                   </p>
                 </div>
@@ -205,16 +206,16 @@ function ReferidosPanelContent() {
             </div>
 
             {lastPayout && (
-              <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-center text-sm text-emerald-300">
+              <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-center text-sm text-emerald-700">
                 ✅ Recibiste tu último pago: {formatCOP(lastPayout.amount)} el{" "}
                 {formatDateLong(lastPayout.date)}
               </p>
             )}
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:p-6">
-              <h2 className="mb-4 text-sm font-medium text-zinc-300">Historial</h2>
+            <div className="rounded-2xl border border-black/10 bg-[#fffaf0] p-5 sm:p-6">
+              <h2 className="mb-4 text-sm font-medium text-[#33456b]">Historial</h2>
               {timeline.length === 0 ? (
-                <p className="text-sm text-zinc-500">
+                <p className="text-sm text-[#5b6b8c]">
                   Todavía no tienes ventas registradas — comparte tu código para empezar
                   a ganar.
                 </p>
@@ -228,26 +229,26 @@ function ReferidosPanelContent() {
                       >
                         <div className="flex items-center gap-2">
                           <span aria-hidden="true">💸</span>
-                          <span className="text-zinc-300">
+                          <span className="text-[#33456b]">
                             Recibiste un pago el {formatDateLong(item.date)}
                           </span>
                         </div>
-                        <span className="font-semibold text-emerald-400">
+                        <span className="font-semibold text-emerald-700">
                           {formatCOP(item.amount)}
                         </span>
                       </li>
                     ) : (
                       <li
                         key={i}
-                        className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm"
+                        className="flex items-center justify-between rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-3 text-sm"
                       >
                         <div className="flex flex-col">
-                          <span className="text-zinc-200">{sizeLabel(item.sizeId)}</span>
-                          <span className="text-xs text-zinc-500">
+                          <span className="text-[#1b2a4a]">{sizeLabel(item.sizeId)}</span>
+                          <span className="text-xs text-[#5b6b8c]">
                             {formatDate(item.date)}
                           </span>
                         </div>
-                        <span className="font-semibold text-accent-soft">
+                        <span className="font-semibold text-accent">
                           +{formatCOP(item.amount)}
                         </span>
                       </li>
