@@ -9,6 +9,12 @@ import ProductScroller from "./components/ProductScroller";
 // quedar cacheada mostrando productos viejos/borrados.
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  title: "Mystery Cuadros — Cuadros Personalizados con tu Foto | Envío Gratis Colombia",
+  description:
+    "Convierte tu foto favorita en un cuadro personalizado en vinilo sobre madera. Elige el tamaño, paga seguro y recíbelo en tu casa — envío gratis a toda Colombia.",
+};
+
 // Categorías reales de diseño usadas en /estudio para organizar los
 // diseños en Google Drive (ver app/lib/estudioCategories.js).
 const CATEGORIAS = [

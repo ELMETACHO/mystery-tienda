@@ -1,6 +1,10 @@
-"use client";
-
 import CrearFlow from "../components/CrearFlow";
+
+export const metadata = {
+  title: "Personaliza tu Cuadro con tu Propia Foto | Mystery Cuadros",
+  description:
+    "Sube tu foto, ajústala dentro del marco y elige el tamaño. Imprimimos tu cuadro en vinilo sobre madera y te lo enviamos gratis a toda Colombia.",
+};
 
 export default function CrearPage() {
   return (

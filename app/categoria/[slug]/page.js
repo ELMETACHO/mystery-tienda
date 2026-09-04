@@ -9,6 +9,19 @@ import ProductScroller from "../../components/ProductScroller";
 // app/page.js).
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  const category = ESTUDIO_CATEGORIES.find((c) => c.id === slug);
+  if (!category) return {};
+
+  const title = `Cuadros de ${category.label} Personalizados | Mystery Cuadros`;
+  return {
+    title,
+    description: category.description,
+    openGraph: { title, description: category.description },
+  };
+}
+
 export default async function CategoriaPage({ params }) {
   const { slug } = await params;
   const category = ESTUDIO_CATEGORIES.find((c) => c.id === slug);
@@ -35,6 +48,8 @@ export default async function CategoriaPage({ params }) {
         </Link>
 
         <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">{category.label}</h1>
+
+        <p className="text-sm text-[#33456b] sm:text-base">{category.description}</p>
 
         <p className="text-sm text-[#33456b] sm:text-base">
           Cuadros decorativos de excelente calidad. Recibe de 3 a 5 días hábiles. Envíos a toda

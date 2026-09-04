@@ -33,7 +33,7 @@ export function ProductCard({ item, className = "", light = false, ...rest }) {
       >
         <Image
           src={item.thumbnailUrl}
-          alt={categoryLabel(item.category)}
+          alt={`Cuadro personalizado categoría ${categoryLabel(item.category)}, en vinilo sobre madera`}
           fill
           sizes="(min-width: 640px) 25vw, 50vw"
           className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
