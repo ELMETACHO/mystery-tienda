@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: "Classic Couture";
-  src: url("/Fonts/Classic Couture Free.ttf") format("truetype");
+  font-family: "RetroCool";
+  src: url("/Fonts/RetroCool-Regular.otf") format("opentype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -37,7 +37,7 @@ body {
 h1,
 h2,
 h3 {
-  font-family: "Classic Couture", Arial, Helvetica, sans-serif;
+  font-family: "RetroCool", Arial, Helvetica, sans-serif;
 }
 
 /* Slider de zoom del editor: pista más gruesa y thumb ampliado para que sea
