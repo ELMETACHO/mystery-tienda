@@ -17,7 +17,7 @@ export default function ProductSizeSelector({ product }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-3xl font-bold text-accent-soft">{formatCOP(priceCOP)}</p>
+      <p className="text-3xl font-bold text-accent">{formatCOP(priceCOP)}</p>
       <FreeShippingBanner />
 
       <FrameTypeSelector frameType={frameType} onChange={setFrameType} />
@@ -33,18 +33,18 @@ export default function ProductSizeSelector({ product }) {
               className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
                 isSelected
                   ? "border-accent bg-accent/15 shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
-                  : "border-white/10 bg-white/5 hover:border-white/20"
+                  : "border-black/10 bg-[#fffaf0] hover:border-black/20"
               }`}
             >
               <span className="flex items-center gap-1.5">
-                <span className={`text-sm ${isSelected ? "text-white" : "text-zinc-300"}`}>{s.label}</span>
+                <span className={`text-sm ${isSelected ? "text-[#1b2a4a]" : "text-[#33456b]"}`}>{s.label}</span>
                 {s.id === "40x50" && (
-                  <span className="whitespace-nowrap rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-soft">
+                  <span className="whitespace-nowrap rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
                     Más elegido
                   </span>
                 )}
               </span>
-              <span className={`text-sm font-bold ${isSelected ? "text-accent-soft" : "text-zinc-400"}`}>
+              <span className={`text-sm font-bold ${isSelected ? "text-accent" : "text-[#5b6b8c]"}`}>
                 {formatCOP(getPriceCOP(s.id, frameType))}
               </span>
             </button>
