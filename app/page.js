@@ -232,7 +232,7 @@ export default async function Home() {
               fontSize="clamp(2.5rem, 6vw, 4.5rem)"
               fontWeight={800}
               color="#ffffff"
-              className="font-heading leading-tight tracking-tight"
+              className="font-brand leading-tight tracking-tight"
             />
 
             <p className="max-w-md text-base text-zinc-400 sm:text-lg">

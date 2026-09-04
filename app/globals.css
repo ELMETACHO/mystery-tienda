@@ -8,6 +8,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "RetroCool";
+  src: url("/Fonts/RetroCool-Regular.otf") format("opentype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: #0a0a0f;
   --foreground: #f4f3f7;
@@ -35,6 +43,10 @@ body {
 }
 
 .font-heading {
+  font-family: "RetroCool", Arial, Helvetica, sans-serif;
+}
+
+.font-brand {
   font-family: "Classic Couture", Arial, Helvetica, sans-serif;
 }
 
