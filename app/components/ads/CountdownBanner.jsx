@@ -23,8 +23,8 @@ export default function CountdownBanner() {
   const seconds = String(secondsLeft % 60).padStart(2, "0");
 
   return (
-    <div className="mx-auto max-w-md rounded-xl border border-orange-500/40 bg-orange-500/15 px-4 py-2.5 text-center">
-      <p className="text-sm font-semibold text-orange-300">
+    <div className="mx-auto max-w-md rounded-xl border border-orange-500/40 bg-orange-100 px-4 py-2.5 text-center">
+      <p className="text-sm font-semibold text-orange-700">
         ⏰ ¡Date prisa! La oferta termina en {minutes}:{seconds}
       </p>
     </div>

@@ -37,7 +37,7 @@ export default function StickyBuyButton({ targetId }) {
 
   return (
     <div
-      className={`fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-background/95 px-4 pt-3 backdrop-blur-md transition-opacity duration-300 ${
+      className={`fixed inset-x-0 bottom-0 z-50 border-t border-black/10 bg-white/90 px-4 pt-3 backdrop-blur-md transition-opacity duration-300 ${
         isTargetVisible ? "pointer-events-none opacity-0" : "opacity-100"
       }`}
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}

@@ -74,15 +74,15 @@ export default function RecentPurchaseToast() {
 
   return (
     <div
-      className={`fixed bottom-24 left-3 z-40 max-w-[13rem] rounded-xl border border-white/10 bg-black/85 px-3 py-2 shadow-lg backdrop-blur transition-all duration-500 ${
+      className={`fixed bottom-24 left-3 z-40 max-w-[13rem] rounded-xl border border-black/10 bg-white/90 px-3 py-2 shadow-lg backdrop-blur transition-all duration-500 ${
         visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
       }`}
       aria-live="polite"
     >
-      <p className="text-[11px] leading-tight text-zinc-200">
+      <p className="text-[11px] leading-tight text-[#33456b]">
         <span aria-hidden="true">🛒</span>{" "}
-        <span className="font-semibold text-white">{entry.name}</span> compró un cuadro{" "}
-        <span className="text-accent-soft">{entry.size}</span>
+        <span className="font-semibold text-[#1b2a4a]">{entry.name}</span> compró un cuadro{" "}
+        <span className="text-accent">{entry.size}</span>
       </p>
     </div>
   );
