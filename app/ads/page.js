@@ -39,21 +39,31 @@ export default async function AdsLanding() {
   const recientes = await getRecentProducts(200);
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="relative flex min-h-full flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
+      {/* Mismo fondo fijo del Home/​/crear: la foto de cielo no se mueve
+          con el scroll. */}
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 bg-cover bg-center"
+        style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
+      />
+
       {/* 1. HEADER FIJO — position:fixed (no sticky, mismo criterio que el
           botón inferior: sticky puede "despegarse" en Safari durante el
-          scroll). Solo esta franja, nada más. */}
+          scroll). Solo esta franja, nada más. Se deja negra/roja a
+          propósito: es la cinta de urgencia del anuncio, no forma parte
+          del "tema" de la página. */}
       <div className="fixed inset-x-0 top-0 z-50 bg-black px-4 py-2.5 text-center">
         <p className="text-xs font-semibold text-red-500 sm:text-sm">
           🚚 Envío gratis a todo el país - Paga al recibir
         </p>
       </div>
 
-      <main className="flex-1 pb-28 pt-11">
+      <main className="relative z-10 flex-1 pb-28 pt-11">
         {/* 2. NOMBRE DE MARCA — primer contenido debajo del header fijo. */}
         <div className="px-4 pb-4 pt-5 text-center">
-          <p className="text-lg font-black tracking-tight text-white sm:text-xl">
-            MYSTERY CUADROS
+          <p className="font-brand text-2xl tracking-tight text-[#1b2a4a] sm:text-3xl">
+            Mystery Cuadros
           </p>
         </div>
 
@@ -65,7 +75,7 @@ export default async function AdsLanding() {
             usuario tanto en Safari iOS como en Chrome Android. poster evita
             el flash en blanco mientras carga. */}
         <section className="px-4 pb-5">
-          <div className="relative mx-auto aspect-[4/5] w-full max-w-xs overflow-hidden rounded-2xl border border-white/10 shadow-lg shadow-accent/20 sm:max-w-sm">
+          <div className="relative mx-auto aspect-[4/5] w-full max-w-xs overflow-hidden rounded-2xl border border-black/10 shadow-lg shadow-accent/20 sm:max-w-sm">
             <video
               autoPlay
               muted
@@ -95,10 +105,10 @@ export default async function AdsLanding() {
 
         {/* 6. INFORMACIÓN DEL PRODUCTO */}
         <section className="px-4 pb-6 text-center">
-          <h1 className="text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
+          <h1 className="font-heading text-2xl font-extrabold leading-tight tracking-tight text-[#1b2a4a] sm:text-3xl">
             Cuadro decorativo de excelente calidad en madera y vinilo laminado.
           </h1>
-          <p className="mt-2 text-xl font-bold text-accent-soft sm:text-2xl">
+          <p className="mt-2 text-xl font-bold text-accent sm:text-2xl">
             Desde $55.000 COP
           </p>
         </section>
@@ -108,7 +118,7 @@ export default async function AdsLanding() {
             de subida/recorte/tamaño/confirmación, sin la cabecera grande
             que no tiene sentido en medio de esta página. */}
         <section id="crear-embed" className="scroll-mt-12 px-4 pb-8">
-          <h2 className="mb-4 text-center text-xl font-bold tracking-tight sm:text-2xl">
+          <h2 className="font-heading mb-4 text-center text-xl font-bold tracking-tight sm:text-2xl">
             Tu cuadro con cualquier imagen
           </h2>
           <CrearFlow compact />
@@ -117,14 +127,14 @@ export default async function AdsLanding() {
         {/* 8. TESTIMONIOS — sin reseñas reales todavía, se muestran cuadros
             entregados como ejemplo visual (no citas de texto inventadas). */}
         <section className="px-4 pb-8">
-          <h2 className="mb-3 text-center text-sm font-semibold text-zinc-300">
+          <h2 className="mb-3 text-center text-sm font-semibold text-[#33456b]">
             Así se ven en la pared
           </h2>
           <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
             {EJEMPLOS.map((ej) => (
               <div
                 key={ej.src}
-                className="relative aspect-[4/5] overflow-hidden rounded-xl border border-white/10"
+                className="relative aspect-[4/5] overflow-hidden rounded-xl border border-black/10 shadow-sm"
               >
                 <Image src={ej.src} alt={ej.alt} fill sizes="33vw" className="object-cover" />
               </div>
@@ -134,8 +144,8 @@ export default async function AdsLanding() {
 
         {/* 9. TEXTO LARGO DEL PRODUCTO — texto exacto pedido. */}
         <section className="px-4 pb-8">
-          <div className="mx-auto max-w-md rounded-2xl border border-white/10 bg-white/5 px-5 py-5">
-            <p className="text-sm leading-relaxed text-zinc-300">
+          <div className="mx-auto max-w-md rounded-2xl border border-black/5 bg-[#fffaf0] px-5 py-5 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)]">
+            <p className="text-sm leading-relaxed text-[#33456b]">
               Hacemos cuadros en vinilo laminado de excelente calidad sobre madera.
               Tienen un marco atrás de 3cm de profundidad para colgarlos. El envío
               es gratuito. No te preocupes por la calidad, ¡todas las imágenes
@@ -153,25 +163,25 @@ export default async function AdsLanding() {
             con sus botones de compra normales. */}
         <section className="pb-8">
           <div className="mx-auto max-w-6xl px-4">
-            <h2 className="mb-4 text-center text-xl font-bold tracking-tight sm:text-2xl">
+            <h2 className="font-heading mb-4 text-center text-xl font-bold tracking-tight sm:text-2xl">
               ¿Quieres comprar nuestros diseños?
             </h2>
-            <ProductScroller items={recientes} />
+            <ProductScroller items={recientes} light />
           </div>
         </section>
 
         {/* 11. GARANTÍA / FOOTER — discreto, exigido por políticas de
             anuncios de ecommerce de TikTok (contacto + garantía visibles). */}
         <section className="px-4">
-          <div className="mx-auto max-w-md border-t border-white/10 pt-5 text-center">
-            <p className="text-xs text-zinc-500">
+          <div className="mx-auto max-w-md border-t border-black/10 pt-5 text-center">
+            <p className="text-xs text-[#5b6b8c]">
               Tienes garantía ante daños de fábrica o de transporte. Tu cuadro
               está asegurado. Escríbenos a:{" "}
               <a href="mailto:pedidos@mysterycuadros.com" className="underline underline-offset-2">
                 pedidos@mysterycuadros.com
               </a>
             </p>
-            <p className="mt-3 text-[11px] text-zinc-600">
+            <p className="mt-3 text-[11px] text-[#8a94ac]">
               © 2026 Mystery. Todos los derechos reservados.
             </p>
 

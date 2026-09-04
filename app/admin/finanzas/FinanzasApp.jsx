@@ -48,14 +48,14 @@ function FabricanteBlock({ fabricanteId, data, onPaid }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-sm font-semibold text-zinc-300">
+      <h2 className="text-sm font-semibold text-[#33456b]">
         {FABRICANTE_LABELS[fabricanteId] || fabricanteId}
       </h2>
 
       <div className="flex items-center justify-between gap-4 rounded-2xl border border-accent/30 bg-accent/10 p-5 shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)]">
         <div>
-          <p className="text-sm text-zinc-400">Total adeudado</p>
-          <p className="text-2xl font-bold text-accent-soft sm:text-3xl">
+          <p className="text-sm text-[#33456b]">Total adeudado</p>
+          <p className="text-2xl font-bold text-accent sm:text-3xl">
             {formatCOP(data.balance)}
           </p>
         </div>
@@ -69,10 +69,10 @@ function FabricanteBlock({ fabricanteId, data, onPaid }) {
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {data.orders.length === 0 ? (
-        <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-zinc-500">
+        <p className="rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-6 text-center text-sm text-[#5b6b8c]">
           No hay saldo pendiente con este fabricante.
         </p>
       ) : (
@@ -80,24 +80,24 @@ function FabricanteBlock({ fabricanteId, data, onPaid }) {
           {data.orders.map((o) => (
             <li
               key={o.reference}
-              className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4"
+              className="flex items-center justify-between gap-4 rounded-2xl border border-black/10 bg-[#fffaf0] p-4"
             >
               <div className="flex flex-col">
-                <span className="font-medium text-zinc-100">{o.cliente}</span>
-                <span className="text-xs text-zinc-500">{o.ciudad}</span>
-                <span className="mt-1 text-xs text-zinc-500">{formatDate(o.fecha)}</span>
+                <span className="font-medium text-[#1b2a4a]">{o.cliente}</span>
+                <span className="text-xs text-[#5b6b8c]">{o.ciudad}</span>
+                <span className="mt-1 text-xs text-[#5b6b8c]">{formatDate(o.fecha)}</span>
                 {o.guideUrl && (
                   <a
                     href={o.guideUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 text-xs text-accent-soft underline underline-offset-2"
+                    className="mt-1 text-xs text-accent underline underline-offset-2"
                   >
                     Ver guía
                   </a>
                 )}
               </div>
-              <span className="text-lg font-bold text-accent-soft">{formatCOP(o.monto)}</span>
+              <span className="text-lg font-bold text-accent">{formatCOP(o.monto)}</span>
             </li>
           ))}
         </ul>
@@ -145,33 +145,33 @@ export default function FinanzasApp() {
     <div className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-12 sm:px-6 sm:py-16">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+          <h1 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">
             Saldo pendiente a fabricantes
           </h1>
-          <p className="mt-1 text-sm text-zinc-400">
+          <p className="mt-1 text-sm text-[#33456b]">
             Pedidos confirmados que todavía no se le han pagado a cada fabricante.
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
           <a
             href="/admin"
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-accent/40 hover:text-accent-soft"
+            className="rounded-full border border-black/10 bg-[#fffaf0] px-4 py-2 text-xs font-medium text-[#33456b] transition-colors hover:border-accent/40 hover:text-accent"
           >
             ← Admin
           </a>
           <a
             href="/admin/crm"
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-accent/40 hover:text-accent-soft"
+            className="rounded-full border border-black/10 bg-[#fffaf0] px-4 py-2 text-xs font-medium text-[#33456b] transition-colors hover:border-accent/40 hover:text-accent"
           >
             Ver CRM →
           </a>
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {data === null ? (
-        <p className="text-sm text-zinc-500">Cargando...</p>
+        <p className="text-sm text-[#5b6b8c]">Cargando...</p>
       ) : (
         <div className="flex flex-col gap-10">
           {Object.entries(data.fabricantes).map(([fabricanteId, fabricanteData]) => (

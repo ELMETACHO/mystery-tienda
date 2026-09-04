@@ -42,6 +42,15 @@ export const metadata = {
   },
 };
 
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Mystery Cuadros",
+  url: SITE_URL,
+  logo: `${SITE_URL}/images/Logo/logo-navbar.png`,
+  description: DESCRIPTION,
+};
+
 export default function RootLayout({ children }) {
   return (
     <html
@@ -49,6 +58,10 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
         {children}
         <Analytics />
       </body>

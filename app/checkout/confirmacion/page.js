@@ -221,41 +221,42 @@ export default function ConfirmacionPage() {
   }, [order]);
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
       <div
-        className="pointer-events-none absolute -top-32 left-1/2 h-96 w-[36rem] -translate-x-1/2 rounded-full opacity-20 blur-3xl"
-        style={{ background: "var(--accent)" }}
+        aria-hidden="true"
+        className="fixed inset-0 z-0 bg-cover bg-center"
+        style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
       />
 
-      <div className="relative mx-auto flex w-full max-w-lg flex-1 flex-col items-center gap-6 px-4 py-12 text-center sm:px-6 sm:py-16">
+      <div className="relative z-10 mx-auto flex w-full max-w-lg flex-1 flex-col items-center gap-6 px-4 py-12 text-center sm:px-6 sm:py-16">
         {/* 1. Confirmación central */}
-        <div className="flex h-16 w-16 animate-ready-in items-center justify-center rounded-full bg-accent/15 text-3xl text-accent-soft">
+        <div className="flex h-16 w-16 animate-ready-in items-center justify-center rounded-full bg-accent/15 text-3xl text-accent">
           ✓
         </div>
         <div className="animate-ready-in flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             ¡Gracias!
           </h1>
-          <p className="text-lg font-medium text-zinc-200 sm:text-xl">
+          <p className="text-lg font-medium text-[#1b2a4a] sm:text-xl">
             ¡Tu cuadro Mystery está en camino!
           </p>
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-zinc-500">Cargando tu pedido...</p>
+          <p className="text-sm text-[#5b6b8c]">Cargando tu pedido...</p>
         ) : order ? (
           <>
             {/* 2. Resumen del pedido — tarjeta de producto premium, mismo
                 tratamiento que /checkout. El badge y el confeti comparten
                 ahora la misma fuente de verdad: order.payment?.status. */}
-            <div className="flex w-full flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-left shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)] sm:p-6">
+            <div className="flex w-full flex-col gap-4 rounded-2xl border border-black/10 bg-[#fffaf0] p-4 text-left shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)] sm:p-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-zinc-300">Tu pedido</h2>
+                <h2 className="text-sm font-medium text-[#33456b]">Tu pedido</h2>
                 <span
                   className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
                     order.payment?.status === "APPROVED"
-                      ? "bg-accent/15 text-accent-soft"
-                      : "bg-amber-500/15 text-amber-300"
+                      ? "bg-accent/15 text-accent"
+                      : "bg-amber-100 text-amber-800"
                   }`}
                 >
                   {order.payment?.status === "APPROVED"
@@ -269,14 +270,14 @@ export default function ConfirmacionPage() {
                   <img
                     src={order.croppedImage}
                     alt="Preview del cuadro"
-                    className="h-20 w-20 shrink-0 rounded-xl border border-white/10 object-cover shadow-lg shadow-black/40"
+                    className="h-20 w-20 shrink-0 rounded-xl border border-black/10 object-cover shadow-lg shadow-black/40"
                   />
                 )}
                 <div className="flex flex-1 flex-col justify-center gap-1">
-                  <span className="text-sm font-medium text-zinc-200">
+                  <span className="text-sm font-medium text-[#1b2a4a]">
                     {order.sizeLabel}
                   </span>
-                  <span className="text-xl font-bold text-accent-soft">
+                  <span className="text-xl font-bold text-accent">
                     {formatCOP(order.priceCOP)}
                   </span>
                 </div>
@@ -285,33 +286,33 @@ export default function ConfirmacionPage() {
               {order.metodo_pago === "contraentrega" && (
                 <div className="flex flex-col gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-zinc-300">Anticipo pagado</span>
-                    <span className="font-semibold text-emerald-300">
+                    <span className="text-[#33456b]">Anticipo pagado</span>
+                    <span className="font-semibold text-emerald-700">
                       {formatCOP(order.anticipo_pagado)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-zinc-300">Saldo al recibir tu cuadro</span>
-                    <span className="font-semibold text-white">
+                    <span className="text-[#33456b]">Saldo al recibir tu cuadro</span>
+                    <span className="font-semibold text-[#1b2a4a]">
                       {formatCOP(order.saldo_pendiente)}
                     </span>
                   </div>
                 </div>
               )}
 
-              <div className="flex flex-col gap-2 border-t border-white/10 pt-3 text-sm">
+              <div className="flex flex-col gap-2 border-t border-black/10 pt-3 text-sm">
                 {order.payment?.reference && (
                   <div className="flex items-start justify-between gap-3">
-                    <span className="shrink-0 text-zinc-400">Referencia</span>
-                    <span className="break-all text-right text-zinc-200">
+                    <span className="shrink-0 text-[#33456b]">Referencia</span>
+                    <span className="break-all text-right text-[#1b2a4a]">
                       {order.payment.reference}
                     </span>
                   </div>
                 )}
                 {order.customer && (
                   <div className="flex items-start justify-between gap-3">
-                    <span className="shrink-0 text-zinc-400">Envío a</span>
-                    <span className="text-right text-zinc-200">
+                    <span className="shrink-0 text-[#33456b]">Envío a</span>
+                    <span className="text-right text-[#1b2a4a]">
                       {shippingAddress(order.customer)}
                     </span>
                   </div>
@@ -332,27 +333,27 @@ export default function ConfirmacionPage() {
               >
                 {couponRevealed ? (
                   <div className="flex flex-col items-center gap-3">
-                    <p className="text-lg font-semibold text-accent-soft sm:text-xl">
+                    <p className="text-lg font-semibold text-accent sm:text-xl">
                       ¡Felicidades! Tienes 10% de descuento en tu próxima compra
                     </p>
-                    <span className="rounded-lg border border-accent/50 bg-white/5 px-5 py-2.5 font-mono text-base tracking-wider text-white">
+                    <span className="rounded-lg border border-accent/50 bg-[#fffaf0] px-5 py-2.5 font-mono text-base tracking-wider text-[#1b2a4a]">
                       MYSTERY10%
                     </span>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-4">
                     <div className="flex flex-col gap-1.5">
-                      <p className="text-2xl font-extrabold uppercase tracking-tight text-accent-soft sm:text-3xl">
+                      <p className="text-2xl font-extrabold uppercase tracking-tight text-accent sm:text-3xl">
                         ¡Eres cliente fiel! 🎉
                       </p>
-                      <p className="text-base text-zinc-300 sm:text-lg">
+                      <p className="text-base text-[#33456b] sm:text-lg">
                         Te regalamos un descuento exclusivo
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setCouponRevealed(true)}
-                      className="rounded-full border border-accent/50 px-7 py-3 text-base font-medium text-accent-soft transition-colors hover:bg-accent/10"
+                      className="rounded-full border border-accent/50 px-7 py-3 text-base font-medium text-accent transition-colors hover:bg-accent/10"
                     >
                       🎁 Reclamar mi descuento del 10%
                     </button>
@@ -362,8 +363,8 @@ export default function ConfirmacionPage() {
             )}
 
             {/* 3. Línea de tiempo / próximos pasos */}
-            <div className="w-full rounded-2xl border border-white/10 bg-white/5 p-4 text-left sm:p-6">
-              <h2 className="mb-4 text-sm font-medium text-zinc-300">
+            <div className="w-full rounded-2xl border border-black/10 bg-[#fffaf0] p-4 text-left sm:p-6">
+              <h2 className="mb-4 text-sm font-medium text-[#33456b]">
                 Próximos pasos
               </h2>
               <ol className="flex flex-col gap-0">
@@ -377,7 +378,7 @@ export default function ConfirmacionPage() {
                           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                             isDone
                               ? "bg-emerald-500 text-white"
-                              : "border-2 border-white/15 text-zinc-500"
+                              : "border-2 border-black/10 text-[#5b6b8c]"
                           }`}
                         >
                           {isDone ? "✓" : i + 1}
@@ -385,7 +386,7 @@ export default function ConfirmacionPage() {
                         {!isLast && (
                           <span
                             className={`w-px flex-1 ${
-                              isDone ? "bg-emerald-500/40" : "bg-white/10"
+                              isDone ? "bg-emerald-500/40" : "bg-black/5"
                             }`}
                             style={{ minHeight: "28px" }}
                           />
@@ -394,12 +395,12 @@ export default function ConfirmacionPage() {
                       <div className={isLast ? "pb-0" : "pb-5"}>
                         <p
                           className={`text-sm font-medium ${
-                            isDone ? "text-white" : "text-zinc-300"
+                            isDone ? "text-[#1b2a4a]" : "text-[#33456b]"
                           }`}
                         >
                           {step.label}
                         </p>
-                        <p className="text-xs text-zinc-500">{step.detail}</p>
+                        <p className="text-xs text-[#5b6b8c]">{step.detail}</p>
                       </div>
                     </li>
                   );
@@ -409,9 +410,9 @@ export default function ConfirmacionPage() {
 
             {/* 4. Confirmación de correo */}
             {order.customer?.email && (
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-[#5b6b8c]">
                 Enviamos un correo de confirmación a{" "}
-                <span className="text-zinc-300">{order.customer.email}</span>{" "}
+                <span className="text-[#33456b]">{order.customer.email}</span>{" "}
                 por si quieres guardarlo. En 1-2 días te llegará otro correo
                 con la guía para hacer seguimiento de tu envío.
               </p>
@@ -431,7 +432,7 @@ export default function ConfirmacionPage() {
             href={INSTAGRAM_URL}
             target={INSTAGRAM_URL !== "#" ? "_blank" : undefined}
             rel={INSTAGRAM_URL !== "#" ? "noopener noreferrer" : undefined}
-            className="w-full max-w-xs rounded-full border border-white/15 px-6 py-3 text-sm text-zinc-300 transition-colors hover:border-white/30 sm:w-auto"
+            className="w-full max-w-xs rounded-full border border-black/10 px-6 py-3 text-sm text-[#33456b] transition-colors hover:border-black/20 sm:w-auto"
           >
             📸 Síguenos en Instagram
           </Link>
@@ -442,13 +443,13 @@ export default function ConfirmacionPage() {
             por eso va casi al final, después de todo lo importante. */}
         <Link
           href="/referidos"
-          className="text-xs text-zinc-500 underline-offset-4 transition-colors hover:text-zinc-300 hover:underline"
+          className="text-xs text-[#5b6b8c] underline-offset-4 transition-colors hover:text-[#33456b] hover:underline"
         >
           💜 ¿Sabías que puedes ganar dinero recomendando Mystery?
         </Link>
 
         {/* 6. Agradecimiento cálido */}
-        <p className="text-xs text-zinc-600">Gracias por confiar en Mystery</p>
+        <p className="text-xs text-[#8a94ac]">Gracias por confiar en Mystery</p>
       </div>
     </div>
   );

@@ -25,13 +25,13 @@ export default function ViewersCounter() {
   }, []);
 
   return (
-    <p className="flex items-center justify-center gap-1.5 text-xs text-zinc-400">
+    <p className="flex items-center justify-center gap-1.5 text-xs text-[#33456b]">
       <span aria-hidden="true">👁️</span>
       {viewers === null ? (
         <span>Cargando visitas...</span>
       ) : (
         <span>
-          <span className="font-semibold text-zinc-200">{viewers}</span> personas viendo ahora mismo
+          <span className="font-semibold text-[#1b2a4a]">{viewers}</span> personas viendo ahora mismo
         </span>
       )}
     </p>

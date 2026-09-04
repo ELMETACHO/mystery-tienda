@@ -44,7 +44,7 @@ export default function RecentesDriftWall() {
   }, []);
 
   return (
-    <div className="h-[340px] w-full overflow-hidden rounded-2xl border border-white/10 sm:h-[440px]">
+    <div className="h-[340px] w-full overflow-hidden rounded-2xl border border-black/10 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)] sm:h-[440px]">
       <DriftWall
         items={DRIFT_ITEMS}
         columns={columns}
@@ -56,7 +56,7 @@ export default function RecentesDriftWall() {
         parallax={0.45}
         lift={48}
         fade={0.55}
-        overlayColor="#0a0a0f"
+        overlayColor="#fffaf0"
       />
     </div>
   );

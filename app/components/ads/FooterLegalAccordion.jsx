@@ -12,7 +12,7 @@ export default function FooterLegalAccordion() {
 
   return (
     <div className="mt-3">
-      <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-zinc-500">
+      <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-[#5b6b8c]">
         {ITEMS.map((item, i) => (
           <span key={item.key} className="flex items-center gap-2">
             <button
@@ -20,7 +20,7 @@ export default function FooterLegalAccordion() {
               onClick={() => setOpenKey((prev) => (prev === item.key ? null : item.key))}
               aria-expanded={openKey === item.key}
               className={`underline-offset-2 transition-colors ${
-                openKey === item.key ? "text-accent-soft underline" : "hover:text-zinc-300 hover:underline"
+                openKey === item.key ? "text-accent underline" : "hover:text-[#1b2a4a] hover:underline"
               }`}
             >
               {item.label}
@@ -31,7 +31,7 @@ export default function FooterLegalAccordion() {
       </div>
 
       {active && (
-        <p className="mx-auto mt-3 max-w-md text-left text-[11px] leading-relaxed text-zinc-500">
+        <p className="mx-auto mt-3 max-w-md text-left text-[11px] leading-relaxed text-[#5b6b8c]">
           {active.text}
         </p>
       )}

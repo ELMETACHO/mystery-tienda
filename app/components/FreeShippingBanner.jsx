@@ -6,7 +6,7 @@
 export default function FreeShippingBanner() {
   return (
     <div className="flex min-h-9 w-full items-center justify-center rounded-xl border border-accent/30 bg-accent/15 px-3 py-1.5">
-      <p className="flex items-center justify-center gap-1.5 text-center text-[11px] font-medium leading-snug text-accent-soft sm:text-xs">
+      <p className="flex items-center justify-center gap-1.5 text-center text-[11px] font-medium leading-snug text-accent sm:text-xs">
         <span aria-hidden="true" className="shrink-0">⏱️</span>
         <span>
           <span className="hidden sm:inline">Por tiempo limitado: </span>

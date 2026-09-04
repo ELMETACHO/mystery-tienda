@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -100,8 +100,8 @@ function StepIndicator({ stepNumber, isDone, isCurrent }) {
         isDone
           ? "bg-accent text-white"
           : isCurrent
-          ? "border-2 border-accent text-accent-soft"
-          : "border border-white/15 text-zinc-500"
+          ? "border-2 border-accent text-accent"
+          : "border border-black/10 text-[#5b6b8c]"
       }`}
     >
       <AnimatePresence mode="wait" initial={false}>
@@ -144,12 +144,12 @@ function StepIndicator({ stepNumber, isDone, isCurrent }) {
 }
 
 // Línea conectora entre círculos, estilo StepConnector de reactbits: una
-// base tenue (bg-white/10) con una capa morada encima que se "llena" con
+// base tenue (bg-black/5) con una capa morada encima que se "llena" con
 // una animación de scaleX cuando el paso anterior se completa, en vez de
 // simplemente cambiar de color de golpe.
 function StepConnector({ isDone }) {
   return (
-    <span className="relative mx-2 mb-4 h-px flex-1 overflow-hidden bg-white/10 sm:mx-3">
+    <span className="relative mx-2 mb-4 h-px flex-1 overflow-hidden bg-black/5 sm:mx-3">
       <motion.span
         className="absolute inset-0 origin-left bg-accent"
         initial={false}
@@ -173,7 +173,7 @@ function ProgressSteps({ current }) {
               <StepIndicator stepNumber={stepNumber} isDone={isDone} isCurrent={isCurrent} />
               <span
                 className={`whitespace-nowrap text-[11px] sm:text-xs ${
-                  isCurrent ? "font-medium text-zinc-200" : "text-zinc-500"
+                  isCurrent ? "font-medium text-[#1b2a4a]" : "text-[#5b6b8c]"
                 }`}
               >
                 {step}
@@ -200,14 +200,14 @@ const CameraIcon = () => (
 );
 
 const ZoomOutIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0 text-zinc-500">
+  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0 text-[#5b6b8c]">
     <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.7" />
     <path d="m20 20-4.3-4.3M8 10.5h5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
   </svg>
 );
 
 const ZoomInIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0 text-zinc-500">
+  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0 text-[#5b6b8c]">
     <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="1.7" />
     <path
       d="m20 20-4.3-4.3M10.5 8v5M8 10.5h5"
@@ -219,7 +219,7 @@ const ZoomInIcon = () => (
 );
 
 const LockIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 shrink-0 text-accent-soft">
+  <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5 shrink-0 text-accent">
     <rect x="5" y="10" width="14" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.7" />
     <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
   </svg>
@@ -228,10 +228,10 @@ const LockIcon = () => (
 // Ícono de marco vacío con "+" para la caja de subida — que se sienta como
 // el inicio de crear algo, no un input de formulario genérico.
 const EmptyFramePlusIcon = () => (
-  <svg viewBox="0 0 64 64" fill="none" className="h-10 w-10 text-zinc-600" aria-hidden="true">
+  <svg viewBox="0 0 64 64" fill="none" className="h-10 w-10 text-[#8a94ac]" aria-hidden="true">
     <rect x="8" y="6" width="40" height="46" rx="2" stroke="currentColor" strokeWidth="2" />
     <rect x="14" y="12" width="28" height="34" rx="1" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
-    <circle cx="48" cy="48" r="11" fill="var(--background)" stroke="currentColor" strokeWidth="2" />
+    <circle cx="48" cy="48" r="11" fill="#fffaf0" stroke="currentColor" strokeWidth="2" />
     <path d="M48 43v10M43 48h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
@@ -273,6 +273,7 @@ function ScaleSilhouette({ heightCm, currentColorClass }) {
 // comportamiento es idéntico.
 export default function CrearFlow({ compact = false }) {
   const router = useRouter();
+  const canvasWrapperRef = useRef(null);
   const [imageSrc, setImageSrc] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
@@ -296,6 +297,34 @@ export default function CrearFlow({ compact = false }) {
     update();
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // En móvil, el panel de "Ajuste" (barra de zoom) queda debajo del
+  // mockup, fuera de vista. Cada vez que el cliente suelta el dedo de la
+  // barra, hacemos scroll de vuelta al mockup con una animación propia
+  // (más lenta que el "smooth" nativo del navegador) para que vea cómo
+  // va quedando en tiempo real.
+  const scrollToCanvasSlowly = useCallback(() => {
+    const node = canvasWrapperRef.current;
+    if (!node) return;
+
+    const startY = window.scrollY;
+    const targetY = node.getBoundingClientRect().top + window.scrollY - 12;
+    const distance = targetY - startY;
+    if (Math.abs(distance) < 4) return;
+
+    const duration = 900;
+    const startTime = performance.now();
+
+    const step = (now) => {
+      const elapsed = now - startTime;
+      const t = Math.min(1, elapsed / duration);
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      window.scrollTo(0, startY + distance * eased);
+      if (t < 1) requestAnimationFrame(step);
+    };
+
+    requestAnimationFrame(step);
   }, []);
 
   const selectedSize = SIZES.find((s) => s.id === sizeId);
@@ -484,7 +513,7 @@ export default function CrearFlow({ compact = false }) {
     <div className="flex flex-col items-center gap-1.5 text-center lg:items-start lg:text-left">
       <Link
         href="/"
-        className="mb-1 inline-flex items-center gap-1 self-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-400 transition-colors hover:border-white/20 hover:text-zinc-200 lg:self-start"
+        className="mb-1 inline-flex items-center gap-1 self-center rounded-full border border-black/10 bg-[#fffaf0] px-3 py-1 text-xs text-[#33456b] transition-colors hover:border-black/20 hover:text-[#1b2a4a] lg:self-start"
       >
         ← Volver atrás
       </Link>
@@ -496,12 +525,12 @@ export default function CrearFlow({ compact = false }) {
         cursorCharacter="|"
         cursorClassName="text-accent"
         cursorBlinkDuration={0.6}
-        className="text-2xl font-bold tracking-tight text-accent-soft sm:text-3xl md:text-4xl"
+        className="font-brand text-2xl font-bold tracking-tight text-accent sm:text-3xl md:text-4xl"
       />
-      <p className="text-sm font-medium text-zinc-300 sm:text-base">
+      <p className="text-sm font-medium text-[#33456b] sm:text-base">
         Tu cuadro en 30 segundos
       </p>
-      <p className="text-sm text-zinc-500 sm:text-base">Sigue los pasos de abajo</p>
+      <p className="text-sm text-[#5b6b8c] sm:text-base">Sigue los pasos de abajo</p>
     </div>
   );
 
@@ -537,10 +566,10 @@ export default function CrearFlow({ compact = false }) {
           </div>
         ) : (
           <div className="mb-2 text-center sm:mb-3">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
+            <h1 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
               Crea tu cuadro
             </h1>
-            <p className="mt-2 text-sm text-zinc-400 sm:text-base">
+            <p className="mt-2 text-sm text-[#33456b] sm:text-base">
               En menos de un minuto podrás ver cómo se verá tu cuadro antes de comprarlo.
             </p>
           </div>
@@ -573,7 +602,7 @@ export default function CrearFlow({ compact = false }) {
               30x40 / 40x50 / 50x70. */}
           <div
             key={readyOrder.croppedImage}
-            className="relative w-full max-w-sm animate-ready-in overflow-hidden rounded-2xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+            className="relative w-full max-w-sm animate-ready-in overflow-hidden rounded-2xl border border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
             style={{ aspectRatio: MOCKUP.ratio }}
           >
             <Image
@@ -607,10 +636,10 @@ export default function CrearFlow({ compact = false }) {
           </div>
 
           <div className="animate-ready-in flex flex-col items-center gap-1">
-            <p className="text-xl font-semibold text-white sm:text-2xl">
+            <p className="text-xl font-semibold text-[#1b2a4a] sm:text-2xl">
               ✔ Tu cuadro está listo
             </p>
-            <p className="text-sm text-zinc-400 sm:text-base">
+            <p className="text-sm text-[#33456b] sm:text-base">
               Solo falta decirnos dónde enviarlo
             </p>
           </div>
@@ -626,7 +655,7 @@ export default function CrearFlow({ compact = false }) {
           <button
             type="button"
             onClick={() => setReadyOrder(null)}
-            className="text-xs text-zinc-500 underline underline-offset-4 hover:text-zinc-300"
+            className="text-xs text-[#5b6b8c] underline underline-offset-4 hover:text-[#33456b]"
           >
             Seguir ajustando
           </button>
@@ -651,18 +680,18 @@ export default function CrearFlow({ compact = false }) {
                 className={`flex min-h-40 scale-100 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-5 text-center transition-all duration-200 sm:min-h-52 sm:px-6 sm:py-6 ${
                   isDragging
                     ? "scale-[1.015] border-accent bg-accent/10 shadow-[0_0_0_3px_rgba(168,85,247,0.55),0_0_45px_rgba(168,85,247,0.4)]"
-                    : "border-white/15 bg-white/5 hover:scale-[1.01] hover:border-accent hover:bg-white/[0.07] hover:shadow-[0_0_0_3px_rgba(168,85,247,0.4),0_0_35px_rgba(168,85,247,0.28)]"
+                    : "border-black/10 bg-[#fffaf0] hover:scale-[1.01] hover:border-accent hover:bg-[#f5efd8] hover:shadow-[0_0_0_3px_rgba(168,85,247,0.4),0_0_35px_rgba(168,85,247,0.28)]"
                 }`}
               >
                 {isProcessingFile ? (
-                  <p className="text-zinc-300">Procesando archivo...</p>
+                  <p className="text-[#33456b]">Procesando archivo...</p>
                 ) : (
                   <>
                     <EmptyFramePlusIcon />
                     <p className="text-base font-medium">
                       {isMobile ? "Toca para subir tu foto" : "Arrastra tu imagen aquí"}
                     </p>
-                    <p className="text-sm text-zinc-400">
+                    <p className="text-sm text-[#33456b]">
                       PNG, JPG, HEIC (fotos de iPhone) o PDF (se usará la primera página)
                     </p>
                     <label
@@ -671,7 +700,7 @@ export default function CrearFlow({ compact = false }) {
                     >
                       Elegir mi fotografía
                     </label>
-                    <p className="mt-1 text-xs text-zinc-500">
+                    <p className="mt-1 text-xs text-[#5b6b8c]">
                       📱 Compatible con iPhone, Android y computador
                     </p>
                   </>
@@ -679,11 +708,11 @@ export default function CrearFlow({ compact = false }) {
                 {error && <p className="text-sm text-red-400">{error}</p>}
               </div>
 
-              <p className="px-1 text-center text-[11px] text-zinc-500">
+              <p className="px-1 text-center text-[11px] text-[#5b6b8c]">
                 🔒 Tu imagen solo se utiliza para fabricar tu cuadro y nunca será compartida.
               </p>
 
-              <ul className="flex flex-col gap-1.5 px-1 text-xs text-zinc-300">
+              <ul className="flex flex-col gap-1.5 px-1 text-xs text-[#33456b]">
                 <li className="flex items-center gap-2">
                   <span aria-hidden="true">💡</span> Usa una imagen con buena iluminación
                 </li>
@@ -695,9 +724,9 @@ export default function CrearFlow({ compact = false }) {
                 </li>
               </ul>
 
-              <p className="text-center text-xs text-zinc-500">
+              <p className="text-center text-xs text-[#5b6b8c]">
                 Más de 1.000 cuadros entregados —{" "}
-                <span className="text-accent-soft" aria-hidden="true">
+                <span className="text-accent" aria-hidden="true">
                   ⭐⭐⭐⭐⭐
                 </span>{" "}
                 4.9
@@ -707,7 +736,7 @@ export default function CrearFlow({ compact = false }) {
 
           {/* Franja de confianza — tarjetas individuales en vez de texto
               plano, para que no pase desapercibida. */}
-          <div className="grid grid-cols-2 gap-2.5 border-t border-white/10 pt-4 sm:grid-cols-4 sm:gap-3">
+          <div className="grid grid-cols-2 gap-2.5 border-t border-black/10 pt-4 sm:grid-cols-4 sm:gap-3">
             {[
               "✔ Vista previa antes de pagar",
               "✔ Impresión premium sobre madera",
@@ -716,7 +745,7 @@ export default function CrearFlow({ compact = false }) {
             ].map((item) => (
               <div
                 key={item}
-                className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2.5 text-center text-xs text-zinc-300"
+                className="rounded-xl border border-black/10 bg-[#fffaf0] px-3 py-2.5 text-center text-xs text-[#33456b]"
               >
                 {item}
               </div>
@@ -726,7 +755,7 @@ export default function CrearFlow({ compact = false }) {
       ) : (
         <div className="grid gap-6 sm:gap-8 lg:grid-cols-[65fr_35fr] lg:items-start">
           {/* LIENZO — columna izquierda (~65%) */}
-          <div className="flex flex-col items-center gap-3">
+          <div ref={canvasWrapperRef} className="flex scroll-mt-4 flex-col items-center gap-3">
             <div
               className="relative w-full max-w-[240px] overflow-hidden rounded-2xl sm:max-w-xl"
               style={{ aspectRatio: EDIT_BACKGROUND.ratio }}
@@ -777,18 +806,18 @@ export default function CrearFlow({ compact = false }) {
               </div>
             </div>
 
-            <p className="flex items-center gap-1.5 text-xs text-zinc-500">
+            <p className="flex items-center gap-1.5 text-xs text-[#5b6b8c]">
               <span aria-hidden="true">✨</span> Así quedará impreso
             </p>
 
             {isLowResolution && (
-              <div className="flex w-full max-w-xl flex-col items-stretch gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-                <p className="text-sm text-amber-300">
+              <div className="flex w-full max-w-xl flex-col items-stretch gap-3 rounded-lg border border-amber-500/40 bg-amber-100 px-4 py-3">
+                <p className="text-sm text-amber-800">
                   La resolución de la imagen es baja para el tamaño elegido, pero se mejorará con IA más adelante.
                 </p>
                 <label
                   htmlFor="file-upload"
-                  className="shrink-0 cursor-pointer rounded-full border border-amber-400/40 px-4 py-2 text-center text-xs font-medium text-amber-200 transition-colors hover:bg-amber-500/20 sm:self-start sm:py-1.5"
+                  className="shrink-0 cursor-pointer rounded-full border border-amber-500/50 px-4 py-2 text-center text-xs font-medium text-amber-800 transition-colors hover:bg-amber-200 sm:self-start sm:py-1.5"
                 >
                   Prefiero subir otra imagen
                 </label>
@@ -801,10 +830,10 @@ export default function CrearFlow({ compact = false }) {
           {/* PANEL DE CONTROL — columna derecha (~35%) */}
           <div className="flex w-full flex-col gap-6">
             <div>
-              <h2 className="mb-2 text-sm font-medium text-zinc-300">Tu imagen</h2>
+              <h2 className="mb-2 text-sm font-medium text-[#33456b]">Tu imagen</h2>
               <label
                 htmlFor="file-upload"
-                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-accent/50 bg-transparent px-5 py-2.5 text-sm font-medium text-accent-soft transition-colors hover:bg-accent/10"
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-accent/50 bg-transparent px-5 py-2.5 text-sm font-medium text-accent transition-colors hover:bg-accent/10"
               >
                 <CameraIcon />
                 Cambiar foto
@@ -820,7 +849,7 @@ export default function CrearFlow({ compact = false }) {
 
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-1 sm:gap-6">
               <div>
-                <h2 className="mb-3 text-sm font-medium text-zinc-300">Ajuste</h2>
+                <h2 className="mb-3 text-sm font-medium text-[#33456b]">Ajuste</h2>
                 <div className="flex items-center gap-3">
                   <ZoomOutIcon />
                   <input
@@ -830,17 +859,38 @@ export default function CrearFlow({ compact = false }) {
                     step={0.01}
                     value={zoom}
                     onChange={(e) => setZoom(Number(e.target.value))}
+                    onMouseUp={() => isMobile && scrollToCanvasSlowly()}
+                    onTouchEnd={() => isMobile && scrollToCanvasSlowly()}
                     className="flex-1"
                   />
                   <ZoomInIcon />
                 </div>
-                <p className="mt-1.5 text-[11px] text-zinc-500">
+                <p className="mt-1.5 text-[11px] text-[#5b6b8c]">
                   Arrastra la imagen para moverla
                 </p>
+
+                {/* Solo móvil: esta columna queda con bastante espacio
+                    vacío debajo del control de zoom (la columna "Tamaño"
+                    de al lado es más alta, por su lista de tamaños). En
+                    vez de dejarlo en blanco, un segundo texto de ayuda +
+                    el logo como marca de agua sutil. */}
+                <p className="mt-3 text-[11px] text-[#5b6b8c] sm:hidden">
+                  Ajusta con tu dedo la posición del cuadro
+                </p>
+                <div className="mt-4 flex justify-center sm:hidden">
+                  <Image
+                    src="/images/Logo/logo-navbar.png"
+                    alt=""
+                    aria-hidden="true"
+                    width={120}
+                    height={78}
+                    className="h-auto w-24 opacity-30"
+                  />
+                </div>
               </div>
 
               <div>
-                <h2 className="mb-3 text-sm font-medium text-zinc-300">Tamaño</h2>
+                <h2 className="mb-3 text-sm font-medium text-[#33456b]">Tamaño</h2>
                 <FreeShippingBanner />
                 <div className="mt-3 flex flex-col gap-2">
                   {SIZES.map((size) => {
@@ -854,20 +904,20 @@ export default function CrearFlow({ compact = false }) {
                         className={`flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition-colors sm:px-4 sm:py-3 ${
                           isSelected
                             ? "border-accent bg-accent/15 shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
-                            : "border-white/10 bg-white/5 hover:border-white/20"
+                            : "border-black/10 bg-[#fffaf0] hover:border-black/20"
                         }`}
                       >
                         <span className="flex items-center gap-2 sm:gap-3">
                           <ScaleSilhouette
                             heightCm={heightCm}
-                            currentColorClass={isSelected ? "text-accent-soft" : "text-zinc-500"}
+                            currentColorClass={isSelected ? "text-accent" : "text-[#5b6b8c]"}
                           />
                           <span className="flex items-center gap-1.5">
-                            <span className={`text-xs sm:text-sm ${isSelected ? "text-white" : "text-zinc-300"}`}>
+                            <span className={`text-xs sm:text-sm ${isSelected ? "text-[#1b2a4a] font-medium" : "text-[#33456b]"}`}>
                               {size.label}
                             </span>
                             {size.id === "40x50" && (
-                              <span className="whitespace-nowrap rounded-full bg-accent/20 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-accent-soft sm:px-2 sm:text-[10px]">
+                              <span className="whitespace-nowrap rounded-full bg-accent/20 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-accent sm:px-2 sm:text-[10px]">
                                 Más elegido
                               </span>
                             )}
@@ -875,7 +925,7 @@ export default function CrearFlow({ compact = false }) {
                         </span>
                         <span
                           className={`text-sm font-bold sm:text-lg ${
-                            isSelected ? "text-accent-soft" : "text-zinc-400"
+                            isSelected ? "text-accent" : "text-[#33456b]"
                           }`}
                         >
                           {formatCOP(getPriceCOP(size.id, frameType))}
@@ -895,7 +945,7 @@ export default function CrearFlow({ compact = false }) {
               Continuar
             </button>
 
-            <div className="-mt-3 flex items-center justify-center gap-1.5 text-xs text-zinc-500">
+            <div className="-mt-3 flex items-center justify-center gap-1.5 text-xs text-[#5b6b8c]">
               <LockIcon />
               Pago 100% seguro con Wompi
             </div>

@@ -10,7 +10,7 @@ import { ProductCard } from './ProductGrid';
 // sobre el contenedor, igual que CategoryScroller, así el swipe táctil
 // en móvil y el clic en desktop comparten el mismo estado de scroll
 // nativo.
-export default function ProductScroller({ items, emptyMessage = 'Todavía no hay productos en el catálogo. Vuelve pronto.' }) {
+export default function ProductScroller({ items, emptyMessage = 'Todavía no hay productos en el catálogo. Vuelve pronto.', light = false }) {
   const trackRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -45,7 +45,13 @@ export default function ProductScroller({ items, emptyMessage = 'Todavía no hay
 
   if (items.length === 0) {
     return (
-      <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-zinc-500">
+      <p
+        className={`rounded-xl border px-4 py-6 text-center text-sm ${
+          light
+            ? "border-black/10 bg-white/60 text-[#33456b]"
+            : "border-white/10 bg-white/5 text-zinc-500"
+        }`}
+      >
         {emptyMessage}
       </p>
     );
@@ -74,6 +80,7 @@ export default function ProductScroller({ items, emptyMessage = 'Todavía no hay
           <ProductCard
             key={item.id}
             item={item}
+            light={light}
             data-product-card
             className="w-40 shrink-0 snap-start sm:w-56"
           />

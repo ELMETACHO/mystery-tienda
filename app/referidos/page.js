@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 const INPUT_CLASS =
-  "rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm";
+  "rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-3.5 text-base outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm";
 
 const BENEFITS = [
   "Sin inversión, sin letra pequeña",
@@ -61,40 +61,41 @@ export default function ReferidosPage() {
   };
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
       <div
-        className="pointer-events-none absolute -top-32 left-1/2 h-96 w-[36rem] -translate-x-1/2 rounded-full opacity-20 blur-3xl"
-        style={{ background: "var(--accent)" }}
+        aria-hidden="true"
+        className="fixed inset-0 z-0 bg-cover bg-center"
+        style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
       />
 
-      <div className="relative mx-auto flex w-full max-w-xl flex-1 flex-col items-center gap-6 px-4 py-16 text-center sm:px-6 sm:py-24">
+      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col items-center gap-6 px-4 py-16 text-center sm:px-6 sm:py-24">
         {result ? (
           <div className="flex w-full flex-col items-center gap-5 animate-ready-in">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/15 text-3xl text-accent-soft">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/15 text-3xl text-accent">
               🎉
             </div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
               ¡Listo, {result.name}!
             </h1>
-            <p className="text-zinc-400">Este es tu código de embajador Mystery:</p>
+            <p className="text-[#33456b]">Este es tu código de embajador Mystery:</p>
 
             <div className="w-full rounded-2xl border border-dashed border-accent/50 bg-accent/5 px-6 py-5">
-              <span className="font-mono text-2xl font-bold tracking-widest text-accent-soft sm:text-3xl">
+              <span className="font-mono text-2xl font-bold tracking-widest text-accent sm:text-3xl">
                 {result.code}
               </span>
             </div>
 
-            <p className="text-sm text-zinc-300">
-              Tus clientes recibirán <span className="font-semibold text-accent-soft">5% de descuento</span>{" "}
+            <p className="text-sm text-[#33456b]">
+              Tus clientes recibirán <span className="font-semibold text-accent">5% de descuento</span>{" "}
               en su compra. Comparte tu código — por cada cuadro que se venda con él, tú
-              ganas entre <span className="font-semibold text-white">$7.000</span> y{" "}
-              <span className="font-semibold text-white">$13.000</span>, según el tamaño
+              ganas entre <span className="font-semibold text-[#1b2a4a]">$7.000</span> y{" "}
+              <span className="font-semibold text-[#1b2a4a]">$13.000</span>, según el tamaño
               que elija tu cliente.
             </p>
 
-            <div className="w-full rounded-2xl border border-white/10 bg-white/5 p-5 text-left text-sm text-zinc-300">
-              <p className="mb-2 font-medium text-zinc-100">¿Cómo funciona?</p>
-              <ol className="flex flex-col gap-2 text-zinc-400">
+            <div className="w-full rounded-2xl border border-black/10 bg-[#fffaf0] p-5 text-left text-sm text-[#33456b]">
+              <p className="mb-2 font-medium text-[#1b2a4a]">¿Cómo funciona?</p>
+              <ol className="flex flex-col gap-2 text-[#33456b]">
                 <li>1. Comparte tu código con quien quieras.</li>
                 <li>
                   2. Cuando compren un cuadro Mystery, deben escribir tu código en el
@@ -116,46 +117,46 @@ export default function ReferidosPage() {
               Ir a mi panel de referido
             </Link>
 
-            <div className="w-full rounded-2xl border border-white/10 bg-white/5 p-4 text-left text-sm">
-              <p className="text-zinc-300">
+            <div className="w-full rounded-2xl border border-black/10 bg-[#fffaf0] p-4 text-left text-sm">
+              <p className="text-[#33456b]">
                 📌 Guarda este enlace para volver a ver tus ventas y comisión cuando
                 quieras:
               </p>
-              <p className="mt-1 break-all font-mono text-xs text-accent-soft">
+              <p className="mt-1 break-all font-mono text-xs text-accent">
                 {panelUrl}
               </p>
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="mt-3 w-full rounded-full border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent-soft transition-colors hover:bg-accent/20"
+                className="mt-3 w-full rounded-full border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/20"
               >
                 {linkCopied ? "¡Copiado!" : "Copiar enlace"}
               </button>
             </div>
 
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-[#5b6b8c]">
               Guarda tu código — lo vas a necesitar para entrar a tu panel.
             </p>
           </div>
         ) : (
           <>
             <span className="text-3xl">💜</span>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
+            <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
               Gana dinero recomendando Mystery
             </h1>
-            <p className="text-lg font-medium text-zinc-200">
+            <p className="text-lg font-medium text-[#1b2a4a]">
               ¿Ya amas tus cuadros? Compártelos y gana por cada venta.
             </p>
-            <p className="text-sm text-zinc-400 sm:text-base">
+            <p className="text-sm text-[#33456b] sm:text-base">
               Únete al equipo de embajadores Mystery — te damos tu propio código, lo
               compartes con quien quieras, y cada vez que alguien compre usándolo, tú
               te llevas tu comisión. Así de simple.
             </p>
 
-            <ul className="flex flex-col gap-2 text-sm text-zinc-300">
+            <ul className="flex flex-col gap-2 text-sm text-[#33456b]">
               {BENEFITS.map((benefit) => (
                 <li key={benefit} className="flex items-center gap-2">
-                  <span className="text-emerald-400">✅</span>
+                  <span className="text-emerald-600">✅</span>
                   {benefit}
                 </li>
               ))}
@@ -173,7 +174,7 @@ export default function ReferidosPage() {
                 <button
                   type="button"
                   onClick={() => setShowLookup(true)}
-                  className="text-sm font-medium text-zinc-400 underline underline-offset-4 transition-colors hover:text-accent-soft"
+                  className="text-sm font-medium text-[#33456b] underline underline-offset-4 transition-colors hover:text-accent"
                 >
                   Ya tengo código
                 </button>
@@ -181,7 +182,7 @@ export default function ReferidosPage() {
             ) : showForm ? (
               <form
                 onSubmit={handleSubmit}
-                className="mt-2 flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-5 text-left"
+                className="mt-2 flex w-full flex-col gap-3 rounded-2xl border border-black/10 bg-[#fffaf0] p-5 text-left"
               >
                 <input
                   type="text"
@@ -197,7 +198,7 @@ export default function ReferidosPage() {
                   onChange={(e) => setWhatsapp(e.target.value)}
                   className={INPUT_CLASS}
                 />
-                {error && <p className="text-sm text-red-400">{error}</p>}
+                {error && <p className="text-sm text-red-600">{error}</p>}
                 <button
                   type="submit"
                   disabled={!isFormValid || isSubmitting}
@@ -214,7 +215,7 @@ export default function ReferidosPage() {
                   if (!code) return;
                   window.location.href = `/referidos/panel?code=${encodeURIComponent(code)}`;
                 }}
-                className="mt-2 flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-5 text-left"
+                className="mt-2 flex w-full flex-col gap-3 rounded-2xl border border-black/10 bg-[#fffaf0] p-5 text-left"
               >
                 <input
                   type="text"

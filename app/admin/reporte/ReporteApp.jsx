@@ -55,9 +55,9 @@ function formatDate(iso) {
 // vistazo cómo se llega al número final.
 function MetricRow({ label, amount, subtract }) {
   return (
-    <div className="flex items-center justify-between border-b border-white/5 py-3 last:border-0">
-      <span className="text-sm text-zinc-400">{label}</span>
-      <span className={`font-semibold ${subtract ? "text-red-300" : "text-zinc-100"}`}>
+    <div className="flex items-center justify-between border-b border-black/5 py-3 last:border-0">
+      <span className="text-sm text-[#33456b]">{label}</span>
+      <span className={`font-semibold ${subtract ? "text-red-300" : "text-[#1b2a4a]"}`}>
         {subtract ? "− " : ""}
         {formatCOP(amount)}
       </span>
@@ -137,14 +137,14 @@ export default function ReporteApp() {
     <div className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-12 sm:px-6 sm:py-16">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Reporte financiero</h1>
-          <p className="mt-1 text-sm text-zinc-400">
+          <h1 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">Reporte financiero</h1>
+          <p className="mt-1 text-sm text-[#33456b]">
             Ingresos, costos, comisiones y utilidad neta.
           </p>
         </div>
         <a
           href="/admin"
-          className="shrink-0 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-accent/40 hover:text-accent-soft"
+          className="shrink-0 rounded-full border border-black/10 bg-[#fffaf0] px-4 py-2 text-xs font-medium text-[#33456b] transition-colors hover:border-accent/40 hover:text-accent"
         >
           ← Admin
         </a>
@@ -159,7 +159,7 @@ export default function ReporteApp() {
             className={`rounded-full px-4 py-2 text-xs font-medium transition-colors ${
               period === opt.value
                 ? "bg-accent text-white"
-                : "border border-white/10 bg-white/5 text-zinc-400 hover:text-zinc-200"
+                : "border border-black/10 bg-[#fffaf0] text-[#33456b] hover:text-[#1b2a4a]"
             }`}
           >
             {opt.label}
@@ -167,10 +167,10 @@ export default function ReporteApp() {
         ))}
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {isLoading || !report ? (
-        <p className="text-sm text-zinc-500">Cargando...</p>
+        <p className="text-sm text-[#5b6b8c]">Cargando...</p>
       ) : (
         <>
           <div
@@ -180,20 +180,20 @@ export default function ReporteApp() {
                 : "border-red-500/30 bg-red-500/10"
             }`}
           >
-            <p className="text-sm text-zinc-400">Utilidad neta</p>
+            <p className="text-sm text-[#33456b]">Utilidad neta</p>
             <p
               className={`text-2xl font-bold sm:text-3xl ${
-                netProfitPositive ? "text-emerald-300" : "text-red-300"
+                netProfitPositive ? "text-emerald-700" : "text-red-300"
               }`}
             >
               {formatCOP(report.netProfit)}
             </p>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-[#5b6b8c]">
               {report.orderCount} pedido{report.orderCount === 1 ? "" : "s"} en el período
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-5">
+          <div className="rounded-2xl border border-black/10 bg-[#fffaf0] px-5">
             <MetricRow label="Ingresos" amount={report.revenue} />
             <MetricRow label="Costo fabricante" amount={report.fabricanteCost} subtract />
             <MetricRow label="Comisión Wompi" amount={report.wompiFee} subtract />
@@ -202,17 +202,17 @@ export default function ReporteApp() {
             <MetricRow label="Gastos manuales" amount={report.expensesTotal} subtract />
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <h2 className="mb-4 text-sm font-medium text-zinc-300">Agregar gasto manual</h2>
+          <div className="rounded-2xl border border-black/10 bg-[#fffaf0] p-5">
+            <h2 className="mb-4 text-sm font-medium text-[#33456b]">Agregar gasto manual</h2>
             <form onSubmit={handleAddExpense} className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/30"
+                  className="rounded-xl border border-black/10 bg-[#fffaf0] px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/30"
                 >
                   {EXPENSE_CATEGORIES.map((c) => (
-                    <option key={c} value={c} className="bg-zinc-900">
+                    <option key={c} value={c} className="bg-white text-[#1b2a4a]">
                       {c}
                     </option>
                   ))}
@@ -221,7 +221,7 @@ export default function ReporteApp() {
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/30"
+                  className="rounded-xl border border-black/10 bg-[#fffaf0] px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/30"
                 />
               </div>
               <input
@@ -230,16 +230,16 @@ export default function ReporteApp() {
                 placeholder="Monto en COP (ej: 10.000)"
                 value={amount}
                 onChange={(e) => setAmount(formatThousands(digitsOnly(e.target.value)))}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/30"
+                className="rounded-xl border border-black/10 bg-[#fffaf0] px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/30"
               />
               <input
                 type="text"
                 placeholder="Descripción (opcional)"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/30"
+                className="rounded-xl border border-black/10 bg-[#fffaf0] px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/30"
               />
-              {expenseError && <p className="text-xs text-red-400">{expenseError}</p>}
+              {expenseError && <p className="text-xs text-red-600">{expenseError}</p>}
               <button
                 type="submit"
                 disabled={isSubmittingExpense || !expenseAmountValue || expenseAmountValue <= 0}
@@ -252,21 +252,21 @@ export default function ReporteApp() {
 
           {report.expenses.length > 0 && (
             <div className="flex flex-col gap-2">
-              <h2 className="text-sm font-medium text-zinc-300">
+              <h2 className="text-sm font-medium text-[#33456b]">
                 Gastos manuales en este período
               </h2>
               <ul className="flex flex-col gap-2">
                 {report.expenses.map((e) => (
                   <li
                     key={e.id}
-                    className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+                    className="flex items-center justify-between gap-4 rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-3"
                   >
                     <div className="flex flex-col">
-                      <span className="text-sm text-zinc-100">
+                      <span className="text-sm text-[#1b2a4a]">
                         {e.category}
                         {e.description ? ` — ${e.description}` : ""}
                       </span>
-                      <span className="text-xs text-zinc-500">{formatDate(e.date)}</span>
+                      <span className="text-xs text-[#5b6b8c]">{formatDate(e.date)}</span>
                     </div>
                     <span className="shrink-0 text-sm font-semibold text-red-300">
                       − {formatCOP(e.amount)}

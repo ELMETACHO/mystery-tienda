@@ -96,7 +96,7 @@ const PHONE_PREFIXES = [
 // Mismo tratamiento premium de /crear: bordes sutiles, foco con anillo
 // morado y transición suave.
 const INPUT_CLASS =
-  "rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm";
+  "rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-3.5 text-base outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm";
 
 // Botones de pago: el color/gradiente/sombra intensos y la respiración
 // sutil (ver .animate-pay-breathe en globals.css) buscan que sea el
@@ -218,8 +218,13 @@ function CheckoutForm() {
 
   if (isLoadingOrder || !order) {
     return (
-      <div className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6">
-        <p className="text-zinc-400">Cargando tu pedido...</p>
+      <div className="relative flex min-h-screen flex-1 items-center justify-center overflow-hidden bg-[#8fcaf0] px-4 py-16 sm:px-6">
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-0 bg-cover bg-center"
+          style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
+        />
+        <p className="relative z-10 text-[#33456b]">Cargando tu pedido...</p>
       </div>
     );
   }
@@ -601,9 +606,9 @@ function CheckoutForm() {
   // la primera, así que quien llenaba el formulario largo y pagaba
   // desde el botón de abajo nunca veía la opción de aplicar un código.
   const discountCodeSection = (
-    <div className="border-t border-white/10 pt-3">
+    <div className="border-t border-black/10 pt-3">
       {appliedCode ? (
-        <p className="text-xs text-emerald-400">
+        <p className="text-xs text-emerald-700">
           🎉 Código {appliedCode.code} aplicado — descuento del{" "}
           {appliedCode.percent}%
         </p>
@@ -621,18 +626,18 @@ function CheckoutForm() {
               type="button"
               onClick={handleApplyDiscount}
               disabled={isValidatingDiscount || !discountInput.trim()}
-              className="shrink-0 rounded-xl border border-accent/50 px-4 py-2 text-sm font-medium text-accent-soft transition-colors hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
+              className="shrink-0 rounded-xl border border-accent/50 px-4 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent/10 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {isValidatingDiscount ? "Validando..." : "Aplicar"}
             </button>
           </div>
-          {discountError && <p className="text-xs text-red-400">{discountError}</p>}
+          {discountError && <p className="text-xs text-red-600">{discountError}</p>}
         </div>
       ) : (
         <button
           type="button"
           onClick={() => setShowDiscountField(true)}
-          className="text-sm font-medium text-accent-soft underline decoration-accent-soft/50 underline-offset-4 transition-colors hover:text-white"
+          className="text-sm font-medium text-accent underline decoration-accent/50 underline-offset-4 transition-colors hover:text-[#1b2a4a]"
         >
           CÓDIGO DE DESCUENTO
         </button>
@@ -648,25 +653,26 @@ function CheckoutForm() {
         onReady={() => setIsWidgetReady(true)}
       />
 
-      <div className="relative overflow-hidden">
+      <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
         <div
-          className="pointer-events-none absolute -top-32 left-1/2 h-96 w-[36rem] -translate-x-1/2 rounded-full opacity-20 blur-3xl"
-          style={{ background: "var(--accent)" }}
+          aria-hidden="true"
+          className="fixed inset-0 z-0 bg-cover bg-center"
+          style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
         />
 
-        <div className="relative mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 py-4 sm:gap-10 sm:px-6 sm:py-16">
+        <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 py-4 sm:gap-10 sm:px-6 sm:py-16">
         <div className="text-center">
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
             Finaliza tu pedido
           </h1>
-          <p className="mt-1 text-sm text-zinc-400 sm:mt-2 sm:text-base">
+          <p className="mt-1 text-sm text-[#33456b] sm:mt-2 sm:text-base">
             Completa tus datos de envío y paga con Wompi (modo prueba).
           </p>
         </div>
 
         <div className="flex flex-col gap-4 sm:gap-8 lg:flex-row">
           <div className="order-2 flex flex-1 flex-col gap-3 sm:gap-4 lg:order-1">
-            <h2 className="text-sm font-medium text-zinc-300">Tus datos</h2>
+            <h2 className="text-sm font-medium text-[#33456b]">Tus datos</h2>
 
             <input
               type="text"
@@ -689,7 +695,7 @@ function CheckoutForm() {
                 className={`${INPUT_CLASS} sm:w-44`}
               >
                 {PHONE_PREFIXES.map((p) => (
-                  <option key={p.code} value={p.code} className="bg-zinc-900">
+                  <option key={p.code} value={p.code} className="bg-white text-[#1b2a4a]">
                     {p.label}
                   </option>
                 ))}
@@ -705,7 +711,7 @@ function CheckoutForm() {
                   className={`w-full ${INPUT_CLASS}`}
                 />
                 {customer.phone.length > 0 && !isPhoneValid && (
-                  <p className="mt-1.5 text-xs text-red-400">
+                  <p className="mt-1.5 text-xs text-red-600">
                     El celular debe tener exactamente 10 dígitos numéricos (tienes{" "}
                     {customer.phone.length}).
                   </p>
@@ -713,7 +719,7 @@ function CheckoutForm() {
               </div>
             </div>
 
-            <h2 className="mt-2 text-sm font-medium text-zinc-300">
+            <h2 className="mt-2 text-sm font-medium text-[#33456b]">
               Dirección de envío
             </h2>
             <input
@@ -725,7 +731,7 @@ function CheckoutForm() {
             />
 
             <div>
-              <p className="mb-2 text-xs font-medium text-zinc-400">
+              <p className="mb-2 text-xs font-medium text-[#33456b]">
                 ¿Casa o apartamento?
               </p>
               <div className="grid grid-cols-2 gap-3">
@@ -738,8 +744,8 @@ function CheckoutForm() {
                       onClick={() => setHousingType(option.id)}
                       className={`rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
                         isSelected
-                          ? "border-accent bg-accent/15 text-white shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
-                          : "border-white/10 bg-white/5 text-zinc-300 hover:border-white/20"
+                          ? "border-accent bg-accent/15 text-[#1b2a4a] shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
+                          : "border-black/10 bg-[#fffaf0] text-[#33456b] hover:border-black/20"
                       }`}
                     >
                       {option.label}
@@ -807,14 +813,14 @@ function CheckoutForm() {
                 value={customer.department}
                 onChange={handleChange("department")}
                 className={`flex-1 ${INPUT_CLASS} ${
-                  customer.department ? "" : "text-zinc-500"
+                  customer.department ? "" : "text-[#5b6b8c]"
                 }`}
               >
-                <option value="" disabled className="bg-zinc-900">
+                <option value="" disabled className="bg-white text-[#1b2a4a]">
                   Departamento
                 </option>
                 {DEPARTMENTS_CO.map((dept) => (
-                  <option key={dept} value={dept} className="bg-zinc-900">
+                  <option key={dept} value={dept} className="bg-white text-[#1b2a4a]">
                     {dept}
                   </option>
                 ))}
@@ -825,12 +831,12 @@ function CheckoutForm() {
                 value={customer.postalCode}
                 readOnly
                 title="Se calcula automáticamente según el departamento y la ciudad"
-                className={`flex-1 ${INPUT_CLASS} cursor-not-allowed text-zinc-400`}
+                className={`flex-1 ${INPUT_CLASS} cursor-not-allowed text-[#33456b]`}
               />
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-medium text-zinc-400">Método de pago</p>
+              <p className="mb-2 text-xs font-medium text-[#33456b]">Método de pago</p>
               <div className="grid grid-cols-2 gap-3">
                 {PAYMENT_METHODS.map((method) => {
                   const isSelected = paymentMethod === method.id;
@@ -841,12 +847,12 @@ function CheckoutForm() {
                       onClick={() => setPaymentMethod(method.id)}
                       className={`rounded-xl border px-4 py-3 text-left transition-colors ${
                         isSelected
-                          ? "border-accent bg-accent/15 text-white shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
-                          : "border-white/10 bg-white/5 text-zinc-300 hover:border-white/20"
+                          ? "border-accent bg-accent/15 text-[#1b2a4a] shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
+                          : "border-black/10 bg-[#fffaf0] text-[#33456b] hover:border-black/20"
                       }`}
                     >
                       <span className="block text-sm font-medium">{method.label}</span>
-                      <span className="block text-xs text-zinc-500">{method.detail}</span>
+                      <span className="block text-xs text-[#5b6b8c]">{method.detail}</span>
                     </button>
                   );
                 })}
@@ -854,21 +860,21 @@ function CheckoutForm() {
             </div>
 
             {paymentMethod === "cod" && (
-              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
+              <div className="rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-400">Anticipo a pagar ahora</span>
-                  <span className="font-semibold text-accent-soft">
+                  <span className="text-[#33456b]">Anticipo a pagar ahora</span>
+                  <span className="font-semibold text-accent">
                     {formatCOP(COD_DEPOSIT_COP)}
                   </span>
                 </div>
-                <p className="mb-2 text-xs text-zinc-500">Cubre costos de producción</p>
-                <div className="flex items-center justify-between border-t border-white/10 pt-2">
-                  <span className="text-zinc-400">Saldo al recibir tu cuadro</span>
-                  <span className="font-semibold text-white">
+                <p className="mb-2 text-xs text-[#5b6b8c]">Cubre costos de producción</p>
+                <div className="flex items-center justify-between border-t border-black/10 pt-2">
+                  <span className="text-[#33456b]">Saldo al recibir tu cuadro</span>
+                  <span className="font-semibold text-[#1b2a4a]">
                     {formatCOP(effectivePriceCOP - COD_DEPOSIT_COP)}
                   </span>
                 </div>
-                <p className="mt-2 text-xs text-zinc-500">
+                <p className="mt-2 text-xs text-[#5b6b8c]">
                   Sin costo adicional por pagar contraentrega.
                 </p>
               </div>
@@ -881,7 +887,7 @@ function CheckoutForm() {
                 columnas ya están lado a lado, así que ahí no hace falta. */}
             <div className="sm:hidden">{discountCodeSection}</div>
             {payError && (
-              <p className="text-sm text-red-400 sm:hidden">{payError}</p>
+              <p className="text-sm text-red-600 sm:hidden">{payError}</p>
             )}
             {paymentMethod === "cod" ? (
               <div className="sm:hidden">
@@ -899,7 +905,7 @@ function CheckoutForm() {
                     ? "Pagar al recibir"
                     : "Cargando pasarela..."}
                 </button>
-                <p className="mt-1.5 text-center text-xs text-zinc-500">
+                <p className="mt-1.5 text-center text-xs text-[#5b6b8c]">
                   Anticipo de {formatCOP(COD_DEPOSIT_COP)} + excedente al recibir
                 </p>
               </div>
@@ -919,14 +925,14 @@ function CheckoutForm() {
                     ? "Pagar ahora"
                     : "Cargando pasarela..."}
                 </button>
-                <p className="mt-1.5 text-center text-xs text-zinc-500">
+                <p className="mt-1.5 text-center text-xs text-[#5b6b8c]">
                   Tarjeta / PSE con Wompi
                 </p>
               </div>
             )}
           </div>
 
-          <div className="order-1 flex w-full flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)] sm:gap-4 sm:p-6 lg:order-2 lg:w-72">
+          <div className="order-1 flex w-full flex-col gap-3 rounded-2xl border border-black/10 bg-[#fffaf0] p-3 shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)] sm:gap-4 sm:p-6 lg:order-2 lg:w-72">
             {/* Móvil: tarjeta compacta y colapsable — solo lo esencial visible,
                 se expande al tocarla para no obligar a tanto scroll antes de
                 llegar al formulario. */}
@@ -935,27 +941,27 @@ function CheckoutForm() {
                 <img
                   src={order.croppedImage}
                   alt="Preview del cuadro"
-                  className="h-12 w-12 shrink-0 rounded-lg border border-white/10 object-cover"
+                  className="h-12 w-12 shrink-0 rounded-lg border border-black/10 object-cover"
                 />
                 <div className="flex flex-1 items-center justify-between gap-2">
-                  <span className="text-sm text-zinc-300">{order.sizeLabel}</span>
+                  <span className="text-sm text-[#33456b]">{order.sizeLabel}</span>
                   <span className="flex items-baseline gap-1.5 text-sm font-semibold">
                     {appliedCode && (
-                      <span className="text-xs font-normal text-zinc-500 line-through">
+                      <span className="text-xs font-normal text-[#5b6b8c] line-through">
                         {formatCOP(order.priceCOP)}
                       </span>
                     )}
                     {formatCOP(effectivePriceCOP)}
                   </span>
                 </div>
-                <span className="shrink-0 text-xs text-zinc-500 transition-transform group-open:rotate-180">
+                <span className="shrink-0 text-xs text-[#5b6b8c] transition-transform group-open:rotate-180">
                   ▾
                 </span>
               </summary>
               <img
                 src={order.croppedImage}
                 alt="Preview del cuadro"
-                className="mt-3 w-full rounded-lg border border-white/10 object-cover"
+                className="mt-3 w-full rounded-lg border border-black/10 object-cover"
               />
             </details>
 
@@ -964,31 +970,31 @@ function CheckoutForm() {
                 sienta como confirmar un producto terminado. */}
             <div className="hidden flex-col gap-4 sm:flex">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-zinc-300">Tu pedido</h2>
-                <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-medium text-accent-soft">
+                <h2 className="text-sm font-medium text-[#33456b]">Tu pedido</h2>
+                <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-medium text-accent">
                   Listo para producción
                 </span>
               </div>
-              <div className="overflow-hidden rounded-xl border border-white/10 shadow-lg shadow-black/40">
+              <div className="overflow-hidden rounded-xl border border-black/10 shadow-lg shadow-black/40">
                 <img
                   src={order.croppedImage}
                   alt="Preview del cuadro"
                   className="w-full object-cover"
                 />
               </div>
-              <div className="flex items-center justify-between border-t border-white/10 pt-3 text-sm">
-                <span className="text-zinc-400">Tamaño</span>
+              <div className="flex items-center justify-between border-t border-black/10 pt-3 text-sm">
+                <span className="text-[#33456b]">Tamaño</span>
                 <span className="font-medium">{order.sizeLabel}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-400">Total</span>
+                <span className="text-sm text-[#33456b]">Total</span>
                 <span className="flex items-baseline gap-2">
                   {appliedCode && (
-                    <span className="text-sm font-normal text-zinc-500 line-through">
+                    <span className="text-sm font-normal text-[#5b6b8c] line-through">
                       {formatCOP(order.priceCOP)}
                     </span>
                   )}
-                  <span className="text-2xl font-bold text-accent-soft">
+                  <span className="text-2xl font-bold text-accent">
                     {formatCOP(effectivePriceCOP)}
                   </span>
                 </span>
@@ -1000,7 +1006,7 @@ function CheckoutForm() {
             <FreeShippingBanner />
 
             {payError && (
-              <p className="text-sm text-red-400">{payError}</p>
+              <p className="text-sm text-red-600">{payError}</p>
             )}
 
             {paymentMethod === "cod" ? (
@@ -1034,14 +1040,14 @@ function CheckoutForm() {
                   : "Cargando pasarela..."}
               </button>
             )}
-            <p className="text-center text-xs text-zinc-500">
+            <p className="text-center text-xs text-[#5b6b8c]">
               {paymentMethod === "cod"
                 ? `Anticipo de ${formatCOP(COD_DEPOSIT_COP)} + excedente al recibir · Tarjeta / PSE con Wompi. Sin costo adicional por pagar contraentrega.`
                 : "Tarjeta / PSE con Wompi — sandbox de pruebas, no se realizan cobros reales."}
             </p>
-            <p className="text-center text-xs text-zinc-600">
+            <p className="text-center text-xs text-[#8a94ac]">
               Al pagar aceptas nuestras{" "}
-              <Link href="/politicas" className="underline-offset-2 hover:text-zinc-400 hover:underline">
+              <Link href="/politicas" className="underline-offset-2 hover:text-[#33456b] hover:underline">
                 políticas de privacidad y devolución
               </Link>
               .
@@ -1061,8 +1067,13 @@ export default function CheckoutPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex flex-1 items-center justify-center px-4 py-16 sm:px-6">
-          <p className="text-zinc-400">Cargando tu pedido...</p>
+        <div className="relative flex min-h-screen flex-1 items-center justify-center overflow-hidden bg-[#8fcaf0] px-4 py-16 sm:px-6">
+          <div
+            aria-hidden="true"
+            className="fixed inset-0 z-0 bg-cover bg-center"
+            style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
+          />
+          <p className="relative z-10 text-[#33456b]">Cargando tu pedido...</p>
         </div>
       }
     >
