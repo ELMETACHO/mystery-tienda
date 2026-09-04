@@ -662,11 +662,11 @@ function CheckoutForm() {
 
         <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 py-4 sm:gap-10 sm:px-6 sm:py-16">
         <div className="text-center">
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
+          <h1 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
             Finaliza tu pedido
           </h1>
           <p className="mt-1 text-sm text-[#33456b] sm:mt-2 sm:text-base">
-            Completa tus datos de envío y paga con Wompi (modo prueba).
+            Completa tus datos de envío.
           </p>
         </div>
 
