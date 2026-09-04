@@ -25,7 +25,10 @@ export default async function ProductPage({ params }) {
         style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
       />
       <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-16">
-        <Link href="/" className="text-xs text-[#5b6b8c] hover:text-[#1b2a4a]">
+        <Link
+          href="/"
+          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-black/10 bg-[#fffaf0] px-4 py-2 text-sm font-medium text-[#33456b] shadow-sm transition-colors hover:border-accent hover:text-[#1b2a4a]"
+        >
           ← Volver al catálogo
         </Link>
 

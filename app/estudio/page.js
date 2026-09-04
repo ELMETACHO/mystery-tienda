@@ -31,9 +31,16 @@ export default async function EstudioPage() {
   const expectedToken = getEstudioSessionToken();
   const isAuthenticated = Boolean(expectedToken) && sessionCookie === expectedToken;
 
-  if (!isAuthenticated) {
-    return <EstudioLogin />;
-  }
-
-  return <EstudioApp mockups={listMockups()} />;
+  return (
+    <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 bg-cover bg-center"
+        style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
+      />
+      <div className="relative z-10 flex flex-1 flex-col">
+        {isAuthenticated ? <EstudioApp mockups={listMockups()} /> : <EstudioLogin />}
+      </div>
+    </div>
+  );
 }

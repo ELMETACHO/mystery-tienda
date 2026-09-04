@@ -535,8 +535,8 @@ export default function EstudioApp({ mockups }) {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
       <div className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight">Estudio de mockups</h1>
-        <p className="mt-1 text-sm text-zinc-400">Sube, ajusta y envía a Drive en 4 pasos.</p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight">Estudio de mockups</h1>
+        <p className="mt-1 text-sm text-[#33456b]">Sube, ajusta y envía a Drive en 4 pasos.</p>
       </div>
 
       <StepsIndicator steps={STEPS} current={step} />
@@ -545,18 +545,18 @@ export default function EstudioApp({ mockups }) {
         <button
           type="button"
           onClick={resetAll}
-          className="self-center text-xs text-zinc-500 underline underline-offset-4 hover:text-zinc-300"
+          className="self-center text-xs text-[#5b6b8c] underline underline-offset-4 hover:text-[#33456b]"
         >
           Empezar de nuevo
         </button>
       )}
 
-      {error && <p className="text-center text-sm text-red-400">{error}</p>}
+      {error && <p className="text-center text-sm text-red-600">{error}</p>}
 
       {/* Aviso NO bloqueante: el diseñador puede seguir igual si de
           verdad quiere volver a subir el mismo diseño a propósito. */}
       {duplicateWarning && (
-        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-sm text-amber-300">
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-sm text-amber-800">
           ⚠ Este diseño ya está en el catálogo (categoría: {duplicateCategoryLabel}). Puedes
           seguir igual si quieres subirlo de todas formas.
         </p>
@@ -564,7 +564,7 @@ export default function EstudioApp({ mockups }) {
 
       {/* PASO 1: subir diseño — lo único visible al inicio. */}
       {step === 1 && (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-12 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-black/10 bg-[#fffaf0] px-6 py-12 text-center">
           <input
             id="estudio-file-upload"
             type="file"
@@ -573,8 +573,8 @@ export default function EstudioApp({ mockups }) {
             tabIndex={-1}
             onChange={(e) => handleFile(e.target.files?.[0])}
           />
-          <p className="text-lg font-medium text-zinc-100">Sube tu diseño</p>
-          <p className="text-sm text-zinc-400">PNG, JPG o WEBP</p>
+          <p className="text-lg font-medium text-[#1b2a4a]">Sube tu diseño</p>
+          <p className="text-sm text-[#33456b]">PNG, JPG o WEBP</p>
           <label
             htmlFor="estudio-file-upload"
             className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-soft"
@@ -588,14 +588,14 @@ export default function EstudioApp({ mockups }) {
       {step === 2 && (
         <div className="flex flex-col gap-6">
           {mockups.length === 0 ? (
-            <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+            <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800">
               Todavía no hay imágenes en public/images/mockups-estudio/. Sube ahí los
               fondos (paredes/ambientes) y recarga esta página.
             </p>
           ) : (
             <>
               <div>
-                <h2 className="mb-3 text-sm font-medium text-zinc-300">Elige un fondo</h2>
+                <h2 className="mb-3 text-sm font-medium text-[#33456b]">Elige un fondo</h2>
                 <div className="flex gap-3 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible">
                   {mockups.map((file) => {
                     const isSelected = file === selectedMockup;
@@ -605,7 +605,7 @@ export default function EstudioApp({ mockups }) {
                         type="button"
                         onClick={() => setSelectedMockup(file)}
                         className={`relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border-2 transition-colors sm:h-28 sm:w-28 ${
-                          isSelected ? "border-accent" : "border-white/10 hover:border-white/30"
+                          isSelected ? "border-accent" : "border-black/10 hover:border-black/20"
                         }`}
                       >
                         <Image
@@ -631,7 +631,7 @@ export default function EstudioApp({ mockups }) {
                       recalcular/regenerar una vista previa duplicada por
                       separado (causa probable del delay notado antes). */}
                   <div
-                    className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-white/10"
+                    className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-black/10"
                     style={{ aspectRatio: previewAspect }}
                   >
                     <Image src={mockupSrc} alt="Fondo elegido" fill className="object-cover" />
@@ -662,7 +662,7 @@ export default function EstudioApp({ mockups }) {
                   </div>
 
                   <div className="w-full max-w-xs">
-                    <p className="mb-2 text-center text-xs text-zinc-400">Zoom</p>
+                    <p className="mb-2 text-center text-xs text-[#33456b]">Zoom</p>
                     <input
                       type="range"
                       min={1}
@@ -697,7 +697,7 @@ export default function EstudioApp({ mockups }) {
       {/* PASO 3: categoría. */}
       {step === 3 && (
         <div>
-          <h2 className="mb-3 text-center text-base font-semibold text-zinc-100">
+          <h2 className="mb-3 text-center text-base font-semibold text-[#1b2a4a]">
             Elige una categoría
           </h2>
           <div className="flex flex-wrap justify-center gap-2.5">
@@ -706,7 +706,7 @@ export default function EstudioApp({ mockups }) {
                 key={category.id}
                 type="button"
                 onClick={() => setSelectedCategory(category.id)}
-                className="rounded-full border-2 border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-zinc-300 transition-colors hover:border-accent hover:text-white"
+                className="rounded-full border-2 border-black/10 bg-[#fffaf0] px-5 py-2.5 text-sm font-semibold text-[#33456b] transition-colors hover:border-accent hover:text-[#1b2a4a]"
               >
                 {category.label}
               </button>
@@ -717,13 +717,13 @@ export default function EstudioApp({ mockups }) {
 
       {/* PASO 4: confirmar y enviar. */}
       {step === 4 && (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-6 py-10 text-center">
-          <div className="relative aspect-[40/50] w-full max-w-[180px] overflow-hidden rounded-lg border border-white/10">
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-black/10 bg-[#fffaf0] px-6 py-10 text-center">
+          <div className="relative aspect-[40/50] w-full max-w-[180px] overflow-hidden rounded-lg border border-black/10">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imageSrc} alt="Diseño elegido" className="h-full w-full object-cover" />
           </div>
-          <p className="text-sm text-zinc-400">
-            Categoría: <span className="font-medium text-zinc-200">{selectedCategoryLabel}</span>
+          <p className="text-sm text-[#33456b]">
+            Categoría: <span className="font-medium text-[#1b2a4a]">{selectedCategoryLabel}</span>
           </p>
 
           <button
@@ -737,17 +737,17 @@ export default function EstudioApp({ mockups }) {
 
           {uploadSuccess ? (
             <>
-              <p className="text-sm font-medium text-emerald-400">✔ Producto agregado al catálogo</p>
+              <p className="text-sm font-medium text-emerald-700">✔ Producto agregado al catálogo</p>
               <button
                 type="button"
                 onClick={resetAll}
-                className="text-xs text-zinc-500 underline underline-offset-4 hover:text-zinc-300"
+                className="text-xs text-[#5b6b8c] underline underline-offset-4 hover:text-[#33456b]"
               >
                 Subir otro diseño
               </button>
             </>
           ) : (
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-[#5b6b8c]">
               Sube el mockup (PNG 1080x1350) a &ldquo;Mockups (Instagram)&rdquo; y la foto original
               + los 3 recortes de impresión (30x40/40x50/50x70) a &ldquo;Original
               (Portafolio)&rdquo;, dentro de la categoría elegida.

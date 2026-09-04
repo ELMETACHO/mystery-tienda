@@ -88,44 +88,44 @@ function OrderRow({ order, code, onUpdated }) {
   };
 
   return (
-    <li className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+    <li className="flex flex-col gap-3 rounded-2xl border border-black/10 bg-[#fffaf0] p-4">
       <div className="flex items-center gap-4">
         {o.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={o.thumbnailUrl}
             alt=""
-            className="h-14 w-14 shrink-0 rounded-lg border border-white/10 object-cover"
+            className="h-14 w-14 shrink-0 rounded-lg border border-black/10 object-cover"
           />
         ) : (
           // Pedidos personalizados de /crear no guardan la foto
           // completa (pesa demasiado para conservarla 30 días, ver
           // CLAUDE.md) — ícono genérico en vez de un hueco roto/vacío.
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-2xl">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-black/10 bg-[#fffaf0] text-2xl">
             🖼️
           </div>
         )}
         <div className="flex flex-1 flex-col">
-          <span className="font-medium text-zinc-100">{o.cliente}</span>
-          <span className="text-xs text-zinc-500">{sizeLabel(o.sizeId)}</span>
-          <span className="mt-1 text-xs text-zinc-500">{formatDate(o.fecha)}</span>
+          <span className="font-medium text-[#1b2a4a]">{o.cliente}</span>
+          <span className="text-xs text-[#5b6b8c]">{sizeLabel(o.sizeId)}</span>
+          <span className="mt-1 text-xs text-[#5b6b8c]">{formatDate(o.fecha)}</span>
           {o.guideUrl && status === "activo" && (
             <a
               href={o.guideUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1 text-xs text-accent-soft underline underline-offset-2"
+              className="mt-1 text-xs text-accent underline underline-offset-2"
             >
               Ver guía
             </a>
           )}
           {status === "cancelado" && (
-            <span className="mt-1 text-xs font-medium text-red-400">
+            <span className="mt-1 text-xs font-medium text-red-600">
               Guía cancelada{o.cancelReason ? `: ${o.cancelReason}` : ""}
             </span>
           )}
         </div>
-        <span className="shrink-0 text-lg font-bold text-accent-soft">{formatCOP(o.monto)}</span>
+        <span className="shrink-0 text-lg font-bold text-accent">{formatCOP(o.monto)}</span>
       </div>
 
       {!message && status === "activo" && o.guideUrl && !isCancelling && (
@@ -147,7 +147,7 @@ function OrderRow({ order, code, onUpdated }) {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={2}
-            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none transition-colors focus:border-red-400 focus:ring-1 focus:ring-red-400/30"
+            className="rounded-lg border border-black/10 bg-[#fffaf0] px-3 py-2 text-sm outline-none transition-colors focus:border-red-400 focus:ring-1 focus:ring-red-400/30"
             placeholder="Ej. el cliente pidió cambiar la dirección, el cuadro se dañó, etc."
           />
           <div className="flex gap-2">
@@ -167,7 +167,7 @@ function OrderRow({ order, code, onUpdated }) {
                 setError("");
               }}
               disabled={isSubmitting}
-              className="rounded-full border border-white/10 px-4 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-200"
+              className="rounded-full border border-black/10 px-4 py-1.5 text-xs font-medium text-[#33456b] transition-colors hover:text-[#1b2a4a]"
             >
               Volver
             </button>
@@ -187,11 +187,11 @@ function OrderRow({ order, code, onUpdated }) {
       )}
 
       {message && (
-        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300">
+        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-700">
           {message}
         </p>
       )}
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </li>
   );
 }
@@ -289,8 +289,8 @@ function FabricanteContent() {
   return (
     <div className="relative mx-auto flex w-full max-w-xl flex-1 flex-col items-center gap-6 px-4 py-16 sm:px-6 sm:py-24">
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Tu saldo pendiente</h1>
-        <p className="text-sm text-zinc-400">Ingresa tu código de acceso para consultarlo.</p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Tu saldo pendiente</h1>
+        <p className="text-sm text-[#33456b]">Ingresa tu código de acceso para consultarlo.</p>
       </div>
 
       <form onSubmit={handleLookup} className="flex w-full gap-2">
@@ -299,7 +299,7 @@ function FabricanteContent() {
           placeholder="Código de acceso"
           value={codeInput}
           onChange={(e) => setCodeInput(e.target.value)}
-          className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-base outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm"
+          className="flex-1 rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-3.5 text-base outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm"
         />
         <button
           type="submit"
@@ -310,14 +310,14 @@ function FabricanteContent() {
         </button>
       </form>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       {data && (
         <div className="flex w-full flex-col gap-4 animate-ready-in">
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-5 text-center shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)] sm:p-6">
             <div>
-              <p className="text-sm text-zinc-400">Total pendiente</p>
-              <p className="text-2xl font-bold text-accent-soft sm:text-3xl">
+              <p className="text-sm text-[#33456b]">Total pendiente</p>
+              <p className="text-2xl font-bold text-accent sm:text-3xl">
                 {formatCOP(data.balance)}
               </p>
             </div>
@@ -332,7 +332,7 @@ function FabricanteContent() {
             {paymentRequestMessage && (
               <p
                 className={`text-xs font-medium ${
-                  paymentRequestMessage.startsWith("✅") ? "text-emerald-300" : "text-red-400"
+                  paymentRequestMessage.startsWith("✅") ? "text-emerald-700" : "text-red-600"
                 }`}
               >
                 {paymentRequestMessage}
@@ -341,18 +341,18 @@ function FabricanteContent() {
           </div>
 
           {data.balance === 0 && data.lastPayment && (
-            <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-center text-sm text-emerald-300">
+            <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-center text-sm text-emerald-700">
               ✅ Recibiste tu último pago: {formatCOP(data.lastPayment.amount)} el{" "}
               {formatDate(data.lastPayment.date)}
             </p>
           )}
 
-          <p className="text-center text-xs text-zinc-500">
+          <p className="text-center text-xs text-[#5b6b8c]">
             Verás todos tus pedidos una vez generes la guía, no antes.
           </p>
 
           {data.orders.length === 0 ? (
-            <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-zinc-500">
+            <p className="rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-6 text-center text-sm text-[#5b6b8c]">
               No hay saldo pendiente.
             </p>
           ) : (

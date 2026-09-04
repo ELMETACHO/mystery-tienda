@@ -57,7 +57,7 @@ export function ProductCard({ item, className = "", light = false, ...rest }) {
         </p>
         <Link
           href={`/producto/${item.id}`}
-          className="mt-auto w-full rounded-full bg-accent px-4 py-2 text-center text-xs font-medium text-white opacity-100 transition-all duration-200 hover:bg-accent-soft sm:translate-y-1 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100"
+          className="mt-auto w-full rounded-full bg-accent px-4 py-2 text-center text-xs font-medium text-white transition-colors duration-200 hover:bg-accent-soft"
         >
           Comprar ahora
         </Link>

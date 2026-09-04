@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -273,6 +273,8 @@ function ScaleSilhouette({ heightCm, currentColorClass }) {
 // comportamiento es idéntico.
 export default function CrearFlow({ compact = false }) {
   const router = useRouter();
+  const canvasWrapperRef = useRef(null);
+  const hasAutoScrolledRef = useRef(false);
   const [imageSrc, setImageSrc] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
@@ -297,6 +299,29 @@ export default function CrearFlow({ compact = false }) {
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
+
+  // En móvil, el panel de "Ajuste" (zoom/arrastre) queda debajo del
+  // mockup, fuera de vista. La primera vez que el cliente suelta el dedo
+  // tras interactuar con el zoom o arrastrar la imagen, hacemos scroll de
+  // vuelta al mockup para que vea el resultado en vivo — solo una vez,
+  // como pista de que el mockup se actualiza en tiempo real, no cada vez
+  // que suelta (sería molesto).
+  useEffect(() => {
+    if (!isMobile || !imageSrc || readyOrder) return undefined;
+
+    const scrollToCanvasOnce = () => {
+      if (hasAutoScrolledRef.current) return;
+      hasAutoScrolledRef.current = true;
+      canvasWrapperRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    window.addEventListener("touchend", scrollToCanvasOnce);
+    window.addEventListener("mouseup", scrollToCanvasOnce);
+    return () => {
+      window.removeEventListener("touchend", scrollToCanvasOnce);
+      window.removeEventListener("mouseup", scrollToCanvasOnce);
+    };
+  }, [isMobile, imageSrc, readyOrder]);
 
   const selectedSize = SIZES.find((s) => s.id === sizeId);
   const isUploadScreen = !imageSrc && !readyOrder;
@@ -726,7 +751,7 @@ export default function CrearFlow({ compact = false }) {
       ) : (
         <div className="grid gap-6 sm:gap-8 lg:grid-cols-[65fr_35fr] lg:items-start">
           {/* LIENZO — columna izquierda (~65%) */}
-          <div className="flex flex-col items-center gap-3">
+          <div ref={canvasWrapperRef} className="flex scroll-mt-4 flex-col items-center gap-3">
             <div
               className="relative w-full max-w-[240px] overflow-hidden rounded-2xl sm:max-w-xl"
               style={{ aspectRatio: EDIT_BACKGROUND.ratio }}
@@ -837,6 +862,25 @@ export default function CrearFlow({ compact = false }) {
                 <p className="mt-1.5 text-[11px] text-[#5b6b8c]">
                   Arrastra la imagen para moverla
                 </p>
+
+                {/* Solo móvil: esta columna queda con bastante espacio
+                    vacío debajo del control de zoom (la columna "Tamaño"
+                    de al lado es más alta, por su lista de tamaños). En
+                    vez de dejarlo en blanco, un segundo texto de ayuda +
+                    el logo como marca de agua sutil. */}
+                <p className="mt-3 text-[11px] text-[#5b6b8c] sm:hidden">
+                  Ajusta con tu dedo la posición del cuadro
+                </p>
+                <div className="mt-4 flex justify-center sm:hidden">
+                  <Image
+                    src="/images/Logo/logo blanco nuevo.png"
+                    alt=""
+                    aria-hidden="true"
+                    width={120}
+                    height={78}
+                    className="h-auto w-24 opacity-25"
+                  />
+                </div>
               </div>
 
               <div>

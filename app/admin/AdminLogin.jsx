@@ -42,11 +42,11 @@ export default function AdminLogin() {
     <div className="flex flex-1 items-center justify-center px-4 py-16">
       <form
         onSubmit={handleSubmit}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)]"
+        className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-black/5 bg-[#fffaf0] p-6 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)]"
       >
         <div className="text-center">
-          <h1 className="text-lg font-semibold text-zinc-100">Admin — Mystery</h1>
-          <p className="mt-1 text-sm text-zinc-500">Acceso interno — ingresa la contraseña</p>
+          <h1 className="font-heading text-lg font-semibold text-[#1b2a4a]">Admin — Mystery</h1>
+          <p className="mt-1 text-sm text-[#5b6b8c]">Acceso interno — ingresa la contraseña</p>
         </div>
 
         <input
@@ -55,10 +55,10 @@ export default function AdminLogin() {
           placeholder="Contraseña"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/30"
+          className="rounded-xl border border-black/10 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/30"
         />
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         <button
           type="submit"
