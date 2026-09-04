@@ -216,7 +216,7 @@ export default async function Home() {
             style={{ background: "var(--accent)" }}
           />
 
-          <div className="relative z-10 mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
+          <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center gap-6 text-center">
             <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs tracking-wide text-accent-soft sm:text-sm">
               Cuadros en vinilo sobre madera
             </span>
@@ -229,10 +229,11 @@ export default async function Home() {
               text="Mystery Cuadros"
               splitBy="word"
               trigger="mount"
-              fontSize="clamp(2.5rem, 6vw, 4.5rem)"
+              fontSize="clamp(3rem, 9vw, 6rem)"
               fontWeight={800}
               color="#ffffff"
-              className="font-brand leading-tight tracking-tight"
+              className="font-brand leading-tight tracking-tight whitespace-nowrap"
+              style={{ whiteSpace: "nowrap" }}
             />
 
             <p className="max-w-md text-base text-zinc-400 sm:text-lg">
