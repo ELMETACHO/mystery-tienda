@@ -226,13 +226,13 @@ export default async function Home() {
             </p>
 
             <FoldText
-              text="Transforma tus mejores recuerdos en cuadros de alta calidad"
+              text="Mystery Cuadros"
               splitBy="word"
               trigger="mount"
               fontSize="clamp(2.5rem, 6vw, 4.5rem)"
               fontWeight={800}
               color="#ffffff"
-              className="leading-tight tracking-tight"
+              className="font-heading leading-tight tracking-tight"
             />
 
             <p className="max-w-md text-base text-zinc-400 sm:text-lg">
@@ -255,7 +255,7 @@ export default async function Home() {
             cerca del tope como exploración temprana por categoría). */}
         <section className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
-            <h2 className="mb-4 text-lg font-semibold sm:text-xl">Elige tu estilo</h2>
+            <h2 className="font-heading mb-4 text-lg font-semibold sm:text-xl">Elige tu estilo</h2>
             <CategoryScroller categorias={CATEGORIAS} />
           </div>
         </section>
@@ -267,7 +267,7 @@ export default async function Home() {
         <section id="recientes" className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold sm:text-xl">Recientes</h2>
+              <h2 className="font-heading text-lg font-semibold sm:text-xl">Recientes</h2>
             </div>
             <ProductScroller items={recientes} />
           </div>
@@ -280,7 +280,7 @@ export default async function Home() {
         <section id="mas-vendidos" className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <div className="mb-4 flex items-end justify-between">
-              <h2 className="text-lg font-semibold sm:text-xl">Más vendidos</h2>
+              <h2 className="font-heading text-lg font-semibold sm:text-xl">Más vendidos</h2>
             </div>
             <ProductScroller items={masVendidos} />
           </div>
@@ -347,7 +347,7 @@ export default async function Home() {
             <span className="rounded-full bg-white/10 px-4 py-1 text-xs font-medium tracking-wide text-accent-soft">
               Hecho para ti
             </span>
-            <h2 className="max-w-2xl text-3xl font-extrabold tracking-tight sm:text-5xl">
+            <h2 className="font-heading max-w-2xl text-3xl font-extrabold tracking-tight sm:text-5xl">
               Cuadros personalizados
             </h2>
             <p className="max-w-xl text-base text-zinc-300 sm:text-lg">
@@ -409,7 +409,7 @@ export default async function Home() {
         <section className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <div className="mb-8 flex flex-col items-center gap-2 text-center">
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              <h2 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
                 Cómo funciona
               </h2>
               <p className="text-sm text-accent-soft sm:text-base">
@@ -458,7 +458,7 @@ export default async function Home() {
             checkout. */}
         <section className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-3xl">
-            <h2 className="mb-6 text-center text-2xl font-bold tracking-tight sm:text-3xl">
+            <h2 className="font-heading mb-6 text-center text-2xl font-bold tracking-tight sm:text-3xl">
               Preguntas frecuentes
             </h2>
             <div className="flex flex-col divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/5">
