@@ -211,11 +211,6 @@ export default async function Home() {
             lateral: la imagen de estilo de vida (head.png) se quitó, el
             hero ahora vive del efecto de "pliegue" del título. */}
         <section className="relative overflow-hidden px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16">
-          <div
-            className="pointer-events-none absolute -top-32 left-1/2 h-96 w-[36rem] -translate-x-1/2 rounded-full opacity-20 blur-3xl"
-            style={{ background: "var(--accent)" }}
-          />
-
           <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center gap-6 text-center">
             <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs tracking-wide text-accent-soft sm:text-sm">
               Cuadros en vinilo sobre madera
