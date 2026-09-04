@@ -170,34 +170,18 @@ export default async function Home() {
 
   return (
     <div
-      className="relative flex flex-1 flex-col overflow-hidden text-[#1b2a4a]"
-      style={{
-        background:
-          "linear-gradient(to bottom, #2f8fd8 0%, #5fb0e8 22%, #8fcaf0 45%, #bfe2f6 68%, #eaf6fb 100%)",
-      }}
+      className="relative flex flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]"
     >
-      {/* Nubes decorativas: capa absoluta con radial-gradients (sin
-          imágenes) que se repite verticalmente para "dispersarlas" a lo
-          largo de todo el scroll sin generar marcado extra. */}
+      {/* Fondo de cielo con nubes, fijo respecto al viewport (no se mueve
+          con el scroll) — imagen propia con blur leve horneado (ver
+          public/images/walls/fondo-cielo.webp), un solo tono uniforme sin
+          degradado oscuro/claro. position:fixed en vez de
+          background-attachment:fixed porque este último es poco confiable
+          en Safari iOS. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0 opacity-90"
-        style={{
-          backgroundImage: `
-            radial-gradient(ellipse 90px 34px at 8% 6%, rgba(255,255,255,0.95), rgba(255,255,255,0) 70%),
-            radial-gradient(ellipse 60px 26px at 15% 8%, rgba(255,255,255,0.9), rgba(255,255,255,0) 70%),
-            radial-gradient(ellipse 70px 28px at 78% 4%, rgba(255,255,255,0.85), rgba(255,255,255,0) 70%),
-            radial-gradient(ellipse 50px 22px at 85% 6%, rgba(255,255,255,0.8), rgba(255,255,255,0) 70%),
-            radial-gradient(ellipse 100px 36px at 55% 22%, rgba(255,255,255,0.55), rgba(255,255,255,0) 70%),
-            radial-gradient(ellipse 65px 24px at 30% 40%, rgba(255,255,255,0.6), rgba(255,255,255,0) 70%),
-            radial-gradient(ellipse 80px 30px at 90% 48%, rgba(255,255,255,0.5), rgba(255,255,255,0) 70%),
-            radial-gradient(ellipse 55px 22px at 5% 58%, rgba(255,255,255,0.55), rgba(255,255,255,0) 70%),
-            radial-gradient(ellipse 95px 34px at 65% 72%, rgba(255,255,255,0.45), rgba(255,255,255,0) 70%),
-            radial-gradient(ellipse 60px 24px at 20% 85%, rgba(255,255,255,0.4), rgba(255,255,255,0) 70%)
-          `,
-          backgroundRepeat: "repeat-y",
-          backgroundSize: "100% 1100px",
-        }}
+        className="fixed inset-0 z-0 bg-cover bg-center"
+        style={{ backgroundImage: "url(/images/walls/fondo-cielo.webp)" }}
       />
 
       {/* 1. NAVBAR FIJA */}
@@ -242,10 +226,6 @@ export default async function Home() {
             hero ahora vive del efecto de "pliegue" del título. */}
         <section className="relative overflow-hidden px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16">
           <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center gap-6 text-center">
-            <span className="rounded-full border border-[#f4a4c8]/50 bg-[#fde6f0] px-4 py-1 text-xs font-medium tracking-wide text-[#b23d78] shadow-sm sm:text-sm">
-              ✦ Cuadros en vinilo sobre madera
-            </span>
-
             <p className="text-center text-xs font-medium text-[#7a3fa0] sm:text-sm">
               Por tiempo limitado: Envío gratis a todo el país
             </p>
@@ -260,10 +240,6 @@ export default async function Home() {
               className="font-brand leading-tight tracking-tight whitespace-nowrap"
               style={{ whiteSpace: "nowrap" }}
             />
-
-            <p className="max-w-md text-base text-[#33456b] sm:text-lg">
-              ¿Quieres un cuadro personalizado con tus propias imágenes o fotos? Toca el botón.
-            </p>
 
             <Link
               href="/crear"
@@ -364,19 +340,19 @@ export default async function Home() {
             hacia /crear. */}
         <section id="personalizados" className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div
-            className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 overflow-hidden rounded-3xl border border-white/10 px-6 py-14 text-center sm:gap-8 sm:px-12 sm:py-20"
+            className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 overflow-hidden rounded-[2.5rem] border border-black/5 px-6 py-14 text-center shadow-[0_16px_40px_-16px_rgba(30,20,60,0.25)] sm:gap-8 sm:px-12 sm:py-20"
             style={{
               background:
-                "radial-gradient(circle at 30% 20%, rgba(168,85,247,0.35), transparent 60%), radial-gradient(circle at 80% 80%, rgba(192,132,252,0.25), transparent 55%), #131018",
+                "radial-gradient(circle at 25% 15%, rgba(168,85,247,0.12), transparent 55%), radial-gradient(circle at 85% 85%, rgba(244,164,200,0.18), transparent 55%), #fffaf0",
             }}
           >
-            <span className="rounded-full bg-white/10 px-4 py-1 text-xs font-medium tracking-wide text-accent-soft">
+            <span className="rounded-full bg-[#f3e8ff] px-4 py-1 text-xs font-medium tracking-wide text-accent">
               Hecho para ti
             </span>
-            <h2 className="font-heading max-w-2xl text-3xl font-extrabold tracking-tight sm:text-5xl">
+            <h2 className="font-heading max-w-2xl text-3xl font-extrabold tracking-tight text-[#1b2a4a] sm:text-5xl">
               Cuadros personalizados
             </h2>
-            <p className="max-w-xl text-base text-zinc-300 sm:text-lg">
+            <p className="max-w-xl text-base text-[#33456b] sm:text-lg">
               Sube tu foto, ajústala dentro del marco y elige el tamaño. Nosotros
               lo imprimimos en vinilo sobre madera y te lo llevamos hasta la puerta.
             </p>
@@ -388,9 +364,9 @@ export default async function Home() {
             </Link>
 
             {/* Badges de confianza */}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-zinc-300">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-[#33456b]">
               <span className="flex items-center gap-2">
-                <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-accent-soft">
+                <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-accent">
                   <path
                     d="M12 2 4 5v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V5l-8-3Z"
                     stroke="currentColor"
@@ -408,7 +384,7 @@ export default async function Home() {
                 Pago seguro
               </span>
               <span className="flex items-center gap-2">
-                <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-accent-soft">
+                <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5 text-accent">
                   <path
                     d="M3 7h11v8H3V7Z"
                     stroke="currentColor"
