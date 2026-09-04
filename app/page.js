@@ -177,8 +177,8 @@ export default async function Home() {
             <Image
               src="/images/Logo/logo-navbar.png"
               alt="Mystery"
-              width={150}
-              height={101}
+              width={155}
+              height={100}
               priority
               className="h-8 w-auto sm:h-9"
             />

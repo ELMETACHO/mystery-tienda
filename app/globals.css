@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Classic Couture";
+  src: url("/Fonts/Classic Couture Free.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: #0a0a0f;
   --foreground: #f4f3f7;
@@ -24,6 +32,12 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Classic Couture", Arial, Helvetica, sans-serif;
 }
 
 /* Slider de zoom del editor: pista más gruesa y thumb ampliado para que sea
