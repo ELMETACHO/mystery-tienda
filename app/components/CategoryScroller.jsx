@@ -8,7 +8,7 @@ import Link from 'next/link';
 // desktop solo controlan el scroll nativo del contenedor (scrollBy),
 // no reimplementan el carrusel — así el swipe táctil en móvil y el
 // clic en desktop comparten el mismo estado de scroll.
-export default function CategoryScroller({ categorias }) {
+export default function CategoryScroller({ categorias, light = false }) {
   const trackRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -65,7 +65,9 @@ export default function CategoryScroller({ categorias }) {
             key={cat.nombre}
             href={`/categoria/${cat.id}`}
             data-category-card
-            className="group relative aspect-[3/4] w-36 shrink-0 snap-start overflow-hidden rounded-2xl border border-white/10 sm:w-44"
+            className={`group relative aspect-[3/4] w-36 shrink-0 snap-start overflow-hidden rounded-2xl border sm:w-44 ${
+              light ? "border-black/10 shadow-md" : "border-white/10"
+            }`}
           >
             <Image
               src={cat.src}

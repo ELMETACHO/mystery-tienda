@@ -17,11 +17,15 @@ export function categoryLabel(categoryId) {
 // (Redis, vía /estudio). La imagen es el link de miniatura pública de
 // Drive, y "Comprar ahora" lleva a la página de detalle/checkout de ESE
 // producto puntual (/producto/[id]), no al editor genérico.
-export function ProductCard({ item, className = "", ...rest }) {
+export function ProductCard({ item, className = "", light = false, ...rest }) {
   return (
     <div
       {...rest}
-      className={`group flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5 ${className}`}
+      className={`group flex flex-col overflow-hidden rounded-2xl border ${
+        light
+          ? "border-black/5 bg-[#fffaf0] shadow-[0_10px_25px_-12px_rgba(30,20,60,0.3)]"
+          : "border-white/10 bg-white/5"
+      } ${className}`}
     >
       <Link
         href={`/producto/${item.id}`}
@@ -41,10 +45,14 @@ export function ProductCard({ item, className = "", ...rest }) {
           quedan alineadas entre sí sin importar cuánto texto haya
           arriba. */}
       <div className="flex flex-1 flex-col gap-1 p-3">
-        <h3 className="line-clamp-2 min-h-[2.5em] text-sm font-medium text-zinc-200">
+        <h3
+          className={`line-clamp-2 min-h-[2.5em] text-sm font-medium ${
+            light ? "text-[#1b2a4a]" : "text-zinc-200"
+          }`}
+        >
           Cuadro {categoryLabel(item.category)}
         </h3>
-        <p className="text-sm font-semibold text-accent-soft">
+        <p className={`text-sm font-semibold ${light ? "text-accent" : "text-accent-soft"}`}>
           Desde {formatCOP(CHEAPEST_SIZE_PRICE_COP)}
         </p>
         <Link

@@ -169,9 +169,39 @@ export default async function Home() {
   ]);
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div
+      className="relative flex flex-1 flex-col overflow-hidden text-[#1b2a4a]"
+      style={{
+        background:
+          "linear-gradient(to bottom, #2f8fd8 0%, #5fb0e8 22%, #8fcaf0 45%, #bfe2f6 68%, #eaf6fb 100%)",
+      }}
+    >
+      {/* Nubes decorativas: capa absoluta con radial-gradients (sin
+          imágenes) que se repite verticalmente para "dispersarlas" a lo
+          largo de todo el scroll sin generar marcado extra. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0 opacity-90"
+        style={{
+          backgroundImage: `
+            radial-gradient(ellipse 90px 34px at 8% 6%, rgba(255,255,255,0.95), rgba(255,255,255,0) 70%),
+            radial-gradient(ellipse 60px 26px at 15% 8%, rgba(255,255,255,0.9), rgba(255,255,255,0) 70%),
+            radial-gradient(ellipse 70px 28px at 78% 4%, rgba(255,255,255,0.85), rgba(255,255,255,0) 70%),
+            radial-gradient(ellipse 50px 22px at 85% 6%, rgba(255,255,255,0.8), rgba(255,255,255,0) 70%),
+            radial-gradient(ellipse 100px 36px at 55% 22%, rgba(255,255,255,0.55), rgba(255,255,255,0) 70%),
+            radial-gradient(ellipse 65px 24px at 30% 40%, rgba(255,255,255,0.6), rgba(255,255,255,0) 70%),
+            radial-gradient(ellipse 80px 30px at 90% 48%, rgba(255,255,255,0.5), rgba(255,255,255,0) 70%),
+            radial-gradient(ellipse 55px 22px at 5% 58%, rgba(255,255,255,0.55), rgba(255,255,255,0) 70%),
+            radial-gradient(ellipse 95px 34px at 65% 72%, rgba(255,255,255,0.45), rgba(255,255,255,0) 70%),
+            radial-gradient(ellipse 60px 24px at 20% 85%, rgba(255,255,255,0.4), rgba(255,255,255,0) 70%)
+          `,
+          backgroundRepeat: "repeat-y",
+          backgroundSize: "100% 1100px",
+        }}
+      />
+
       {/* 1. NAVBAR FIJA */}
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-background/70 backdrop-blur-md">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-black/10 bg-white/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link href="/" className="shrink-0" aria-label="Mystery — Inicio">
             <Image
@@ -183,40 +213,40 @@ export default async function Home() {
               className="h-8 w-auto sm:h-9"
             />
           </Link>
-          <nav className="flex items-center gap-4 overflow-x-auto text-sm text-zinc-300 sm:gap-6">
-            <a href="#personalizados" className="whitespace-nowrap hover:text-white">
+          <nav className="flex items-center gap-4 overflow-x-auto text-sm text-[#1b2a4a]/80 sm:gap-6">
+            <a href="#personalizados" className="whitespace-nowrap hover:text-[#1b2a4a]">
               Personalizados
             </a>
-            <a href="#recientes" className="whitespace-nowrap hover:text-white">
+            <a href="#recientes" className="whitespace-nowrap hover:text-[#1b2a4a]">
               Recientes
             </a>
-            <a href="#mas-vendidos" className="whitespace-nowrap hover:text-white">
+            <a href="#mas-vendidos" className="whitespace-nowrap hover:text-[#1b2a4a]">
               Más vendidos
             </a>
-            <a href="#footer" className="whitespace-nowrap hover:text-white">
+            <a href="#footer" className="whitespace-nowrap hover:text-[#1b2a4a]">
               Ayuda
             </a>
           </nav>
           <Link
             href="#vender"
-            className="hidden shrink-0 whitespace-nowrap text-xs text-zinc-500 hover:text-zinc-300 sm:block"
+            className="hidden shrink-0 whitespace-nowrap text-xs text-[#1b2a4a]/60 hover:text-[#1b2a4a] sm:block"
           >
             Gana dinero vendiendo cuadros
           </Link>
         </div>
       </header>
 
-      <main className="flex-1 pt-14">
+      <main className="relative z-10 flex-1 pt-14">
         {/* 2. HERO — centrado en el texto animado (FoldText), sin imagen
             lateral: la imagen de estilo de vida (head.png) se quitó, el
             hero ahora vive del efecto de "pliegue" del título. */}
         <section className="relative overflow-hidden px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16">
           <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center gap-6 text-center">
-            <span className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs tracking-wide text-accent-soft sm:text-sm">
-              Cuadros en vinilo sobre madera
+            <span className="rounded-full border border-[#f4a4c8]/50 bg-[#fde6f0] px-4 py-1 text-xs font-medium tracking-wide text-[#b23d78] shadow-sm sm:text-sm">
+              ✦ Cuadros en vinilo sobre madera
             </span>
 
-            <p className="text-center text-xs font-medium text-accent-soft sm:text-sm">
+            <p className="text-center text-xs font-medium text-[#7a3fa0] sm:text-sm">
               Por tiempo limitado: Envío gratis a todo el país
             </p>
 
@@ -226,12 +256,12 @@ export default async function Home() {
               trigger="mount"
               fontSize="clamp(3rem, 9vw, 6rem)"
               fontWeight={800}
-              color="#ffffff"
+              color="#1b2a4a"
               className="font-brand leading-tight tracking-tight whitespace-nowrap"
               style={{ whiteSpace: "nowrap" }}
             />
 
-            <p className="max-w-md text-base text-zinc-400 sm:text-lg">
+            <p className="max-w-md text-base text-[#33456b] sm:text-lg">
               ¿Quieres un cuadro personalizado con tus propias imágenes o fotos? Toca el botón.
             </p>
 
@@ -252,7 +282,7 @@ export default async function Home() {
         <section className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <h2 className="font-heading mb-4 text-lg font-semibold sm:text-xl">Elige tu estilo</h2>
-            <CategoryScroller categorias={CATEGORIAS} />
+            <CategoryScroller categorias={CATEGORIAS} light />
           </div>
         </section>
 
@@ -265,7 +295,7 @@ export default async function Home() {
             <div className="mb-4">
               <h2 className="font-heading text-lg font-semibold sm:text-xl">Recientes</h2>
             </div>
-            <ProductScroller items={recientes} />
+            <ProductScroller items={recientes} light />
           </div>
         </section>
 
@@ -278,24 +308,24 @@ export default async function Home() {
             <div className="mb-4 flex items-end justify-between">
               <h2 className="font-heading text-lg font-semibold sm:text-xl">Más vendidos</h2>
             </div>
-            <ProductScroller items={masVendidos} />
+            <ProductScroller items={masVendidos} light />
           </div>
         </section>
 
         {/* 5. RESEÑAS — calificación, contador y testimonios con foto. */}
         <section className="px-4 pb-16 sm:px-6 sm:pb-24">
-          <div className="mx-auto flex max-w-6xl flex-col items-center gap-10 rounded-3xl border border-white/10 bg-white/5 px-6 py-12 text-center sm:px-12">
+          <div className="mx-auto flex max-w-6xl flex-col items-center gap-10 rounded-[2.5rem] border border-black/5 bg-[#fffaf0] px-6 py-12 text-center shadow-[0_16px_40px_-16px_rgba(30,20,60,0.25)] sm:px-12">
             <div className="flex flex-col items-center gap-2">
-              <span className="text-2xl tracking-wide text-accent-soft" aria-hidden="true">
+              <span className="text-2xl tracking-wide text-accent" aria-hidden="true">
                 ★★★★★
               </span>
-              <p className="text-sm text-zinc-400 sm:text-base">
+              <p className="text-sm text-[#33456b] sm:text-base">
                 4.9/5 con más de 1.000 pedidos
               </p>
-              <p className="text-4xl font-black tracking-tight text-accent-soft sm:text-5xl">
+              <p className="text-4xl font-black tracking-tight text-accent sm:text-5xl">
                 +1.000
               </p>
-              <p className="text-sm text-zinc-400 sm:text-base">cuadros entregados</p>
+              <p className="text-sm text-[#33456b] sm:text-base">cuadros entregados</p>
             </div>
 
             {/* Contenido de ejemplo: reemplazar por testimonios reales, con
@@ -304,7 +334,7 @@ export default async function Home() {
               {TESTIMONIOS.map((t) => (
                 <div
                   key={t.nombre}
-                  className="flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5 text-left"
+                  className="flex flex-col overflow-hidden rounded-2xl border border-black/5 bg-white text-left shadow-sm"
                 >
                   <div className="relative aspect-video w-full overflow-hidden">
                     <Image
@@ -316,11 +346,11 @@ export default async function Home() {
                     />
                   </div>
                   <div className="p-5">
-                    <span className="text-sm text-accent-soft" aria-hidden="true">
+                    <span className="text-sm text-accent" aria-hidden="true">
                       ★★★★★
                     </span>
-                    <p className="mt-2 text-sm text-zinc-300">&ldquo;{t.texto}&rdquo;</p>
-                    <p className="mt-3 text-xs font-medium text-zinc-500">
+                    <p className="mt-2 text-sm text-[#1b2a4a]">&ldquo;{t.texto}&rdquo;</p>
+                    <p className="mt-3 text-xs font-medium text-[#5b6b8c]">
                       {t.nombre} · cliente de ejemplo
                     </p>
                   </div>
@@ -408,7 +438,7 @@ export default async function Home() {
               <h2 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
                 Cómo funciona
               </h2>
-              <p className="text-sm text-accent-soft sm:text-base">
+              <p className="text-sm text-accent sm:text-base">
                 Menos de 2 minutos para personalizar tu cuadro
               </p>
             </div>
@@ -416,16 +446,16 @@ export default async function Home() {
               {PASOS.map((paso, i) => (
                 <div
                   key={paso.titulo}
-                  className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-5 text-center sm:gap-3 sm:px-6 sm:py-8"
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-black/5 bg-[#fffaf0] px-3 py-5 text-center shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)] sm:gap-3 sm:px-6 sm:py-8"
                 >
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/15 text-accent-soft sm:h-16 sm:w-16">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/15 text-accent sm:h-16 sm:w-16">
                     {paso.icono}
                   </span>
-                  <span className="text-xs font-medium text-zinc-500">
+                  <span className="text-xs font-medium text-[#8a94ac]">
                     Paso {i + 1}
                   </span>
-                  <h3 className="font-semibold">{paso.titulo}</h3>
-                  <p className="text-sm text-zinc-400">{paso.texto}</p>
+                  <h3 className="font-semibold text-[#1b2a4a]">{paso.titulo}</h3>
+                  <p className="text-sm text-[#33456b]">{paso.texto}</p>
                 </div>
               ))}
             </div>
@@ -436,8 +466,8 @@ export default async function Home() {
             que refuerza el link discreto que ya existe en la navbar/footer
             (mismo ancla #vender, placeholder sin funcionalidad todavía). */}
         <section className="px-4 pb-10 sm:px-6 sm:pb-16">
-          <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-8 text-center sm:flex-row sm:justify-between sm:gap-6 sm:px-10">
-            <p className="text-sm font-medium text-zinc-200 sm:text-base">
+          <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 rounded-2xl border border-[#f6d989]/60 bg-[#fdf1cf] px-6 py-8 text-center shadow-sm sm:flex-row sm:justify-between sm:gap-6 sm:px-10">
+            <p className="text-sm font-medium text-[#1b2a4a] sm:text-base">
               💰 Gana dinero vendiendo cuadros con Mystery
             </p>
             <Link
@@ -457,16 +487,16 @@ export default async function Home() {
             <h2 className="font-heading mb-6 text-center text-2xl font-bold tracking-tight sm:text-3xl">
               Preguntas frecuentes
             </h2>
-            <div className="flex flex-col divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/5">
+            <div className="flex flex-col divide-y divide-black/5 rounded-2xl border border-black/5 bg-[#fffaf0] shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)]">
               {FAQ.map((item) => (
                 <details key={item.pregunta} className="group p-5">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-zinc-100 sm:text-base">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-medium text-[#1b2a4a] sm:text-base">
                     {item.pregunta}
-                    <span className="shrink-0 text-zinc-500 transition-transform group-open:rotate-45">
+                    <span className="shrink-0 text-accent transition-transform group-open:rotate-45">
                       +
                     </span>
                   </summary>
-                  <p className="mt-3 text-sm text-zinc-400">{item.respuesta}</p>
+                  <p className="mt-3 text-sm text-[#33456b]">{item.respuesta}</p>
                 </details>
               ))}
             </div>
@@ -475,44 +505,44 @@ export default async function Home() {
       </main>
 
       {/* 11. FOOTER */}
-      <footer id="footer" className="border-t border-white/10 px-4 py-12 sm:px-6">
+      <footer id="footer" className="relative z-10 border-t border-black/10 bg-white/50 px-4 py-12 sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-col gap-8 sm:flex-row sm:justify-between">
           <div>
-            <p className="text-lg font-bold tracking-tight">Mystery</p>
-            <p className="mt-2 max-w-xs text-sm text-zinc-500">
+            <p className="text-lg font-bold tracking-tight text-[#1b2a4a]">Mystery</p>
+            <p className="mt-2 max-w-xs text-sm text-[#5b6b8c]">
               Cuadros personalizados en vinilo sobre madera.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-8 sm:flex sm:gap-16">
             <div className="flex flex-col gap-2 text-sm">
-              <span className="mb-1 font-medium text-zinc-300">Ayuda</span>
-              <Link href="/politicas" className="text-zinc-500 hover:text-white">
+              <span className="mb-1 font-medium text-[#33456b]">Ayuda</span>
+              <Link href="/politicas" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
                 Garantías
               </Link>
-              <Link href="/politicas" className="text-zinc-500 hover:text-white">
+              <Link href="/politicas" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
                 Devoluciones
               </Link>
-              <Link href="#" className="text-zinc-500 hover:text-white">
+              <Link href="#" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
                 Centro de ayuda
               </Link>
-              <Link href="#" className="text-zinc-500 hover:text-white">
+              <Link href="#" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
                 Contacto
               </Link>
-              <Link href="/referidos" className="text-zinc-500 hover:text-white">
+              <Link href="/referidos" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
                 Programa de referidos
               </Link>
             </div>
 
             <div className="flex flex-col gap-3">
-              <span className="mb-1 text-sm font-medium text-zinc-300">Síguenos</span>
+              <span className="mb-1 text-sm font-medium text-[#33456b]">Síguenos</span>
               <div className="flex gap-3">
                 {["Instagram", "Facebook", "TikTok"].map((red) => (
                   <Link
                     key={red}
                     href="#"
                     aria-label={red}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-xs text-zinc-400 transition-colors hover:border-accent hover:text-white"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-xs text-[#5b6b8c] transition-colors hover:border-accent hover:text-[#1b2a4a]"
                   >
                     {red[0]}
                   </Link>
@@ -522,16 +552,16 @@ export default async function Home() {
           </div>
         </div>
 
-        <div id="vender" className="mx-auto mt-10 max-w-6xl border-t border-white/5 pt-6">
+        <div id="vender" className="mx-auto mt-10 max-w-6xl border-t border-black/5 pt-6">
           <Link
             href="#"
-            className="text-xs text-zinc-500 underline-offset-4 hover:text-zinc-300 hover:underline"
+            className="text-xs text-[#5b6b8c] underline-offset-4 hover:text-[#1b2a4a] hover:underline"
           >
             Gana dinero vendiendo cuadros
           </Link>
         </div>
 
-        <p className="mx-auto mt-4 max-w-6xl text-xs text-zinc-600">
+        <p className="mx-auto mt-4 max-w-6xl text-xs text-[#8a94ac]">
           © {new Date().getFullYear()} Mystery. Todos los derechos reservados.
         </p>
       </footer>
