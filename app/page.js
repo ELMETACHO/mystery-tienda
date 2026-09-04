@@ -181,7 +181,7 @@ export default async function Home() {
       <div
         aria-hidden="true"
         className="fixed inset-0 z-0 bg-cover bg-center"
-        style={{ backgroundImage: "url(/images/walls/fondo-cielo.webp)" }}
+        style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
       />
 
       {/* 1. NAVBAR FIJA */}
