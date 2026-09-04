@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import PasswordInput from "../components/PasswordInput";
 
 export default function EstudioLogin() {
   const router = useRouter();
@@ -47,8 +48,7 @@ export default function EstudioLogin() {
           <p className="mt-1 text-sm text-[#5b6b8c]">Acceso interno — ingresa la contraseña</p>
         </div>
 
-        <input
-          type="password"
+        <PasswordInput
           autoFocus
           placeholder="Contraseña"
           value={password}

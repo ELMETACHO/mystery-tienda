@@ -274,7 +274,6 @@ function ScaleSilhouette({ heightCm, currentColorClass }) {
 export default function CrearFlow({ compact = false }) {
   const router = useRouter();
   const canvasWrapperRef = useRef(null);
-  const hasAutoScrolledRef = useRef(false);
   const [imageSrc, setImageSrc] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
@@ -300,28 +299,33 @@ export default function CrearFlow({ compact = false }) {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  // En móvil, el panel de "Ajuste" (zoom/arrastre) queda debajo del
-  // mockup, fuera de vista. La primera vez que el cliente suelta el dedo
-  // tras interactuar con el zoom o arrastrar la imagen, hacemos scroll de
-  // vuelta al mockup para que vea el resultado en vivo — solo una vez,
-  // como pista de que el mockup se actualiza en tiempo real, no cada vez
-  // que suelta (sería molesto).
-  useEffect(() => {
-    if (!isMobile || !imageSrc || readyOrder) return undefined;
+  // En móvil, el panel de "Ajuste" (barra de zoom) queda debajo del
+  // mockup, fuera de vista. Cada vez que el cliente suelta el dedo de la
+  // barra, hacemos scroll de vuelta al mockup con una animación propia
+  // (más lenta que el "smooth" nativo del navegador) para que vea cómo
+  // va quedando en tiempo real.
+  const scrollToCanvasSlowly = useCallback(() => {
+    const node = canvasWrapperRef.current;
+    if (!node) return;
 
-    const scrollToCanvasOnce = () => {
-      if (hasAutoScrolledRef.current) return;
-      hasAutoScrolledRef.current = true;
-      canvasWrapperRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const startY = window.scrollY;
+    const targetY = node.getBoundingClientRect().top + window.scrollY - 12;
+    const distance = targetY - startY;
+    if (Math.abs(distance) < 4) return;
+
+    const duration = 900;
+    const startTime = performance.now();
+
+    const step = (now) => {
+      const elapsed = now - startTime;
+      const t = Math.min(1, elapsed / duration);
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      window.scrollTo(0, startY + distance * eased);
+      if (t < 1) requestAnimationFrame(step);
     };
 
-    window.addEventListener("touchend", scrollToCanvasOnce);
-    window.addEventListener("mouseup", scrollToCanvasOnce);
-    return () => {
-      window.removeEventListener("touchend", scrollToCanvasOnce);
-      window.removeEventListener("mouseup", scrollToCanvasOnce);
-    };
-  }, [isMobile, imageSrc, readyOrder]);
+    requestAnimationFrame(step);
+  }, []);
 
   const selectedSize = SIZES.find((s) => s.id === sizeId);
   const isUploadScreen = !imageSrc && !readyOrder;
@@ -521,7 +525,7 @@ export default function CrearFlow({ compact = false }) {
         cursorCharacter="|"
         cursorClassName="text-accent"
         cursorBlinkDuration={0.6}
-        className="text-2xl font-bold tracking-tight text-accent sm:text-3xl md:text-4xl"
+        className="font-brand text-2xl font-bold tracking-tight text-accent sm:text-3xl md:text-4xl"
       />
       <p className="text-sm font-medium text-[#33456b] sm:text-base">
         Tu cuadro en 30 segundos
@@ -562,7 +566,7 @@ export default function CrearFlow({ compact = false }) {
           </div>
         ) : (
           <div className="mb-2 text-center sm:mb-3">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
+            <h1 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
               Crea tu cuadro
             </h1>
             <p className="mt-2 text-sm text-[#33456b] sm:text-base">
@@ -855,6 +859,8 @@ export default function CrearFlow({ compact = false }) {
                     step={0.01}
                     value={zoom}
                     onChange={(e) => setZoom(Number(e.target.value))}
+                    onMouseUp={() => isMobile && scrollToCanvasSlowly()}
+                    onTouchEnd={() => isMobile && scrollToCanvasSlowly()}
                     className="flex-1"
                   />
                   <ZoomInIcon />
@@ -873,12 +879,12 @@ export default function CrearFlow({ compact = false }) {
                 </p>
                 <div className="mt-4 flex justify-center sm:hidden">
                   <Image
-                    src="/images/Logo/logo blanco nuevo.png"
+                    src="/images/Logo/logo-navbar.png"
                     alt=""
                     aria-hidden="true"
                     width={120}
                     height={78}
-                    className="h-auto w-24 opacity-25"
+                    className="h-auto w-24 opacity-30"
                   />
                 </div>
               </div>

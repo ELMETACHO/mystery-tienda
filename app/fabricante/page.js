@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatCOP, SIZES } from "../lib/order";
+import PasswordInput from "../components/PasswordInput";
 
 function sizeLabel(sizeId) {
   return SIZES.find((s) => s.id === sizeId)?.label || sizeId;
@@ -132,7 +133,7 @@ function OrderRow({ order, code, onUpdated }) {
         <button
           type="button"
           onClick={() => setIsCancelling(true)}
-          className="self-start rounded-full border border-red-500/30 bg-red-500/10 px-4 py-1.5 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/20"
+          className="self-start rounded-full border border-red-500/30 bg-red-500/10 px-4 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-500/20"
         >
           Cancelar guía
         </button>
@@ -140,7 +141,7 @@ function OrderRow({ order, code, onUpdated }) {
 
       {!message && isCancelling && (
         <div className="flex flex-col gap-2 rounded-xl border border-red-500/20 bg-red-500/5 p-3">
-          <label className="text-xs font-medium text-red-300">
+          <label className="text-xs font-medium text-red-700">
             ¿Qué pasó? (obligatorio antes de cancelar)
           </label>
           <textarea
@@ -287,20 +288,27 @@ function FabricanteContent() {
   };
 
   return (
-    <div className="relative mx-auto flex w-full max-w-xl flex-1 flex-col items-center gap-6 px-4 py-16 sm:px-6 sm:py-24">
+    <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-0 bg-cover bg-center"
+        style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
+      />
+      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col items-center gap-6 px-4 py-16 sm:px-6 sm:py-24">
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">Tu saldo pendiente</h1>
         <p className="text-sm text-[#33456b]">Ingresa tu código de acceso para consultarlo.</p>
       </div>
 
       <form onSubmit={handleLookup} className="flex w-full gap-2">
-        <input
-          type="text"
-          placeholder="Código de acceso"
-          value={codeInput}
-          onChange={(e) => setCodeInput(e.target.value)}
-          className="flex-1 rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-3.5 text-base outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm"
-        />
+        <div className="flex-1">
+          <PasswordInput
+            placeholder="Código de acceso"
+            value={codeInput}
+            onChange={(e) => setCodeInput(e.target.value)}
+            className="rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-3.5 text-base text-[#1b2a4a] outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm"
+          />
+        </div>
         <button
           type="submit"
           disabled={isLoading || !codeInput.trim()}
@@ -364,6 +372,7 @@ function FabricanteContent() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
