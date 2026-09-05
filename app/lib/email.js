@@ -54,17 +54,23 @@ const INSTAGRAM_URL = "#";
 // de var(--accent). Un morado ligeramente más oscuro (TEXT) se usa para
 // texto sobre fondo blanco por contraste; el morado de marca "puro"
 // (SOLID) se usa para fondos/badges con texto claro encima.
+//
+// Paleta alineada al rediseño "retro cielo" del sitio (ver CLAUDE.md,
+// feature/rebrand-retro-bubble) — mismo celeste sólido de fondo y azul
+// marino de texto que usa el resto del sitio (Home, /crear, /fabricante),
+// en vez de la paleta oscura/lila que tenían los correos antes del
+// rediseño. Sin degradados ni imágenes de fondo: los clientes de correo
+// (Gmail, Outlook, Apple Mail) no las renderizan de forma confiable.
 const BRAND = {
   solid: "#a855f7",
   soft: "#c084fc",
   text: "#7c3aed", // más oscuro que --accent, para legibilidad sobre blanco
-  dark: "#14101c",
-  ink: "#18181b",
-  muted: "#52525b",
-  faint: "#71717a",
+  sky: "#8fcaf0", // fondo celeste sólido, fuera de la tarjeta
+  card: "#ffffff", // tarjetas blancas
+  ink: "#1b2a4a",
+  muted: "#33456b",
+  faint: "#5b6b8c",
   border: "#e4e4e7",
-  bgOuter: "#f2eff9",
-  bgAdminOuter: "#f4f4f5",
   lilac: "#f5f0ff",
   success: "#166534",
   successBg: "#dcfce7",
@@ -73,6 +79,32 @@ const BRAND = {
 };
 
 const FONT_STACK = "Arial, Helvetica, sans-serif";
+
+// Logo nuevo del rediseño (mismo archivo que usa la navbar del sitio,
+// public/images/Logo/logo-navbar.png) — necesita una URL absoluta porque
+// Resend no tiene "modo local" y los clientes de correo no resuelven
+// rutas relativas del sitio.
+const LOGO_URL = `${SITE_URL}/images/Logo/logo-navbar.png`;
+
+// Encabezado compartido por TODOS los correos transaccionales: logo sobre
+// tarjeta blanca, con un `subtitle` opcional (ej. "Nuevo pedido") para los
+// correos operativos que antes llevaban ese texto junto al wordmark.
+// Vive en un solo lugar para que el estilo de marca se actualice de forma
+// consistente en todos los correos a la vez, sin tocar cada plantilla.
+function emailHeaderRow(subtitle) {
+  return `
+    <tr>
+      <td style="background-color:${BRAND.card};padding:20px 24px;text-align:center;border-bottom:1px solid ${BRAND.border};">
+        <img src="${LOGO_URL}" alt="Mystery" width="130" style="display:inline-block;height:auto;max-width:130px;" />
+        ${
+          subtitle
+            ? `<p style="margin:8px 0 0 0;font-family:${FONT_STACK};font-size:12px;font-weight:bold;color:${BRAND.muted};text-transform:uppercase;letter-spacing:0.5px;">${subtitle}</p>`
+            : ""
+        }
+      </td>
+    </tr>
+  `;
+}
 
 // Extrae el base64 de un data URL de imagen, validando primero que
 // realmente tenga esa forma ("data:image/...;base64,XXXX"). Si el valor no
@@ -164,15 +196,11 @@ function customerEmailHtml({
     : "";
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgOuter};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
-        <tr>
-          <td style="background-color:${BRAND.dark};padding:28px 32px;text-align:center;">
-            <span style="font-family:${FONT_STACK};font-size:26px;font-weight:bold;color:${BRAND.soft};letter-spacing:0.5px;">Mystery</span>
-          </td>
-        </tr>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow()}
 
         <tr>
           <td style="padding:32px 32px 8px 32px;">
@@ -395,16 +423,11 @@ function adminEmailHtml({
     `;
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgAdminOuter};padding:16px 10px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:#ffffff;border:1px solid ${BRAND.border};border-radius:8px;overflow:hidden;">
-        <tr>
-          <td style="background-color:${BRAND.ink};padding:14px 20px;">
-            <span style="font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.soft};">Mystery</span>
-            <span style="font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:#ffffff;"> · Nuevo pedido</span>
-          </td>
-        </tr>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow("Nuevo pedido")}
 
         <!-- Bloque prioritario: lo que se necesita primero para despachar. -->
         <tr>
@@ -624,13 +647,20 @@ export async function sendOrderEmails({
 
 function guideCancelledEmailHtml({ order, customer, reference, reason, trackingNumber, carrierName }) {
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgAdminOuter};padding:16px 10px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:#ffffff;border:1px solid ${BRAND.border};border-radius:8px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow()}
         <tr>
-          <td style="background-color:${BRAND.warning};padding:14px 20px;">
-            <span style="font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:#ffffff;">⚠️ Guía cancelada por el fabricante</span>
+          <td style="padding:16px 20px 0 20px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.warningBg};border-radius:8px;">
+              <tr>
+                <td style="padding:12px 14px;">
+                  <p style="margin:0;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${BRAND.warning};">⚠️ Guía cancelada por el fabricante</p>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
         <tr>
@@ -697,15 +727,11 @@ const FABRICANTE_DISPLAY_NAME = {
 function paymentRequestEmailHtml({ amount, fabricanteId }) {
   const fabricanteLabel = FABRICANTE_DISPLAY_NAME[fabricanteId] || "Fabricante";
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgOuter};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
-        <tr>
-          <td style="background-color:${BRAND.dark};padding:24px 28px;text-align:center;">
-            <span style="font-family:${FONT_STACK};font-size:22px;font-weight:bold;color:${BRAND.soft};letter-spacing:0.5px;">Mystery</span>
-          </td>
-        </tr>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow()}
         <tr>
           <td style="padding:28px;">
             <p style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:16px;line-height:23px;color:${BRAND.ink};">${fabricanteLabel} solicitó pago: <strong style="color:${BRAND.text};">${formatCOP(amount)}</strong></p>
@@ -757,15 +783,11 @@ function shippingNotificationEmailHtml({
   const linkToShow = trackingUrl || labelUrl;
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgOuter};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
-        <tr>
-          <td style="background-color:${BRAND.dark};padding:28px 32px;text-align:center;">
-            <span style="font-family:${FONT_STACK};font-size:26px;font-weight:bold;color:${BRAND.soft};letter-spacing:0.5px;">Mystery</span>
-          </td>
-        </tr>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow()}
 
         <tr>
           <td style="padding:32px 32px 8px 32px;">
@@ -924,15 +946,11 @@ export async function cancelScheduledEmail(emailId) {
 
 function guideCorrectionEmailHtml({ customer }) {
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgOuter};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
-        <tr>
-          <td style="background-color:${BRAND.dark};padding:28px 32px;text-align:center;">
-            <span style="font-family:${FONT_STACK};font-size:26px;font-weight:bold;color:${BRAND.soft};letter-spacing:0.5px;">Mystery</span>
-          </td>
-        </tr>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow()}
 
         <tr>
           <td style="padding:32px 32px 8px 32px;">
@@ -978,15 +996,11 @@ export async function sendGuideCorrectionEmail({ customer }) {
 
 function reviewRequestEmailHtml({ order, reviewUrl }) {
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgOuter};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
-        <tr>
-          <td style="background-color:${BRAND.dark};padding:28px 32px;text-align:center;">
-            <span style="font-family:${FONT_STACK};font-size:26px;font-weight:bold;color:${BRAND.soft};letter-spacing:0.5px;">Mystery</span>
-          </td>
-        </tr>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow()}
 
         <tr>
           <td style="padding:32px 32px 8px 32px;">
@@ -1040,15 +1054,11 @@ function cartRecoveryEmailHtml({ customer, order, resumeUrl }) {
   const firstName = (customer.fullName || "").trim().split(/\s+/)[0] || "";
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.bgOuter};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:#ffffff;border-radius:12px;overflow:hidden;">
-        <tr>
-          <td style="background-color:${BRAND.dark};padding:28px 32px;text-align:center;">
-            <span style="font-family:${FONT_STACK};font-size:26px;font-weight:bold;color:${BRAND.soft};letter-spacing:0.5px;">Mystery</span>
-          </td>
-        </tr>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow()}
 
         <tr>
           <td style="padding:32px 32px 8px 32px;">
