@@ -109,8 +109,14 @@ function wrapEmailHtml(bodyHtml) {
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
     <title>Mystery</title>
+    <style>
+      :root {
+        color-scheme: light;
+        supported-color-schemes: light;
+      }
+    </style>
   </head>
-  <body style="margin:0;padding:0;background-color:${BRAND.sky};">
+  <body bgcolor="${BRAND.sky}" style="margin:0;padding:0;background-color:${BRAND.sky};">
     ${bodyHtml}
   </body>
 </html>`;
