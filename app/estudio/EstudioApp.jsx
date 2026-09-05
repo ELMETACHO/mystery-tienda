@@ -634,7 +634,13 @@ export default function EstudioApp({ mockups }) {
                     className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-black/10"
                     style={{ aspectRatio: previewAspect }}
                   >
-                    <Image src={mockupSrc} alt="Fondo elegido" fill className="object-cover" />
+                    <Image
+                      src={mockupSrc}
+                      alt="Fondo elegido"
+                      fill
+                      sizes="(min-width: 576px) 576px, 100vw"
+                      className="object-cover"
+                    />
                     <div
                       ref={cropBoxRef}
                       className="absolute overflow-hidden rounded-sm border border-black/60 shadow-lg"

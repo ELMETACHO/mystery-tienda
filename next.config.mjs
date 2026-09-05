@@ -19,6 +19,13 @@ const nextConfig = {
     // Miniaturas de productos del catálogo (/estudio → Drive → Home /
     // /producto/[id]) vienen de drive.google.com/thumbnail.
     remotePatterns: [{ protocol: "https", hostname: "drive.google.com" }],
+    // Reducidos desde los defaults de Next (8+8 valores) a los anchos que
+    // realmente se renderizan en el sitio (ver `sizes` de cada <Image>) —
+    // menos combinaciones de ancho posibles = menos "Cache Writes" de
+    // Image Optimization en Vercel (alcanzamos el límite gratuito de
+    // 100.000 sin tráfico real, agosto 2026).
+    deviceSizes: [640, 828, 1200, 1920],
+    imageSizes: [96, 128, 256, 384],
   },
 };
 
