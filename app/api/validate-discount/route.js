@@ -1,6 +1,7 @@
 import { validateDiscountCode } from "../../lib/discount";
 import { hasPreviousOrders } from "../../lib/loyalty";
 import { getReferral, REFERRAL_DISCOUNT_PERCENT } from "../../lib/referrals";
+import { validateGiftCode } from "../../lib/giftCodes";
 import { checkRateLimit, rateLimitResponse } from "../../lib/rateLimit";
 
 // Mismo mensaje genérico para "no existe", "ya usado", "correo sin
@@ -44,7 +45,27 @@ export async function POST(request) {
     }
   }
 
-  // No fue un código de descuento válido — ¿es un código de referido?
+  // ¿Es un código de regalo (influencers, ver app/lib/giftCodes.js)?
+  // 100% de descuento, solo válido para 40x50, con un límite de usos
+  // totales — requiredSizeId le avisa al checkout que rechace el código
+  // si el pedido actual no es justo ese tamaño (no hay forma de
+  // cambiarlo desde /checkout, así que ese chequeo es solo para mostrar
+  // un mensaje claro, no una medida de seguridad — la seguridad real
+  // está en que /api/confirm-free-order vuelve a revalidar todo
+  // server-side antes de confirmar nada).
+  const gift = await validateGiftCode(normalizedCode);
+  if (gift.valid) {
+    return Response.json({
+      valid: true,
+      type: "gift",
+      code: normalizedCode,
+      percent: gift.percent,
+      requiredSizeId: gift.sizeId,
+    });
+  }
+
+  // No fue un código de descuento ni de regalo válido — ¿es un código
+  // de referido?
   // Ahora también da descuento al comprador (mismo mecanismo que
   // MYSTERY10, ver REFERRAL_DISCOUNT_PERCENT) — nunca se revela el
   // nombre del referido ni ningún otro dato interno acá, solo que el

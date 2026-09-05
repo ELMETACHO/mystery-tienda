@@ -301,8 +301,9 @@ export async function recordCrmEntry({ order, customer, paymentMethod }) {
   const direccion = [customer.street, customer.neighborhood, customer.city, customer.department]
     .filter(Boolean)
     .join(", ");
-  const metodoPago = paymentMethod === "cod" ? "Contraentrega" : "Pago completo";
-  const cuponOReferido = order.discountCode || order.referralCode || "";
+  const metodoPago =
+    paymentMethod === "cod" ? "Contraentrega" : paymentMethod === "regalo" ? "Regalo" : "Pago completo";
+  const cuponOReferido = order.discountCode || order.referralCode || order.giftCode || "";
   const fecha = new Date().toISOString();
   const telefono = `${customer.phonePrefix || ""}${customer.phone || ""}`;
   const correo = customer.email;

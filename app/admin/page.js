@@ -18,6 +18,12 @@ const SECTIONS = [
     icon: "🤝",
   },
   {
+    href: "/admin/regalos",
+    title: "Códigos de regalo",
+    description: "Genera códigos de 100% de descuento (40x50) para influencers.",
+    icon: "🎁",
+  },
+  {
     href: "/admin/reporte",
     title: "Reporte financiero",
     description: "Ingresos, costos, comisiones y utilidad neta por período.",

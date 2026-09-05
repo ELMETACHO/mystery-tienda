@@ -443,6 +443,28 @@ function adminEmailHtml({
     `
     : "";
 
+  // Nota de pedido de regalo (influencers, ver app/lib/giftCodes.js) —
+  // el precio en $0 más abajo (paymentBanner) es intencional, no un
+  // error de cobro; esta nota lo aclara explícitamente para que el
+  // fabricante/admin no se alarme al ver "Pagado: $0".
+  const giftOrderNote = order.giftCode
+    ? `
+      <tr>
+        <td style="padding:0 20px 16px 20px;">
+          <table class="email-banner-lilac-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.lilac};border-radius:6px;">
+            <tr>
+              <td style="padding:10px 14px;">
+                <p class="email-text-brand" style="margin:0;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.text};">
+                  🎁 Pedido de regalo — código ${escapeHtml(order.giftCode)}. No se cobró nada, es intencional.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `
+    : "";
+
   // La guía de Skydropx YA NO se genera automáticamente al pagar (ver
   // CLAUDE.md) — el fabricante la dispara cuando el cuadro esté listo,
   // desde el botón de este correo. Aplica a AMBOS métodos de pago (antes
@@ -536,6 +558,8 @@ function adminEmailHtml({
         </tr>
 
         ${trackingRow}
+
+        ${giftOrderNote}
 
         ${aiUpscaleNote}
 
