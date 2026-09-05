@@ -609,6 +609,7 @@ export default function CrearFlow({ compact = false }) {
               src={MOCKUP.src}
               alt="Cuadro colgado en la pared (mockup de referencia)"
               fill
+              sizes="(min-width: 384px) 384px, 100vw"
               className="object-cover"
             />
             <div
@@ -769,6 +770,7 @@ export default function CrearFlow({ compact = false }) {
                 alt="Ambiente de referencia"
                 fill
                 priority
+                sizes="(min-width: 640px) 576px, 240px"
                 className="object-cover"
               />
 
