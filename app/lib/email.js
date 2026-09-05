@@ -530,6 +530,14 @@ export async function sendOrderEmails({
   // prioridad sobre order.printImage (que para estos pedidos es solo la
   // miniatura pública del mockup, no el archivo de imprenta real).
   printImageBase64Override,
+  // Solo para scripts/pruebas puntuales (ver scripts/send-test-emails.mjs):
+  // subjectPrefix se antepone al asunto ("[PRUEBA] ..."), y
+  // testRecipientOverride reemplaza TODOS los destinatarios reales
+  // (fabricante y cliente) por uno solo, para poder ver el diseño en una
+  // bandeja real sin arriesgarse a mandarle un correo de prueba a un
+  // fabricante o cliente real. Ninguno de los dos se usa en producción.
+  subjectPrefix = "",
+  testRecipientOverride,
 }) {
   // El fabricante recibe la versión CON sangrado de producción
   // (order.printImage); si por algún motivo no viene (pedidos guardados
@@ -598,8 +606,8 @@ export async function sendOrderEmails({
 
   await resend.emails.send({
     from: FROM_EMAIL,
-    to: adminRecipientsForFrameType(order.frameType),
-    subject: `Nuevo pedido Mystery - ${customer.fullName}`,
+    to: testRecipientOverride || adminRecipientsForFrameType(order.frameType),
+    subject: `${subjectPrefix}Nuevo pedido Mystery - ${customer.fullName}`,
     html: adminEmailHtml({
       order,
       customer,
@@ -624,8 +632,8 @@ export async function sendOrderEmails({
   // que confirmamos tamaño y precio en texto/tarjeta sin depender de la foto.
   await resend.emails.send({
     from: FROM_EMAIL,
-    to: customer.email,
-    subject: "¡Tu cuadro Mystery está confirmado!",
+    to: testRecipientOverride || customer.email,
+    subject: `${subjectPrefix}¡Tu cuadro Mystery está confirmado!`,
     html: customerEmailHtml({
       order,
       customer,
@@ -697,11 +705,20 @@ function guideCancelledEmailHtml({ order, customer, reference, reason, trackingN
   `;
 }
 
-export async function sendGuideCancelledEmail({ order, customer, reference, reason, trackingNumber, carrierName }) {
+export async function sendGuideCancelledEmail({
+  order,
+  customer,
+  reference,
+  reason,
+  trackingNumber,
+  carrierName,
+  subjectPrefix = "",
+  testRecipientOverride,
+}) {
   await resend.emails.send({
     from: FROM_EMAIL,
-    to: ADMIN_EMAIL,
-    subject: "⚠️ Guía cancelada por el fabricante",
+    to: testRecipientOverride || ADMIN_EMAIL,
+    subject: `${subjectPrefix}⚠️ Guía cancelada por el fabricante`,
     html: guideCancelledEmailHtml({ order, customer, reference, reason, trackingNumber, carrierName }),
   });
 }
@@ -752,11 +769,16 @@ function paymentRequestEmailHtml({ amount, fabricanteId }) {
 // el cuerpo del correo) — el DESTINATARIO siempre es OWNER_PAYMENT_REQUEST_EMAIL,
 // nunca depende de qué fabricante lo solicitó (ver comentario arriba y
 // app/api/fabricante-request-payment/route.js).
-export async function sendFabricantePaymentRequestEmail({ amount, fabricanteId }) {
+export async function sendFabricantePaymentRequestEmail({
+  amount,
+  fabricanteId,
+  subjectPrefix = "",
+  testRecipientOverride,
+}) {
   await resend.emails.send({
     from: FROM_EMAIL,
-    to: OWNER_PAYMENT_REQUEST_EMAIL,
-    subject: "PAGO A FABRICANTE - MYSTERY CUADROS",
+    to: testRecipientOverride || OWNER_PAYMENT_REQUEST_EMAIL,
+    subject: `${subjectPrefix}PAGO A FABRICANTE - MYSTERY CUADROS`,
     html: paymentRequestEmailHtml({ amount, fabricanteId }),
   });
 }
@@ -890,11 +912,13 @@ export async function sendShippingNotificationEmail({
   labelUrl,
   saldoPendiente,
   scheduledAt,
+  subjectPrefix = "",
+  testRecipientOverride,
 }) {
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
-    to: customer.email,
-    subject: "Tu cuadro va en camino",
+    to: testRecipientOverride || customer.email,
+    subject: `${subjectPrefix}Tu cuadro va en camino`,
     html: shippingNotificationEmailHtml({
       customer,
       trackingNumber,
@@ -980,11 +1004,11 @@ function guideCorrectionEmailHtml({ customer }) {
   `;
 }
 
-export async function sendGuideCorrectionEmail({ customer }) {
+export async function sendGuideCorrectionEmail({ customer, subjectPrefix = "", testRecipientOverride }) {
   await resend.emails.send({
     from: FROM_EMAIL,
-    to: customer.email,
-    subject: "Actualización sobre tu envío Mystery",
+    to: testRecipientOverride || customer.email,
+    subject: `${subjectPrefix}Actualización sobre tu envío Mystery`,
     html: guideCorrectionEmailHtml({ customer }),
   });
 }
@@ -1033,13 +1057,13 @@ function reviewRequestEmailHtml({ order, reviewUrl }) {
 // sizeLabel, ...), NO el order completo del checkout — el cron nunca
 // tiene acceso al pedido completo de IndexedDB, solo a lo que se
 // guardó server-side al confirmar el pago.
-export async function sendReviewRequestEmail({ order, token }) {
+export async function sendReviewRequestEmail({ order, token, subjectPrefix = "", testRecipientOverride }) {
   const reviewUrl = `${SITE_URL}/resena?ref=${encodeURIComponent(order.reference)}&token=${encodeURIComponent(token)}`;
 
   await resend.emails.send({
     from: FROM_EMAIL,
-    to: order.customerEmail,
-    subject: "¿Qué te pareció tu cuadro Mystery?",
+    to: testRecipientOverride || order.customerEmail,
+    subject: `${subjectPrefix}¿Qué te pareció tu cuadro Mystery?`,
     html: reviewRequestEmailHtml({ order, reviewUrl }),
   });
 }
@@ -1110,13 +1134,20 @@ function cartRecoveryEmailHtml({ customer, order, resumeUrl }) {
   `;
 }
 
-export async function sendCartRecoveryEmail({ order, customer, reference, token }) {
+export async function sendCartRecoveryEmail({
+  order,
+  customer,
+  reference,
+  token,
+  subjectPrefix = "",
+  testRecipientOverride,
+}) {
   const resumeUrl = `${SITE_URL}/checkout?resume=${encodeURIComponent(reference)}&token=${encodeURIComponent(token)}`;
 
   await resend.emails.send({
     from: FROM_EMAIL,
-    to: customer.email,
-    subject: "Tu cuadro personalizado te está esperando",
+    to: testRecipientOverride || customer.email,
+    subject: `${subjectPrefix}Tu cuadro personalizado te está esperando`,
     html: cartRecoveryEmailHtml({ customer, order, resumeUrl }),
   });
 }
