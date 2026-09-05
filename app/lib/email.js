@@ -65,7 +65,7 @@ const BRAND = {
   solid: "#a855f7",
   soft: "#c084fc",
   text: "#7c3aed", // más oscuro que --accent, para legibilidad sobre blanco
-  sky: "#8fcaf0", // fondo celeste sólido, fuera de la tarjeta
+  sky: "#d6ecfb", // fondo celeste sólido claro, fuera de la tarjeta
   card: "#ffffff", // tarjetas blancas
   ink: "#1b2a4a",
   muted: "#33456b",
@@ -91,11 +91,36 @@ const LOGO_URL = `${SITE_URL}/images/Logo/logo-navbar.png`;
 // correos operativos que antes llevaban ese texto junto al wordmark.
 // Vive en un solo lugar para que el estilo de marca se actualice de forma
 // consistente en todos los correos a la vez, sin tocar cada plantilla.
+// Envuelve el HTML de cada correo en un documento completo con meta
+// color-scheme/supported-color-schemes forzado a "light" — sin esto,
+// Gmail (sobre todo la app móvil) reinterpreta la tarjeta blanca y el
+// fondo celeste como "modo oscuro" y los invierte a un panel negro con
+// texto blanco, rompiendo el diseño (confirmado en una prueba real,
+// septiembre 2026). El bgcolor= redundante junto al style= en las tablas
+// (ver emailHeaderRow y cada *EmailHtml) es la misma protección aplicada
+// a nivel de tabla, para clientes que ignoran el meta pero sí respetan
+// el atributo bgcolor.
+function wrapEmailHtml(bodyHtml) {
+  return `<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>Mystery</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:${BRAND.sky};">
+    ${bodyHtml}
+  </body>
+</html>`;
+}
+
 function emailHeaderRow(subtitle) {
   return `
     <tr>
-      <td style="background-color:${BRAND.card};padding:20px 24px;text-align:center;border-bottom:1px solid ${BRAND.border};">
-        <img src="${LOGO_URL}" alt="Mystery" width="130" style="display:inline-block;height:auto;max-width:130px;" />
+      <td bgcolor="${BRAND.card}" style="background-color:${BRAND.card};padding:20px 24px;text-align:center;border-bottom:1px solid ${BRAND.border};">
+        <img src="${LOGO_URL}" alt="Mystery" width="130" height="84" style="display:inline-block;height:auto;max-width:130px;" />
         ${
           subtitle
             ? `<p style="margin:8px 0 0 0;font-family:${FONT_STACK};font-size:12px;font-weight:bold;color:${BRAND.muted};text-transform:uppercase;letter-spacing:0.5px;">${subtitle}</p>`
@@ -196,10 +221,10 @@ function customerEmailHtml({
     : "";
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
 
         <tr>
@@ -423,10 +448,10 @@ function adminEmailHtml({
     `;
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow("Nuevo pedido")}
 
         <!-- Bloque prioritario: lo que se necesita primero para despachar. -->
@@ -608,20 +633,22 @@ export async function sendOrderEmails({
     from: FROM_EMAIL,
     to: testRecipientOverride || adminRecipientsForFrameType(order.frameType),
     subject: `${subjectPrefix}Nuevo pedido Mystery - ${customer.fullName}`,
-    html: adminEmailHtml({
-      order,
-      customer,
-      transaction,
-      isReturningCustomer,
-      paymentMethod,
-      trackingNumber,
-      carrierName,
-      shipmentError,
-      manualShipmentUrl,
-      fabricanteUrl,
-      anticipoPagado,
-      saldoPendiente,
-    }),
+    html: wrapEmailHtml(
+      adminEmailHtml({
+        order,
+        customer,
+        transaction,
+        isReturningCustomer,
+        paymentMethod,
+        trackingNumber,
+        carrierName,
+        shipmentError,
+        manualShipmentUrl,
+        fabricanteUrl,
+        anticipoPagado,
+        saldoPendiente,
+      })
+    ),
     attachments,
   });
 
@@ -634,14 +661,16 @@ export async function sendOrderEmails({
     from: FROM_EMAIL,
     to: testRecipientOverride || customer.email,
     subject: `${subjectPrefix}¡Tu cuadro Mystery está confirmado!`,
-    html: customerEmailHtml({
-      order,
-      customer,
-      isReturningCustomer,
-      paymentMethod,
-      anticipoPagado,
-      saldoPendiente,
-    }),
+    html: wrapEmailHtml(
+      customerEmailHtml({
+        order,
+        customer,
+        isReturningCustomer,
+        paymentMethod,
+        anticipoPagado,
+        saldoPendiente,
+      })
+    ),
   });
 }
 
@@ -655,10 +684,10 @@ export async function sendOrderEmails({
 
 function guideCancelledEmailHtml({ order, customer, reference, reason, trackingNumber, carrierName }) {
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
         <tr>
           <td style="padding:16px 20px 0 20px;">
@@ -719,7 +748,9 @@ export async function sendGuideCancelledEmail({
     from: FROM_EMAIL,
     to: testRecipientOverride || ADMIN_EMAIL,
     subject: `${subjectPrefix}⚠️ Guía cancelada por el fabricante`,
-    html: guideCancelledEmailHtml({ order, customer, reference, reason, trackingNumber, carrierName }),
+    html: wrapEmailHtml(
+      guideCancelledEmailHtml({ order, customer, reference, reason, trackingNumber, carrierName })
+    ),
   });
 }
 
@@ -744,10 +775,10 @@ const FABRICANTE_DISPLAY_NAME = {
 function paymentRequestEmailHtml({ amount, fabricanteId }) {
   const fabricanteLabel = FABRICANTE_DISPLAY_NAME[fabricanteId] || "Fabricante";
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:480px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
         <tr>
           <td style="padding:28px;">
@@ -779,7 +810,7 @@ export async function sendFabricantePaymentRequestEmail({
     from: FROM_EMAIL,
     to: testRecipientOverride || OWNER_PAYMENT_REQUEST_EMAIL,
     subject: `${subjectPrefix}PAGO A FABRICANTE - MYSTERY CUADROS`,
-    html: paymentRequestEmailHtml({ amount, fabricanteId }),
+    html: wrapEmailHtml(paymentRequestEmailHtml({ amount, fabricanteId })),
   });
 }
 
@@ -805,10 +836,10 @@ function shippingNotificationEmailHtml({
   const linkToShow = trackingUrl || labelUrl;
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
 
         <tr>
@@ -919,14 +950,16 @@ export async function sendShippingNotificationEmail({
     from: FROM_EMAIL,
     to: testRecipientOverride || customer.email,
     subject: `${subjectPrefix}Tu cuadro va en camino`,
-    html: shippingNotificationEmailHtml({
-      customer,
-      trackingNumber,
-      carrierName,
-      trackingUrl,
-      labelUrl,
-      saldoPendiente,
-    }),
+    html: wrapEmailHtml(
+      shippingNotificationEmailHtml({
+        customer,
+        trackingNumber,
+        carrierName,
+        trackingUrl,
+        labelUrl,
+        saldoPendiente,
+      })
+    ),
     ...(scheduledAt ? { scheduledAt } : {}),
   });
 
@@ -970,10 +1003,10 @@ export async function cancelScheduledEmail(emailId) {
 
 function guideCorrectionEmailHtml({ customer }) {
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
 
         <tr>
@@ -1009,7 +1042,7 @@ export async function sendGuideCorrectionEmail({ customer, subjectPrefix = "", t
     from: FROM_EMAIL,
     to: testRecipientOverride || customer.email,
     subject: `${subjectPrefix}Actualización sobre tu envío Mystery`,
-    html: guideCorrectionEmailHtml({ customer }),
+    html: wrapEmailHtml(guideCorrectionEmailHtml({ customer })),
   });
 }
 
@@ -1020,10 +1053,10 @@ export async function sendGuideCorrectionEmail({ customer, subjectPrefix = "", t
 
 function reviewRequestEmailHtml({ order, reviewUrl }) {
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
 
         <tr>
@@ -1064,7 +1097,7 @@ export async function sendReviewRequestEmail({ order, token, subjectPrefix = "",
     from: FROM_EMAIL,
     to: testRecipientOverride || order.customerEmail,
     subject: `${subjectPrefix}¿Qué te pareció tu cuadro Mystery?`,
-    html: reviewRequestEmailHtml({ order, reviewUrl }),
+    html: wrapEmailHtml(reviewRequestEmailHtml({ order, reviewUrl })),
   });
 }
 
@@ -1078,10 +1111,10 @@ function cartRecoveryEmailHtml({ customer, order, resumeUrl }) {
   const firstName = (customer.fullName || "").trim().split(/\s+/)[0] || "";
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
 
         <tr>
@@ -1148,6 +1181,6 @@ export async function sendCartRecoveryEmail({
     from: FROM_EMAIL,
     to: testRecipientOverride || customer.email,
     subject: `${subjectPrefix}Tu cuadro personalizado te está esperando`,
-    html: cartRecoveryEmailHtml({ customer, order, resumeUrl }),
+    html: wrapEmailHtml(cartRecoveryEmailHtml({ customer, order, resumeUrl })),
   });
 }
