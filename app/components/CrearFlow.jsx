@@ -494,7 +494,9 @@ export default function CrearFlow({ compact = false }) {
       priceCOP: getPriceCOP(selectedSize.id, frameType),
       croppedImage,
       printImage,
-      isLowResolution,
+      // Nunca visible para el cliente (ver CLAUDE.md) — solo viaja al
+      // correo del fabricante y al panel /fabricante como aviso interno.
+      needsAiUpscale: isLowResolution,
     });
   };
 
@@ -811,20 +813,6 @@ export default function CrearFlow({ compact = false }) {
             <p className="flex items-center gap-1.5 text-xs text-[#5b6b8c]">
               <span aria-hidden="true">✨</span> Así quedará impreso
             </p>
-
-            {isLowResolution && (
-              <div className="flex w-full max-w-xl flex-col items-stretch gap-3 rounded-lg border border-amber-500/40 bg-amber-100 px-4 py-3">
-                <p className="text-sm text-amber-800">
-                  La resolución de la imagen es baja para el tamaño elegido, pero se mejorará con IA más adelante.
-                </p>
-                <label
-                  htmlFor="file-upload"
-                  className="shrink-0 cursor-pointer rounded-full border border-amber-500/50 px-4 py-2 text-center text-xs font-medium text-amber-800 transition-colors hover:bg-amber-200 sm:self-start sm:py-1.5"
-                >
-                  Prefiero subir otra imagen
-                </label>
-              </div>
-            )}
 
             {error && <p className="text-sm text-red-400">{error}</p>}
           </div>

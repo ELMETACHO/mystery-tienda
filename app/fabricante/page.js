@@ -125,6 +125,11 @@ function OrderRow({ order, code, onUpdated }) {
               Guía cancelada{o.cancelReason ? `: ${o.cancelReason}` : ""}
             </span>
           )}
+          {o.needsAiUpscale && (
+            <span className="mt-1 text-xs font-medium text-amber-700">
+              ⚠️ Esta imagen requiere escalarla con IA antes de imprimir
+            </span>
+          )}
         </div>
         <span className="shrink-0 text-lg font-bold text-accent">{formatCOP(o.monto)}</span>
       </div>

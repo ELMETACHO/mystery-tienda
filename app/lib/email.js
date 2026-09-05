@@ -321,6 +321,29 @@ function adminEmailHtml({
     </table>
   `;
 
+  // Nota discreta de baja resolución — nunca visible para el cliente (ver
+  // CLAUDE.md), solo para que el fabricante sepa que esta imagen necesita
+  // pasar por escalado con IA antes de imprimir. order.needsAiUpscale se
+  // marca en /crear (CrearFlow.jsx) cuando la foto original no cumple la
+  // resolución mínima para el tamaño elegido.
+  const aiUpscaleNote = order.needsAiUpscale
+    ? `
+      <tr>
+        <td style="padding:0 20px 16px 20px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.warningBg};border-radius:6px;">
+            <tr>
+              <td style="padding:10px 14px;">
+                <p style="margin:0;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.warning};">
+                  ⚠️ Esta imagen requiere escalarla con IA antes de imprimir
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `
+    : "";
+
   // La guía de Skydropx YA NO se genera automáticamente al pagar (ver
   // CLAUDE.md) — el fabricante la dispara cuando el cuadro esté listo,
   // desde el botón de este correo. Aplica a AMBOS métodos de pago (antes
@@ -419,6 +442,8 @@ function adminEmailHtml({
         </tr>
 
         ${trackingRow}
+
+        ${aiUpscaleNote}
 
         <!-- Nota de la imagen adjunta, justo después del bloque prioritario. -->
         <tr>
