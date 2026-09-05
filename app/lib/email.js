@@ -91,16 +91,55 @@ const LOGO_URL = `${SITE_URL}/images/Logo/logo-navbar.png`;
 // correos operativos que antes llevaban ese texto junto al wordmark.
 // Vive en un solo lugar para que el estilo de marca se actualice de forma
 // consistente en todos los correos a la vez, sin tocar cada plantilla.
-// Envuelve el HTML de cada correo en un documento completo con meta
-// color-scheme/supported-color-schemes forzado a "light" — sin esto,
-// Gmail (sobre todo la app móvil) reinterpreta la tarjeta blanca y el
-// fondo celeste como "modo oscuro" y los invierte a un panel negro con
-// texto blanco, rompiendo el diseño (confirmado en una prueba real,
-// septiembre 2026). El bgcolor= redundante junto al style= en las tablas
-// (ver emailHeaderRow y cada *EmailHtml) es la misma protección aplicada
-// a nivel de tabla, para clientes que ignoran el meta pero sí respetan
-// el atributo bgcolor.
+//
+// Envuelve el HTML de cada correo en un documento completo con:
+//   1. meta color-scheme/supported-color-schemes "light" + <style>
+//      :root{color-scheme:light} — funciona en Apple Mail/Outlook.com,
+//      pero Gmail (sobre todo la app móvil) los IGNORA por completo.
+//   2. bgcolor= HTML clásico redundante junto al style= en las tablas de
+//      fondo/tarjeta — sobrevive mejor que el CSS puro en clientes viejos,
+//      pero Gmail también lo ignora en modo oscuro forzado.
+//   3. La pieza que SÍ funciona en Gmail: reglas [data-ogsc]/[data-ogsb]
+//      en el <style> de abajo. Gmail (web y algunas versiones de la app)
+//      agrega esos atributos a los elementos cuando el usuario está en
+//      modo oscuro, y SÍ respeta CSS que los seleccione explícitamente —
+//      a diferencia del meta tag, que ignora sin más. Cada clase
+//      email-* (ver BG_CLASSES/TEXT_CLASSES abajo, y las clases que trae
+//      cada *EmailHtml) tiene acá su regla espejo con !important, para
+//      que el color se mantenga exacto sin importar el modo del usuario.
+// Confirmado con una prueba real en Gmail Android (septiembre 2026): sin
+// las reglas [data-ogsc]/[data-ogsb], la tarjeta blanca y el fondo
+// celeste se invertían a un panel negro con texto blanco pese a 1 y 2.
 function wrapEmailHtml(bodyHtml) {
+  const ogscRule = (selector, prop, value) =>
+    `[data-ogsc] .${selector}, [data-ogsb] .${selector} { ${prop}: ${value} !important; }`;
+
+  const BG_CLASSES = [
+    ["email-bg", BRAND.sky],
+    ["email-card", BRAND.card],
+    ["email-footer-bg", "#fafafa"],
+    ["email-banner-success-bg", BRAND.successBg],
+    ["email-banner-warning-bg", BRAND.warningBg],
+    ["email-banner-lilac-bg", BRAND.lilac],
+    ["email-btn-bg", BRAND.solid],
+  ];
+  const TEXT_CLASSES = [
+    ["email-text-ink", BRAND.ink],
+    ["email-text-muted", BRAND.muted],
+    ["email-text-faint", BRAND.faint],
+    ["email-text-brand", BRAND.text],
+    ["email-text-success", BRAND.success],
+    ["email-text-warning", BRAND.warning],
+    ["email-text-white", "#ffffff"],
+    ["email-text-bleed-note", "#4c1d95"],
+    ["email-text-subtle", "#a1a1aa"],
+  ];
+
+  const ogscCss = [
+    ...BG_CLASSES.map(([cls, color]) => ogscRule(cls, "background-color", color)),
+    ...TEXT_CLASSES.map(([cls, color]) => ogscRule(cls, "color", color)),
+  ].join("\n      ");
+
   return `<!doctype html>
 <html lang="es">
   <head>
@@ -114,9 +153,10 @@ function wrapEmailHtml(bodyHtml) {
         color-scheme: light;
         supported-color-schemes: light;
       }
+      ${ogscCss}
     </style>
   </head>
-  <body bgcolor="${BRAND.sky}" style="margin:0;padding:0;background-color:${BRAND.sky};">
+  <body class="email-bg" bgcolor="${BRAND.sky}" style="margin:0;padding:0;background-color:${BRAND.sky};">
     ${bodyHtml}
   </body>
 </html>`;
@@ -125,11 +165,11 @@ function wrapEmailHtml(bodyHtml) {
 function emailHeaderRow(subtitle) {
   return `
     <tr>
-      <td bgcolor="${BRAND.card}" style="background-color:${BRAND.card};padding:20px 24px;text-align:center;border-bottom:1px solid ${BRAND.border};">
+      <td class="email-card" bgcolor="${BRAND.card}" style="background-color:${BRAND.card};padding:20px 24px;text-align:center;border-bottom:1px solid ${BRAND.border};">
         <img src="${LOGO_URL}" alt="Mystery" width="130" height="84" style="display:inline-block;height:auto;max-width:130px;" />
         ${
           subtitle
-            ? `<p style="margin:8px 0 0 0;font-family:${FONT_STACK};font-size:12px;font-weight:bold;color:${BRAND.muted};text-transform:uppercase;letter-spacing:0.5px;">${subtitle}</p>`
+            ? `<p class="email-text-muted" style="margin:8px 0 0 0;font-family:${FONT_STACK};font-size:12px;font-weight:bold;color:${BRAND.muted};text-transform:uppercase;letter-spacing:0.5px;">${subtitle}</p>`
             : ""
         }
       </td>
@@ -184,12 +224,12 @@ function escapeHtml(str) {
 function housingDetailsRows(customer) {
   if (customer.housingType === "apartamento") {
     return `
-      <p style="margin:0;font-size:14px;line-height:21px;color:${BRAND.muted};">Edificio ${customer.buildingName || "-"}${customer.tower ? `, Torre ${customer.tower}` : ""}, Apto ${customer.apartmentNumber || "-"}</p>
+      <p class="email-text-muted" style="margin:0;font-size:14px;line-height:21px;color:${BRAND.muted};">Edificio ${customer.buildingName || "-"}${customer.tower ? `, Torre ${customer.tower}` : ""}, Apto ${customer.apartmentNumber || "-"}</p>
     `;
   }
   if (customer.additionalInstructions) {
     return `
-      <p style="margin:0;font-size:14px;line-height:21px;color:${BRAND.muted};">${customer.additionalInstructions}</p>
+      <p class="email-text-muted" style="margin:0;font-size:14px;line-height:21px;color:${BRAND.muted};">${customer.additionalInstructions}</p>
     `;
   }
   return "";
@@ -212,12 +252,12 @@ function customerEmailHtml({
     ? `
       <tr>
         <td style="padding:0 32px 24px 32px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.lilac};border:1px dashed ${BRAND.solid};border-radius:10px;">
+          <table class="email-banner-lilac-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.lilac};border:1px dashed ${BRAND.solid};border-radius:10px;">
             <tr>
               <td style="padding:18px;text-align:center;">
-                <p style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:16px;font-weight:bold;color:${BRAND.text};">¡Eres cliente fiel! 🎉</p>
-                <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.muted};">Tienes 10% de descuento en tu próxima compra</p>
-                <span style="display:inline-block;background-color:#ffffff;border:1px solid ${BRAND.solid};border-radius:6px;padding:8px 18px;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:bold;color:${BRAND.ink};letter-spacing:1px;">MYSTERY10%</span>
+                <p class="email-text-brand" style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:16px;font-weight:bold;color:${BRAND.text};">¡Eres cliente fiel! 🎉</p>
+                <p class="email-text-muted" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.muted};">Tienes 10% de descuento en tu próxima compra</p>
+                <span class="email-card email-text-ink" style="display:inline-block;background-color:#ffffff;border:1px solid ${BRAND.solid};border-radius:6px;padding:8px 18px;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:bold;color:${BRAND.ink};letter-spacing:1px;">MYSTERY10%</span>
               </td>
             </tr>
           </table>
@@ -227,16 +267,16 @@ function customerEmailHtml({
     : "";
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
 
         <tr>
           <td style="padding:32px 32px 8px 32px;">
-            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Gracias por tu pedido, ${customer.fullName}!</p>
-            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">${
+            <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Gracias por tu pedido, ${customer.fullName}!</p>
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">${
               isCod
                 ? "Confirmamos que recibimos tu anticipo — el saldo restante lo pagas en efectivo cuando recibas tu cuadro. Tu cuadro personalizado ya está en preparación."
                 : "Confirmamos que tu pago fue aprobado y tu cuadro personalizado ya está en preparación."
@@ -249,8 +289,8 @@ function customerEmailHtml({
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${BRAND.border};border-radius:10px;">
               <tr>
                 <td style="padding:18px;" align="center">
-                  <p style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">${order.sizeLabel}</p>
-                  <p style="margin:0;font-family:${FONT_STACK};font-size:22px;font-weight:bold;color:${BRAND.text};">${formatCOP(order.priceCOP)}</p>
+                  <p class="email-text-muted" style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">${order.sizeLabel}</p>
+                  <p class="email-text-brand" style="margin:0;font-family:${FONT_STACK};font-size:22px;font-weight:bold;color:${BRAND.text};">${formatCOP(order.priceCOP)}</p>
                 </td>
               </tr>
             </table>
@@ -262,11 +302,11 @@ function customerEmailHtml({
             ? `
         <tr>
           <td style="padding:12px 32px 4px 32px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:8px;">
+            <table class="email-banner-success-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:8px;">
               <tr>
                 <td style="padding:12px 16px;">
-                  <p style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">✅ Anticipo recibido: <strong>${formatCOP(anticipoPagado)}</strong></p>
-                  <p style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">💵 Saldo a pagar al recibir tu cuadro: <strong>${formatCOP(saldoPendiente)}</strong></p>
+                  <p class="email-text-success" style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">✅ Anticipo recibido: <strong>${formatCOP(anticipoPagado)}</strong></p>
+                  <p class="email-text-success" style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">💵 Saldo a pagar al recibir tu cuadro: <strong>${formatCOP(saldoPendiente)}</strong></p>
                 </td>
               </tr>
             </table>
@@ -278,11 +318,11 @@ function customerEmailHtml({
 
         <tr>
           <td style="padding:20px 32px 8px 32px;">
-            <p style="margin:0 0 10px 0;font-family:${FONT_STACK};font-size:12px;font-weight:bold;color:${BRAND.ink};text-transform:uppercase;letter-spacing:0.5px;">Próximos pasos</p>
+            <p class="email-text-ink" style="margin:0 0 10px 0;font-family:${FONT_STACK};font-size:12px;font-weight:bold;color:${BRAND.ink};text-transform:uppercase;letter-spacing:0.5px;">Próximos pasos</p>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-              <tr><td style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">✅&nbsp; <strong>${isCod ? "Anticipo confirmado (pagas el saldo contraentrega)" : "Pago confirmado"}</strong></td></tr>
-              <tr><td style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">🎨&nbsp; En producción <span style="color:#a1a1aa;">(3-5 días hábiles)</span></td></tr>
-              <tr><td style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">🚚&nbsp; Envío a tu dirección</td></tr>
+              <tr><td class="email-text-ink" style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">✅&nbsp; <strong>${isCod ? "Anticipo confirmado (pagas el saldo contraentrega)" : "Pago confirmado"}</strong></td></tr>
+              <tr><td class="email-text-muted" style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">🎨&nbsp; En producción <span class="email-text-subtle" style="color:#a1a1aa;">(3-5 días hábiles)</span></td></tr>
+              <tr><td class="email-text-muted" style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">🚚&nbsp; Envío a tu dirección</td></tr>
             </table>
           </td>
         </tr>
@@ -291,15 +331,15 @@ function customerEmailHtml({
 
         <tr>
           <td style="padding:8px 32px 32px 32px;">
-            <p style="margin:0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.muted};">Te avisaremos apenas tu cuadro esté en camino. ¡Gracias por confiar en Mystery!</p>
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.muted};">Te avisaremos apenas tu cuadro esté en camino. ¡Gracias por confiar en Mystery!</p>
           </td>
         </tr>
 
         <tr>
-          <td style="background-color:#fafafa;border-top:1px solid ${BRAND.border};padding:20px 32px;">
-            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Mystery · ${ADMIN_EMAIL}</p>
-            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Síguenos en <a href="${INSTAGRAM_URL}" style="color:${BRAND.text};text-decoration:none;">Instagram</a></p>
-            <p style="margin:0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">¿Dudas con tu pedido? Responde este correo, con gusto te ayudamos.</p>
+          <td class="email-footer-bg" style="background-color:#fafafa;border-top:1px solid ${BRAND.border};padding:20px 32px;">
+            <p class="email-text-faint" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Mystery · ${ADMIN_EMAIL}</p>
+            <p class="email-text-faint" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Síguenos en <a class="email-text-brand" href="${INSTAGRAM_URL}" style="color:${BRAND.text};text-decoration:none;">Instagram</a></p>
+            <p class="email-text-faint" style="margin:0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">¿Dudas con tu pedido? Responde este correo, con gusto te ayudamos.</p>
           </td>
         </tr>
       </table>
@@ -339,11 +379,11 @@ function adminEmailHtml({
 
   const paymentBanner = isCod
     ? `
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:6px;">
+      <table class="email-banner-success-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:6px;">
         <tr>
           <td style="padding:10px 14px;">
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${BRAND.success};">✅ Anticipo pagado: ${formatCOP(anticipoPagado)}</p>
-            <p style="margin:0;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${BRAND.success};">💵 Saldo a cobrar al entregar: ${formatCOP(saldoPendiente)}</p>
+            <p class="email-text-success" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${BRAND.success};">✅ Anticipo pagado: ${formatCOP(anticipoPagado)}</p>
+            <p class="email-text-success" style="margin:0;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${BRAND.success};">💵 Saldo a cobrar al entregar: ${formatCOP(saldoPendiente)}</p>
           </td>
         </tr>
       </table>
@@ -389,10 +429,10 @@ function adminEmailHtml({
     ? `
       <tr>
         <td style="padding:0 20px 16px 20px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.warningBg};border-radius:6px;">
+          <table class="email-banner-warning-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.warningBg};border-radius:6px;">
             <tr>
               <td style="padding:10px 14px;">
-                <p style="margin:0;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.warning};">
+                <p class="email-text-warning" style="margin:0;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.warning};">
                   ⚠️ Esta imagen requiere escalarla con IA antes de imprimir
                 </p>
               </td>
@@ -412,10 +452,10 @@ function adminEmailHtml({
     ? `
       <tr>
         <td style="padding:0 20px 16px 20px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:6px;">
+          <table class="email-banner-success-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:6px;">
             <tr>
               <td style="padding:10px 14px;">
-                <p style="margin:0;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.success};">
+                <p class="email-text-success" style="margin:0;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.success};">
                   🚚 Guía generada (${carrierName || "transportadora"}): ${trackingNumber}
                 </p>
               </td>
@@ -427,23 +467,23 @@ function adminEmailHtml({
     : `
       <tr>
         <td style="padding:0 20px 16px 20px;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.lilac};border-radius:6px;">
+          <table class="email-banner-lilac-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.lilac};border-radius:6px;">
             <tr>
               <td style="padding:14px;text-align:center;">
-                <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.text};">Guía de envío pendiente — generarla cuando el cuadro esté listo.</p>
+                <p class="email-text-brand" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.text};">Guía de envío pendiente — generarla cuando el cuadro esté listo.</p>
                 ${
                   manualShipmentUrl
-                    ? `<a href="${manualShipmentUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:17px;font-weight:bold;text-decoration:none;border-radius:999px;padding:18px 32px;">✅ Ya fabriqué el cuadro - generar guía</a>`
+                    ? `<a class="email-btn-bg email-text-white" href="${manualShipmentUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:17px;font-weight:bold;text-decoration:none;border-radius:999px;padding:18px 32px;">✅ Ya fabriqué el cuadro - generar guía</a>`
                     : ""
                 }
                 ${
                   fabricanteUrl
-                    ? `<p style="margin:12px 0 0 0;"><a href="${fabricanteUrl}" style="display:inline-block;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.text};text-decoration:underline;">💰 Ver mis ganancias</a></p>`
+                    ? `<p style="margin:12px 0 0 0;"><a class="email-text-brand" href="${fabricanteUrl}" style="display:inline-block;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.text};text-decoration:underline;">💰 Ver mis ganancias</a></p>`
                     : ""
                 }
                 ${
                   shipmentError
-                    ? `<p style="margin:10px 0 0 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.warning};">Último intento fallido — motivo: ${escapeHtml(shipmentError)}</p>`
+                    ? `<p class="email-text-warning" style="margin:10px 0 0 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.warning};">Último intento fallido — motivo: ${escapeHtml(shipmentError)}</p>`
                     : ""
                 }
               </td>
@@ -454,32 +494,32 @@ function adminEmailHtml({
     `;
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow("Nuevo pedido")}
 
         <!-- Bloque prioritario: lo que se necesita primero para despachar. -->
         <tr>
           <td style="padding:16px 20px 4px 20px;">
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Nombre</p>
-            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.fullName}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Nombre</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.fullName}</p>
 
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Teléfono</p>
-            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.phonePrefix} ${customer.phone}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Teléfono</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.phonePrefix} ${customer.phone}</p>
 
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Ciudad</p>
-            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.city}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Ciudad</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.city}</p>
 
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Barrio</p>
-            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.neighborhood}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Barrio</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.neighborhood}</p>
 
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Dirección</p>
-            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.street} · ${customer.housingType === "apartamento" ? "Apartamento" : "Casa"}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Dirección</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.street} · ${customer.housingType === "apartamento" ? "Apartamento" : "Casa"}</p>
 
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Indicaciones adicionales</p>
-            ${housingDetailsRows(customer) || `<p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">-</p>`}
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Indicaciones adicionales</p>
+            ${housingDetailsRows(customer) || `<p class="email-text-muted" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">-</p>`}
           </td>
         </tr>
 
@@ -502,10 +542,10 @@ function adminEmailHtml({
         <!-- Nota de la imagen adjunta, justo después del bloque prioritario. -->
         <tr>
           <td style="padding:0 20px 16px 20px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.lilac};border-left:4px solid ${BRAND.solid};">
+            <table class="email-banner-lilac-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.lilac};border-left:4px solid ${BRAND.solid};">
               <tr>
                 <td style="padding:12px 14px;">
-                  <p style="margin:0;font-family:${FONT_STACK};font-size:13px;line-height:19px;color:#4c1d95;">
+                  <p class="email-text-bleed-note" style="margin:0;font-family:${FONT_STACK};font-size:13px;line-height:19px;color:#4c1d95;">
                     📎 La imagen adjunta incluye <strong>1 cm de sangrado por lado</strong> sobre el tamaño solicitado (<strong>${order.sizeLabel}</strong>). Recortar al tamaño final tras imprimir.
                   </p>
                 </td>
@@ -517,23 +557,23 @@ function adminEmailHtml({
         <!-- Resto de la info, después del bloque prioritario. -->
         <tr>
           <td style="padding:14px 20px 18px 20px;border-top:1px solid ${BRAND.border};">
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Referencia</p>
-            <p style="margin:0 0 12px 0;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:bold;color:${BRAND.ink};word-break:break-all;">${transaction.reference}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Referencia</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:bold;color:${BRAND.ink};word-break:break-all;">${transaction.reference}</p>
 
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Tamaño</p>
-            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">${order.sizeLabel} · ${isPremium ? "Premium" : "Tradicional"}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Tamaño</p>
+            <p class="email-text-muted" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">${order.sizeLabel} · ${isPremium ? "Premium" : "Tradicional"}</p>
 
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Precio</p>
-            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">${formatCOP(order.priceCOP)}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Precio</p>
+            <p class="email-text-muted" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">${formatCOP(order.priceCOP)}</p>
 
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Cliente recurrente</p>
-            <p style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">${isReturningCustomer ? "Sí" : "No"}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Cliente recurrente</p>
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">${isReturningCustomer ? "Sí" : "No"}</p>
           </td>
         </tr>
 
         <tr>
           <td style="padding:6px 20px;border-top:1px solid ${BRAND.border};">
-            <p style="margin:0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};">Correo: ${customer.email}</p>
+            <p class="email-text-faint" style="margin:0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};">Correo: ${customer.email}</p>
           </td>
         </tr>
       </table>
@@ -690,17 +730,17 @@ export async function sendOrderEmails({
 
 function guideCancelledEmailHtml({ order, customer, reference, reason, trackingNumber, carrierName }) {
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
         <tr>
           <td style="padding:16px 20px 0 20px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.warningBg};border-radius:8px;">
+            <table class="email-banner-warning-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.warningBg};border-radius:8px;">
               <tr>
                 <td style="padding:12px 14px;">
-                  <p style="margin:0;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${BRAND.warning};">⚠️ Guía cancelada por el fabricante</p>
+                  <p class="email-text-warning" style="margin:0;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${BRAND.warning};">⚠️ Guía cancelada por el fabricante</p>
                 </td>
               </tr>
             </table>
@@ -708,26 +748,26 @@ function guideCancelledEmailHtml({ order, customer, reference, reason, trackingN
         </tr>
         <tr>
           <td style="padding:20px;">
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Cliente</p>
-            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${escapeHtml(customer.fullName)}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Cliente</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${escapeHtml(customer.fullName)}</p>
 
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Ciudad</p>
-            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;color:${BRAND.muted};">${escapeHtml(customer.city)}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Ciudad</p>
+            <p class="email-text-muted" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;color:${BRAND.muted};">${escapeHtml(customer.city)}</p>
 
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Tamaño</p>
-            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;color:${BRAND.muted};">${escapeHtml(order.sizeLabel || order.sizeId)}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Tamaño</p>
+            <p class="email-text-muted" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;color:${BRAND.muted};">${escapeHtml(order.sizeLabel || order.sizeId)}</p>
 
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Guía cancelada</p>
-            <p style="margin:0 0 12px 0;font-family:'Courier New',Courier,monospace;font-size:14px;color:${BRAND.ink};">${escapeHtml(trackingNumber || "-")} ${carrierName ? `(${escapeHtml(carrierName)})` : ""}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Guía cancelada</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:'Courier New',Courier,monospace;font-size:14px;color:${BRAND.ink};">${escapeHtml(trackingNumber || "-")} ${carrierName ? `(${escapeHtml(carrierName)})` : ""}</p>
 
-            <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Referencia</p>
-            <p style="margin:0 0 12px 0;font-family:'Courier New',Courier,monospace;font-size:14px;color:${BRAND.ink};word-break:break-all;">${escapeHtml(reference)}</p>
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Referencia</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:'Courier New',Courier,monospace;font-size:14px;color:${BRAND.ink};word-break:break-all;">${escapeHtml(reference)}</p>
 
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.warningBg};border-radius:6px;">
+            <table class="email-banner-warning-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.warningBg};border-radius:6px;">
               <tr>
                 <td style="padding:12px 14px;">
-                  <p style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.warning};text-transform:uppercase;letter-spacing:0.4px;">Motivo del fabricante</p>
-                  <p style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">${escapeHtml(reason)}</p>
+                  <p class="email-text-warning" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.warning};text-transform:uppercase;letter-spacing:0.4px;">Motivo del fabricante</p>
+                  <p class="email-text-ink" style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">${escapeHtml(reason)}</p>
                 </td>
               </tr>
             </table>
@@ -781,17 +821,17 @@ const FABRICANTE_DISPLAY_NAME = {
 function paymentRequestEmailHtml({ amount, fabricanteId }) {
   const fabricanteLabel = FABRICANTE_DISPLAY_NAME[fabricanteId] || "Fabricante";
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:480px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:480px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
         <tr>
           <td style="padding:28px;">
-            <p style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:16px;line-height:23px;color:${BRAND.ink};">${fabricanteLabel} solicitó pago: <strong style="color:${BRAND.text};">${formatCOP(amount)}</strong></p>
-            <p style="margin:0 0 24px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.muted};">Confírmalo desde el panel de administración cuando le hayas transferido.</p>
+            <p class="email-text-ink" style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:16px;line-height:23px;color:${BRAND.ink};">${fabricanteLabel} solicitó pago: <strong class="email-text-brand" style="color:${BRAND.text};">${formatCOP(amount)}</strong></p>
+            <p class="email-text-muted" style="margin:0 0 24px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.muted};">Confírmalo desde el panel de administración cuando le hayas transferido.</p>
             <p style="margin:0;text-align:center;">
-              <a href="${SITE_URL}/admin" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:15px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Ir a /admin</a>
+              <a class="email-btn-bg email-text-white" href="${SITE_URL}/admin" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:15px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Ir a /admin</a>
             </p>
           </td>
         </tr>
@@ -842,15 +882,15 @@ function shippingNotificationEmailHtml({
   const linkToShow = trackingUrl || labelUrl;
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
 
         <tr>
           <td style="padding:32px 32px 8px 32px;">
-            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Hola ${customer.fullName}! Tu pedido ya fue despachado.</p>
+            <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Hola ${customer.fullName}! Tu pedido ya fue despachado.</p>
           </td>
         </tr>
 
@@ -859,11 +899,11 @@ function shippingNotificationEmailHtml({
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${BRAND.border};border-radius:10px;">
               <tr>
                 <td style="padding:18px;">
-                  <p style="margin:0 0 10px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Número de guía</p>
-                  <p style="margin:0 0 16px 0;font-family:'Courier New',Courier,monospace;font-size:18px;font-weight:bold;color:${BRAND.ink};">${trackingNumber}</p>
+                  <p class="email-text-faint" style="margin:0 0 10px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Número de guía</p>
+                  <p class="email-text-ink" style="margin:0 0 16px 0;font-family:'Courier New',Courier,monospace;font-size:18px;font-weight:bold;color:${BRAND.ink};">${trackingNumber}</p>
 
-                  <p style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Transportadora</p>
-                  <p style="margin:0;font-family:${FONT_STACK};font-size:15px;color:${BRAND.ink};">${carrierName || "-"}</p>
+                  <p class="email-text-faint" style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Transportadora</p>
+                  <p class="email-text-ink" style="margin:0;font-family:${FONT_STACK};font-size:15px;color:${BRAND.ink};">${carrierName || "-"}</p>
                 </td>
               </tr>
             </table>
@@ -875,7 +915,7 @@ function shippingNotificationEmailHtml({
             ? `
         <tr>
           <td style="padding:20px 32px 4px 32px;" align="center">
-            <a href="${linkToShow}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:15px;font-weight:bold;text-decoration:none;border-radius:999px;padding:13px 28px;">Rastrear mi envío</a>
+            <a class="email-btn-bg email-text-white" href="${linkToShow}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:15px;font-weight:bold;text-decoration:none;border-radius:999px;padding:13px 28px;">Rastrear mi envío</a>
           </td>
         </tr>
         `
@@ -887,10 +927,10 @@ function shippingNotificationEmailHtml({
             ? `
         <tr>
           <td style="padding:20px 32px 4px 32px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:8px;">
+            <table class="email-banner-success-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:8px;">
               <tr>
                 <td style="padding:12px 16px;">
-                  <p style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">💵 Saldo a pagar al recibir: <strong>${formatCOP(saldoPendiente)}</strong></p>
+                  <p class="email-text-success" style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">💵 Saldo a pagar al recibir: <strong>${formatCOP(saldoPendiente)}</strong></p>
                 </td>
               </tr>
             </table>
@@ -902,20 +942,20 @@ function shippingNotificationEmailHtml({
 
         <tr>
           <td style="padding:20px 32px 8px 32px;">
-            <p style="margin:0;font-family:${FONT_STACK};font-size:14px;line-height:21px;color:${BRAND.muted};">Tiempo estimado de entrega: <strong style="color:${BRAND.ink};">3 a 5 días hábiles.</strong></p>
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:14px;line-height:21px;color:${BRAND.muted};">Tiempo estimado de entrega: <strong class="email-text-ink" style="color:${BRAND.ink};">3 a 5 días hábiles.</strong></p>
           </td>
         </tr>
 
         <tr>
           <td style="padding:8px 32px 32px 32px;">
-            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">¡Gracias por comprar en Mystery! 💜</p>
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">¡Gracias por comprar en Mystery! 💜</p>
           </td>
         </tr>
 
         <tr>
-          <td style="background-color:#fafafa;border-top:1px solid ${BRAND.border};padding:20px 32px;">
-            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Mystery · ${ADMIN_EMAIL}</p>
-            <p style="margin:0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Correo enviado automáticamente, no responder.</p>
+          <td class="email-footer-bg" style="background-color:#fafafa;border-top:1px solid ${BRAND.border};padding:20px 32px;">
+            <p class="email-text-faint" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Mystery · ${ADMIN_EMAIL}</p>
+            <p class="email-text-faint" style="margin:0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Correo enviado automáticamente, no responder.</p>
           </td>
         </tr>
       </table>
@@ -1009,16 +1049,16 @@ export async function cancelScheduledEmail(emailId) {
 
 function guideCorrectionEmailHtml({ customer }) {
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
 
         <tr>
           <td style="padding:32px 32px 8px 32px;">
-            <p style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Hola ${escapeHtml(customer.fullName)}!</p>
-            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Hola ${escapeHtml(customer.fullName)}!</p>
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
               El número de guía que recibiste antes ya no es válido — tuvimos que hacer un ajuste en el envío. Tu pedido sigue en proceso y te vamos a escribir de nuevo apenas tengamos la guía correcta, con el número actualizado.
             </p>
           </td>
@@ -1026,14 +1066,14 @@ function guideCorrectionEmailHtml({ customer }) {
 
         <tr>
           <td style="padding:8px 32px 32px 32px;">
-            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">Gracias por tu paciencia. ¡Gracias por comprar en Mystery! 💜</p>
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">Gracias por tu paciencia. ¡Gracias por comprar en Mystery! 💜</p>
           </td>
         </tr>
 
         <tr>
-          <td style="background-color:#fafafa;border-top:1px solid ${BRAND.border};padding:20px 32px;">
-            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Mystery · ${ADMIN_EMAIL}</p>
-            <p style="margin:0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">¿Dudas con tu pedido? Responde este correo, con gusto te ayudamos.</p>
+          <td class="email-footer-bg" style="background-color:#fafafa;border-top:1px solid ${BRAND.border};padding:20px 32px;">
+            <p class="email-text-faint" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Mystery · ${ADMIN_EMAIL}</p>
+            <p class="email-text-faint" style="margin:0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">¿Dudas con tu pedido? Responde este correo, con gusto te ayudamos.</p>
           </td>
         </tr>
       </table>
@@ -1059,16 +1099,16 @@ export async function sendGuideCorrectionEmail({ customer, subjectPrefix = "", t
 
 function reviewRequestEmailHtml({ order, reviewUrl }) {
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
 
         <tr>
           <td style="padding:32px 32px 8px 32px;">
-            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¿Qué te pareció tu cuadro?</p>
-            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
+            <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¿Qué te pareció tu cuadro?</p>
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
               Ya debería haber llegado tu cuadro${order.sizeLabel ? ` (${order.sizeLabel})` : ""}. Nos ayudaría mucho que nos cuentes qué te pareció — toma menos de un minuto.
             </p>
           </td>
@@ -1076,13 +1116,13 @@ function reviewRequestEmailHtml({ order, reviewUrl }) {
 
         <tr>
           <td style="padding:24px 32px 32px 32px;" align="center">
-            <a href="${reviewUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:16px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Dejar mi reseña</a>
+            <a class="email-btn-bg email-text-white" href="${reviewUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:16px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Dejar mi reseña</a>
           </td>
         </tr>
 
         <tr>
           <td style="padding:0 32px 28px 32px;">
-            <p style="margin:0;font-family:${FONT_STACK};font-size:12px;line-height:18px;color:${BRAND.faint};text-align:center;">Si el botón no funciona, copia y pega este link en tu navegador:<br>${reviewUrl}</p>
+            <p class="email-text-faint" style="margin:0;font-family:${FONT_STACK};font-size:12px;line-height:18px;color:${BRAND.faint};text-align:center;">Si el botón no funciona, copia y pega este link en tu navegador:<br>${reviewUrl}</p>
           </td>
         </tr>
       </table>
@@ -1117,18 +1157,18 @@ function cartRecoveryEmailHtml({ customer, order, resumeUrl }) {
   const firstName = (customer.fullName || "").trim().split(/\s+/)[0] || "";
 
   return `
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
   <tr>
     <td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
         ${emailHeaderRow()}
 
         <tr>
           <td style="padding:32px 32px 8px 32px;">
-            <p style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">
+            <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">
               ${firstName ? `¡Hola, ${firstName}!` : "¡Hola!"} Tu cuadro te está esperando
             </p>
-            <p style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
               Notamos que empezaste a crear tu cuadro personalizado${
                 order.sizeLabel ? ` (${order.sizeLabel})` : ""
               } pero no alcanzaste a terminar el pago. Sigue exactamente donde lo dejaste — no tienes que subir tu foto ni ajustarla de nuevo.
@@ -1138,10 +1178,10 @@ function cartRecoveryEmailHtml({ customer, order, resumeUrl }) {
 
         <tr>
           <td style="padding:8px 32px 24px 32px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.lilac};border-radius:10px;">
+            <table class="email-banner-lilac-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.lilac};border-radius:10px;">
               <tr>
                 <td style="padding:16px 20px;">
-                  <p style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">
+                  <p class="email-text-ink" style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">
                     ${order.sizeLabel ? `<strong>Tamaño:</strong> ${order.sizeLabel}<br>` : ""}
                     ${
                       typeof order.priceCOP === "number"
@@ -1157,13 +1197,13 @@ function cartRecoveryEmailHtml({ customer, order, resumeUrl }) {
 
         <tr>
           <td style="padding:0 32px 32px 32px;" align="center">
-            <a href="${resumeUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:16px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Continuar con mi pedido</a>
+            <a class="email-btn-bg email-text-white" href="${resumeUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:16px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Continuar con mi pedido</a>
           </td>
         </tr>
 
         <tr>
           <td style="padding:0 32px 28px 32px;">
-            <p style="margin:0;font-family:${FONT_STACK};font-size:12px;line-height:18px;color:${BRAND.faint};text-align:center;">Si el botón no funciona, copia y pega este link en tu navegador:<br>${resumeUrl}</p>
+            <p class="email-text-faint" style="margin:0;font-family:${FONT_STACK};font-size:12px;line-height:18px;color:${BRAND.faint};text-align:center;">Si el botón no funciona, copia y pega este link en tu navegador:<br>${resumeUrl}</p>
           </td>
         </tr>
       </table>
