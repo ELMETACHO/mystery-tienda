@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Script from "next/script";
-import { COD_DEPOSIT_COP, formatCOP, loadOrder, saveOrder } from "../lib/order";
+import { COD_DEPOSIT_COP, SIZES, formatCOP, loadOrder, saveOrder } from "../lib/order";
 import { lookupPostalCode } from "../lib/postalCodes";
 import FreeShippingBanner from "../components/FreeShippingBanner";
 
@@ -116,19 +116,23 @@ function CheckoutForm() {
   const [payError, setPayError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("wompi"); // "wompi" | "cod"
   const [isConfirmingCod, setIsConfirmingCod] = useState(false);
+  const [isConfirmingFree, setIsConfirmingFree] = useState(false);
   const widgetRef = useRef(null);
 
-  // Código de descuento MYSTERY10 o de referido — mismo campo, mismo
-  // efecto sobre el precio (ambos dan descuento al comprador, ver
+  // Código de descuento MYSTERY10, de referido, o de regalo (100%,
+  // influencers — ver app/lib/giftCodes.js) — mismo campo, mismo efecto
+  // sobre el precio (los tres dan descuento al comprador, ver
   // /api/validate-discount): la única diferencia es qué campo del
-  // pedido se llena al pagar (discountCode vs referralCode, ver
-  // handlePay/handlePayCod) — type distingue cuál de los dos fue.
-  // Link discreto en vez de un campo siempre visible, para no saturar a
-  // quien no tiene código (ver CLAUDE.md: la mayoría de clientes son
-  // nuevos).
+  // pedido se llena al pagar (discountCode/referralCode/giftCode, ver
+  // handlePay/handlePayCod/handleFreeOrder) — type distingue cuál de
+  // los tres fue. Un código de regalo con percent:100 deja
+  // effectivePriceCOP en $0, lo que gatilla el flujo sin pasarela (ver
+  // isFreeOrder más abajo). Link discreto en vez de un campo siempre
+  // visible, para no saturar a quien no tiene código (ver CLAUDE.md: la
+  // mayoría de clientes son nuevos).
   const [showDiscountField, setShowDiscountField] = useState(false);
   const [discountInput, setDiscountInput] = useState("");
-  const [appliedCode, setAppliedCode] = useState(null); // { type: "discount"|"referral", code, percent, discountedPriceCOP }
+  const [appliedCode, setAppliedCode] = useState(null); // { type: "discount"|"referral"|"gift", code, percent, discountedPriceCOP }
   const [discountError, setDiscountError] = useState("");
   const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
 
@@ -230,6 +234,11 @@ function CheckoutForm() {
   }
 
   const effectivePriceCOP = appliedCode ? appliedCode.discountedPriceCOP : order.priceCOP;
+  // Un código de regalo válido siempre deja effectivePriceCOP en $0
+  // (percent:100) — eso es lo único que gatilla el flujo sin pasarela,
+  // no el type en sí, por si algún día existiera otro tipo de código al
+  // 100%.
+  const isFreeOrder = effectivePriceCOP === 0;
 
   const handleApplyDiscount = async () => {
     const code = discountInput.trim().toUpperCase();
@@ -251,7 +260,22 @@ function CheckoutForm() {
       });
       const data = await res.json();
 
-      if (data.valid && (data.type === "discount" || data.type === "referral")) {
+      if (data.valid && (data.type === "discount" || data.type === "referral" || data.type === "gift")) {
+        // Un código de regalo solo aplica al tamaño con el que fue
+        // creado (ver app/lib/giftCodes.js, siempre 40x50 por ahora) —
+        // el checkout no puede cambiar el tamaño del pedido, así que si
+        // no coincide simplemente se rechaza acá con un mensaje claro.
+        // La validación real (la que importa para no dejar pasar un
+        // pedido gratis indebido) ocurre server-side en
+        // /api/confirm-free-order, esto es solo para UX.
+        if (data.type === "gift" && data.requiredSizeId && order.sizeId !== data.requiredSizeId) {
+          const requiredLabel =
+            SIZES.find((s) => s.id === data.requiredSizeId)?.label || data.requiredSizeId;
+          setAppliedCode(null);
+          setDiscountError(`Este código de regalo solo aplica para el tamaño ${requiredLabel}.`);
+          return;
+        }
+
         const discountedPriceCOP = Math.round(order.priceCOP * (1 - data.percent / 100));
         setAppliedCode({
           type: data.type,
@@ -295,6 +319,10 @@ function CheckoutForm() {
 
   const isCodDisabled = !isFormValid || !isWidgetReady || isConfirmingCod;
   const isWompiDisabled = !isFormValid || !isWidgetReady || isPaying;
+  // El pedido de regalo nunca depende del widget de Wompi (nunca se
+  // carga para este flujo) — solo del formulario y de no estar ya
+  // confirmando.
+  const isFreeDisabled = !isFormValid || isConfirmingFree;
 
   const handleChange = (field) => (e) =>
     setCustomer((prev) => ({ ...prev, [field]: e.target.value }));
@@ -324,6 +352,7 @@ function CheckoutForm() {
       priceCOP: effectivePriceCOP,
       discountCode: appliedCode?.type === "discount" ? appliedCode.code : null,
       referralCode: appliedCode?.type === "referral" ? appliedCode.code : null,
+      giftCode: appliedCode?.type === "gift" ? appliedCode.code : null,
     };
     await saveOrder(fullOrder);
 
@@ -485,6 +514,7 @@ function CheckoutForm() {
       priceCOP: effectivePriceCOP,
       discountCode: appliedCode?.type === "discount" ? appliedCode.code : null,
       referralCode: appliedCode?.type === "referral" ? appliedCode.code : null,
+      giftCode: appliedCode?.type === "gift" ? appliedCode.code : null,
     };
     await saveOrder(fullOrder);
 
@@ -600,6 +630,63 @@ function CheckoutForm() {
     });
   };
 
+  // Pedido de regalo (código de regalo con 100% de descuento, ver
+  // app/lib/giftCodes.js): NUNCA pasa por Wompi — no tiene sentido abrir
+  // una pasarela de pago para cobrar $0. Se confirma directo contra
+  // /api/confirm-free-order, que revalida el código y el tamaño 40x50
+  // server-side antes de dar el pedido por bueno (el navegador nunca es
+  // la fuente de verdad acá, mismo principio que el pago real, solo que
+  // sin transacción de Wompi que verificar). El resto del flujo después
+  // de confirmar es idéntico a handlePay: se guarda el pedido con
+  // payment.status "APPROVED" y se redirige a /checkout/confirmacion,
+  // que ya sabe mostrar la confirmación con ese estado sin cambios.
+  const handleFreeOrder = async () => {
+    if (!isFormValid) return;
+    setPayError("");
+    setIsConfirmingFree(true);
+
+    const fullOrder = {
+      ...order,
+      customer,
+      priceCOP: effectivePriceCOP,
+      discountCode: null,
+      referralCode: null,
+      giftCode: appliedCode?.type === "gift" ? appliedCode.code : null,
+    };
+    await saveOrder(fullOrder);
+
+    const reference = `mystery-regalo-${Date.now()}`;
+
+    let confirmation;
+    try {
+      const res = await fetch("/api/confirm-free-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: fullOrder, customer, reference }),
+      });
+      confirmation = await res.json();
+      if (!res.ok) throw new Error(confirmation.error || "No se pudo confirmar el pedido");
+    } catch (err) {
+      console.error(err);
+      setIsConfirmingFree(false);
+      setPayError(err.message || "No pudimos confirmar tu pedido de regalo. Intenta de nuevo.");
+      return;
+    }
+
+    setIsConfirmingFree(false);
+    await saveOrder({
+      ...fullOrder,
+      payment: {
+        reference: confirmation.reference,
+        status: confirmation.status,
+        id: confirmation.reference,
+      },
+      cliente_recurrente: Boolean(confirmation.isReturningCustomer),
+    });
+
+    router.push("/checkout/confirmacion");
+  };
+
   // Se renderiza dos veces: en la tarjeta de resumen (arriba del botón
   // de pago principal) y de nuevo justo encima del botón de pago
   // duplicado al final del formulario en móvil — antes solo estaba en
@@ -609,8 +696,9 @@ function CheckoutForm() {
     <div className="border-t border-black/10 pt-3">
       {appliedCode ? (
         <p className="text-xs text-emerald-700">
-          🎉 Código {appliedCode.code} aplicado — descuento del{" "}
-          {appliedCode.percent}%
+          {appliedCode.type === "gift"
+            ? `🎁 Código de regalo ${appliedCode.code} aplicado — este cuadro es gratis`
+            : `🎉 Código ${appliedCode.code} aplicado — descuento del ${appliedCode.percent}%`}
         </p>
       ) : showDiscountField ? (
         <div className="flex flex-col gap-2">
@@ -835,31 +923,37 @@ function CheckoutForm() {
               />
             </div>
 
-            <div>
-              <p className="mb-2 text-xs font-medium text-[#33456b]">Método de pago</p>
-              <div className="grid grid-cols-2 gap-3">
-                {PAYMENT_METHODS.map((method) => {
-                  const isSelected = paymentMethod === method.id;
-                  return (
-                    <button
-                      key={method.id}
-                      type="button"
-                      onClick={() => setPaymentMethod(method.id)}
-                      className={`rounded-xl border px-4 py-3 text-left transition-colors ${
-                        isSelected
-                          ? "border-accent bg-accent/15 text-[#1b2a4a] shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
-                          : "border-black/10 bg-[#fffaf0] text-[#33456b] hover:border-black/20"
-                      }`}
-                    >
-                      <span className="block text-sm font-medium">{method.label}</span>
-                      <span className="block text-xs text-[#5b6b8c]">{method.detail}</span>
-                    </button>
-                  );
-                })}
+            {/* Un código de regalo (100% de descuento) nunca pasa por
+                Wompi — ni el selector de método de pago ni el resumen de
+                anticipo/saldo del contraentrega tienen sentido acá, así
+                que se ocultan por completo mientras isFreeOrder. */}
+            {!isFreeOrder && (
+              <div>
+                <p className="mb-2 text-xs font-medium text-[#33456b]">Método de pago</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {PAYMENT_METHODS.map((method) => {
+                    const isSelected = paymentMethod === method.id;
+                    return (
+                      <button
+                        key={method.id}
+                        type="button"
+                        onClick={() => setPaymentMethod(method.id)}
+                        className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                          isSelected
+                            ? "border-accent bg-accent/15 text-[#1b2a4a] shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
+                            : "border-black/10 bg-[#fffaf0] text-[#33456b] hover:border-black/20"
+                        }`}
+                      >
+                        <span className="block text-sm font-medium">{method.label}</span>
+                        <span className="block text-xs text-[#5b6b8c]">{method.detail}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
-            {paymentMethod === "cod" && (
+            {!isFreeOrder && paymentMethod === "cod" && (
               <div className="rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-[#33456b]">Anticipo a pagar ahora</span>
@@ -889,7 +983,23 @@ function CheckoutForm() {
             {payError && (
               <p className="text-sm text-red-600 sm:hidden">{payError}</p>
             )}
-            {paymentMethod === "cod" ? (
+            {isFreeOrder ? (
+              <div className="sm:hidden">
+                <button
+                  type="button"
+                  disabled={isFreeDisabled}
+                  onClick={handleFreeOrder}
+                  className={`${PAY_BUTTON_CLASS} ${
+                    isFreeDisabled ? "" : "animate-pay-breathe"
+                  }`}
+                >
+                  {isConfirmingFree ? "Confirmando..." : "Confirmar pedido de regalo 🎁"}
+                </button>
+                <p className="mt-1.5 text-center text-xs text-[#5b6b8c]">
+                  Este pedido es un regalo — no requiere pago
+                </p>
+              </div>
+            ) : paymentMethod === "cod" ? (
               <div className="sm:hidden">
                 <button
                   type="button"
@@ -1009,7 +1119,18 @@ function CheckoutForm() {
               <p className="text-sm text-red-600">{payError}</p>
             )}
 
-            {paymentMethod === "cod" ? (
+            {isFreeOrder ? (
+              <button
+                type="button"
+                disabled={isFreeDisabled}
+                onClick={handleFreeOrder}
+                className={`${PAY_BUTTON_CLASS} sm:mt-2 sm:py-3 ${
+                  isFreeDisabled ? "" : "animate-pay-breathe"
+                }`}
+              >
+                {isConfirmingFree ? "Confirmando..." : "Confirmar pedido de regalo 🎁"}
+              </button>
+            ) : paymentMethod === "cod" ? (
               <button
                 type="button"
                 disabled={isCodDisabled}
@@ -1041,7 +1162,9 @@ function CheckoutForm() {
               </button>
             )}
             <p className="text-center text-xs text-[#5b6b8c]">
-              {paymentMethod === "cod"
+              {isFreeOrder
+                ? "Este pedido es un regalo — no requiere pago."
+                : paymentMethod === "cod"
                 ? `Anticipo de ${formatCOP(COD_DEPOSIT_COP)} + excedente al recibir · Tarjeta / PSE con Wompi. Sin costo adicional por pagar contraentrega.`
                 : "Tarjeta / PSE con Wompi — sandbox de pruebas, no se realizan cobros reales."}
             </p>

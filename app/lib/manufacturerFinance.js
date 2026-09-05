@@ -119,6 +119,11 @@ export async function recordManufacturerOrder({
     // foto completa. app/fabricante/page.js muestra un ícono genérico
     // cuando viene en null.
     thumbnailUrl: order.thumbnailUrl || null,
+    // Aviso interno (nunca visible al cliente, ver CLAUDE.md): la imagen
+    // original no cumplía la resolución mínima para el tamaño elegido.
+    // Se muestra en /fabricante (ver app/fabricante/page.js) y en el
+    // correo de "nuevo pedido" (ver adminEmailHtml en app/lib/email.js).
+    needsAiUpscale: order.needsAiUpscale || false,
     // shipmentId/trackingNumber/carrierName: necesarios para poder
     // cancelar la guía después (ver markManufacturerOrderCancelled) sin
     // tener que volver a buscarla en Skydropx.
@@ -296,8 +301,9 @@ export async function recordCrmEntry({ order, customer, paymentMethod }) {
   const direccion = [customer.street, customer.neighborhood, customer.city, customer.department]
     .filter(Boolean)
     .join(", ");
-  const metodoPago = paymentMethod === "cod" ? "Contraentrega" : "Pago completo";
-  const cuponOReferido = order.discountCode || order.referralCode || "";
+  const metodoPago =
+    paymentMethod === "cod" ? "Contraentrega" : paymentMethod === "regalo" ? "Regalo" : "Pago completo";
+  const cuponOReferido = order.discountCode || order.referralCode || order.giftCode || "";
   const fecha = new Date().toISOString();
   const telefono = `${customer.phonePrefix || ""}${customer.phone || ""}`;
   const correo = customer.email;

@@ -188,6 +188,34 @@ entregue la lista completa (ticket #47432505243). NO adivinar códigos
 nuevos sin necesidad — cada intento fallido consume el límite de
 solicitudes de la cuenta de producción.
 
+### Un `next dev` viejo que sobrevive a `pkill`/`taskkill` sirve código desactualizado — bug "fantasma"
+En Windows/Git Bash, `pkill -f "next dev"` (por nombre/patrón) puede NO
+matar el proceso real: el `node.exe` que realmente escucha el puerto
+queda vivo con un PID distinto al que se está intentando matar. Síntoma
+clásico: se edita el código, se relanza `npm run dev` (que cae a un
+puerto alterno tipo 3001 si el 3000 sigue ocupado, o directamente falla
+con "Another next dev server is already running"), se prueba contra
+`localhost:3000`, y el comportamiento NO cambia — parece que el fix no
+sirvió, cuando en realidad la petición nunca tocó el código nuevo: la
+sirvió el servidor viejo que seguía corriendo con el código y las
+variables de entorno de ANTES del cambio. Pasó real (septiembre 2026)
+probando el rediseño de correos: dos rondas de correos de prueba
+"no cambiaron nada" porque el servidor viejo seguía respondiendo en el
+puerto 3000 con el `SITE_URL` y el HTML de antes de las correcciones.
+
+**Antes de dar un fix por probado localmente**, matar por PID real, no
+por nombre genérico:
+```bash
+# Windows/Git Bash — encuentra el PID real que escucha el puerto y lo mata:
+powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess"
+taskkill //PID <ese-numero> //F
+# Confirmar que quedó libre antes de relanzar:
+powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess"
+```
+Si el segundo comando no devuelve nada, el puerto está libre — recién
+ahí vale la pena volver a levantar `npm run dev` y probar. `pkill -f`
+sirve como intento inicial, pero no basta por sí solo como confirmación.
+
 ## Estructura de Google Drive (categorías del catálogo)
 
 Carpeta raíz "Mystery - Diseños", con subcarpetas por categoría:

@@ -80,6 +80,7 @@ export async function saveManualShipmentRequest({
       priceCOP: order.priceCOP,
       productId: order.productId || null,
       thumbnailUrl: order.productId ? order.croppedImage || null : null,
+      needsAiUpscale: order.needsAiUpscale || false,
     };
 
     const record = {
