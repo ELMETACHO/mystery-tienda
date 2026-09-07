@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getBestSellingProducts, getRecentProducts } from "./lib/catalog";
+import { getHomeTestimonials } from "./lib/homeTestimonials";
 import { SITE_URL } from "./lib/siteUrl";
 import FoldText from "./components/FoldText";
 import CategoryScroller from "./components/CategoryScroller";
@@ -150,31 +151,40 @@ const PASOS = [
   },
 ];
 
-// Contenido de ejemplo: reemplazar por testimonios reales de clientes (con
-// foto real del cuadro que recibieron).
-const TESTIMONIOS = [
+// Último recurso: SOLO se usa si todavía no hay al menos 4 testimonios
+// reales guardados en Redis (home:testimonials, ver
+// app/lib/homeTestimonials.js y el cron semanal
+// app/api/cron/select-home-testimonials/route.js). No debería verse en
+// producción una vez haya suficientes reseñas reales de clientes.
+const TESTIMONIOS_EJEMPLO = [
   {
     nombre: "Camila R.",
     texto: "Pedí un cuadro de mi perro y quedó igualito. Llegó rapidísimo.",
-    foto: "/images/catalogo/IMG_7340.JPG",
   },
   {
     nombre: "Andrés G.",
     texto: "La calidad de impresión superó lo que esperaba. 100% recomendado.",
-    foto: "/images/catalogo/IMG_7336.PNG",
   },
   {
     nombre: "Laura M.",
     texto: "Súper fácil de personalizar desde el celular. Quedé feliz con el resultado.",
-    foto: "/images/catalogo/IMG_7342.PNG",
   },
 ];
 
+// Mínimo de testimonios reales para preferirlos sobre el fallback de
+// ejemplo — con menos de esto, la sección se vería pobre.
+const MIN_REAL_TESTIMONIALS = 4;
+
 export default async function Home() {
-  const [recientes, masVendidos] = await Promise.all([
+  const [recientes, masVendidos, testimoniosReales] = await Promise.all([
     getRecentProducts(200),
     getBestSellingProducts(200),
+    getHomeTestimonials(),
   ]);
+
+  const testimonios =
+    testimoniosReales.length >= MIN_REAL_TESTIMONIALS ? testimoniosReales : TESTIMONIOS_EJEMPLO;
+  const testimoniosSonReales = testimonios !== TESTIMONIOS_EJEMPLO;
 
   return (
     <div
@@ -312,30 +322,28 @@ export default async function Home() {
               <p className="text-sm text-[#33456b] sm:text-base">cuadros entregados</p>
             </div>
 
-            {/* Contenido de ejemplo: reemplazar por testimonios reales, con
-                foto real del cuadro que recibió cada cliente. */}
+            {/* testimonios viene de Redis (home:testimonials, reseñas reales
+                seleccionadas semanalmente por IA) cuando hay al menos
+                MIN_REAL_TESTIMONIALS — si no, cae a TESTIMONIOS_EJEMPLO
+                arriba. Sin foto a propósito: nunca se le pide una al
+                cliente (ni en ReviewForm ni en Instagram) y mostrar una
+                foto genérica de pared junto a una reseña real daría a
+                entender que es del cuadro de ese cliente sin serlo. */}
             <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
-              {TESTIMONIOS.map((t) => (
+              {testimonios.map((t, i) => (
                 <div
-                  key={t.nombre}
+                  key={`${t.nombre}-${i}`}
                   className="flex flex-col overflow-hidden rounded-2xl border border-black/5 bg-white text-left shadow-sm"
                 >
-                  <div className="relative aspect-video w-full overflow-hidden">
-                    <Image
-                      src={t.foto}
-                      alt={`Cuadro recibido por ${t.nombre} (foto de ejemplo)`}
-                      fill
-                      sizes="(min-width: 640px) 33vw, 100vw"
-                      className="object-cover"
-                    />
-                  </div>
                   <div className="p-5">
                     <span className="text-sm text-accent" aria-hidden="true">
-                      ★★★★★
+                      {"★".repeat(t.rating || 5)}
                     </span>
                     <p className="mt-2 text-sm text-[#1b2a4a]">&ldquo;{t.texto}&rdquo;</p>
                     <p className="mt-3 text-xs font-medium text-[#5b6b8c]">
-                      {t.nombre} · cliente de ejemplo
+                      {t.nombre}
+                      {t.sizeLabel ? ` · cuadro ${t.sizeLabel}` : ""}
+                      {!testimoniosSonReales ? " · cliente de ejemplo" : ""}
                     </p>
                   </div>
                 </div>

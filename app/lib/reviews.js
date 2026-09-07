@@ -1,9 +1,10 @@
 import Redis from "ioredis";
 
-// Reseñas de clientes — guardadas, pero NO mostradas públicamente
-// todavía en /producto/[id] (tarea aparte, a futuro). Mismo patrón de
-// LIST + filtro en JS que el resto de app/lib (catalog.js,
-// completedOrders.js).
+// Reseñas de clientes. No se muestran directamente en /producto/[id]
+// todavía (tarea aparte, a futuro) — pero sí alimentan, vía getReviews(),
+// el cron semanal que selecciona testimonios reales para el Home (ver
+// app/lib/homeTestimonials.js). Mismo patrón de LIST + filtro en JS que
+// el resto de app/lib (catalog.js, completedOrders.js).
 
 let redisClient;
 
@@ -45,6 +46,32 @@ export async function saveReview({ reference, productId, rating, comment }) {
 
   await client.rpush(REVIEWS_KEY, JSON.stringify(review));
   return review;
+}
+
+// Todas las reseñas guardadas, sin filtrar — usado por el cron semanal
+// que selecciona testimonios reales para el Home (ver
+// app/api/cron/select-home-testimonials/route.js). Nunca lanza, mismo
+// principio que getReviewsByProductId: si Redis falla, el cron
+// simplemente no tiene nada que procesar esta corrida.
+export async function getReviews() {
+  const client = getRedisClient();
+  if (!client) return [];
+
+  try {
+    const raw = await client.lrange(REVIEWS_KEY, 0, -1);
+    return raw
+      .map((entry) => {
+        try {
+          return JSON.parse(entry);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  } catch (err) {
+    console.error("[reviews] No se pudo leer las reseñas:", err);
+    return [];
+  }
 }
 
 // Sin uso todavía (las reseñas no se muestran en ningún lado por
