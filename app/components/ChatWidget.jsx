@@ -78,7 +78,7 @@ export default function ChatWidget() {
   // puede omitirse; no vuelve a aparecer esa sesión si se omite o ya se
   // envió.
   const [showLeadCard, setShowLeadCard] = useState(false);
-  const [leadDismissed, setLeadDismissed] = useState(false);
+  const [leadExpanded, setLeadExpanded] = useState(false);
   const [leadSubmitted, setLeadSubmitted] = useState(false);
   const [leadName, setLeadName] = useState("");
   const [leadCity, setLeadCity] = useState("");
@@ -106,16 +106,26 @@ export default function ChatWidget() {
     setIsSending(true);
 
     try {
-      const res = await fetch("/api/chat-message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // El saludo inicial es solo de UI, nunca se manda como turno
-          // real de conversación — el servidor arma su propio contexto
-          // desde cero (ver buildChatSystemPrompt).
-          messages: nextMessages.filter((m) => m !== GREETING),
+      // Espera mínima antes de mostrar la respuesta: Haiku a veces contesta
+      // en <300ms, y una respuesta instantánea se siente robótica/rota más
+      // que rápida (la gente no confía en un chat que "no piensa" nada) —
+      // 900ms deja ver el indicador "Escribiendo..." un momento real, sin
+      // llegar a sentirse lento (la investigación de UX ubica el punto
+      // dulce en 800ms-1.5s). No retrasa la llamada real, solo cuánto se
+      // tarda en MOSTRAR el resultado que ya llegó.
+      const [res] = await Promise.all([
+        fetch("/api/chat-message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            // El saludo inicial es solo de UI, nunca se manda como turno
+            // real de conversación — el servidor arma su propio contexto
+            // desde cero (ver buildChatSystemPrompt).
+            messages: nextMessages.filter((m) => m !== GREETING),
+          }),
         }),
-      });
+        new Promise((resolve) => setTimeout(resolve, 900)),
+      ]);
       const data = await res.json();
 
       // Un 4xx/5xx (payload raro, endpoint caído) no debe empujar
@@ -130,7 +140,7 @@ export default function ChatWidget() {
       if (typeof data.remaining === "number") setRemaining(data.remaining);
       if (data.limited) setIsLimited(true);
 
-      if (!data.limited && !leadDismissed && !leadSubmitted) setShowLeadCard(true);
+      if (!data.limited && !leadSubmitted) setShowLeadCard(true);
     } catch (err) {
       console.error("[chat] No se pudo enviar el mensaje:", err);
       setMessages((prev) => [
@@ -224,7 +234,17 @@ export default function ChatWidget() {
                 </div>
               )}
 
-              {showLeadCard && !leadSubmitted && (
+              {showLeadCard && !leadSubmitted && !leadExpanded && (
+                <button
+                  type="button"
+                  onClick={() => setLeadExpanded(true)}
+                  className="mt-1 self-start rounded-full border border-dashed border-accent/50 bg-white px-3.5 py-2 text-xs font-medium text-accent transition-colors hover:bg-accent/5"
+                >
+                  💜 Hablar con un asesor
+                </button>
+              )}
+
+              {showLeadCard && !leadSubmitted && leadExpanded && (
                 <div className="mt-1 flex flex-col gap-2 rounded-2xl border border-dashed border-accent/50 bg-white p-3.5">
                   <p className="text-xs font-medium text-[#1b2a4a]">
                     Para iniciar tu chat con un asesor, dános tus datos 💜
@@ -262,10 +282,7 @@ export default function ChatWidget() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          setShowLeadCard(false);
-                          setLeadDismissed(true);
-                        }}
+                        onClick={() => setLeadExpanded(false)}
                         className="rounded-full border border-black/10 px-3 py-2 text-xs font-medium text-[#5b6b8c] hover:border-black/20"
                       >
                         Ahora no

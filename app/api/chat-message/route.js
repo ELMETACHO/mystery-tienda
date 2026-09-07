@@ -75,7 +75,12 @@ export async function POST(request) {
           body: JSON.stringify({
             model: MODEL,
             max_tokens: 400,
-            system: buildChatSystemPrompt(),
+            // cache_control: el system prompt es idéntico en cada turno de
+            // una misma conversación (y entre sesiones distintas, hasta que
+            // cambien precios/políticas reales) — cachearlo evita
+            // reprocesar esos mismos tokens en cada mensaje, sin perder
+            // nada de la sincronización en vivo con legalContent.js/SIZES.
+            system: [{ type: "text", text: buildChatSystemPrompt(), cache_control: { type: "ephemeral" } }],
             messages: history,
           }),
         });
