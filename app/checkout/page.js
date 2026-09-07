@@ -136,6 +136,16 @@ function CheckoutForm() {
   const [discountError, setDiscountError] = useState("");
   const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
 
+  // Aviso suave (nunca bloqueante) de dirección posiblemente incompleta —
+  // ver handleAddressFieldBlur más abajo. addressCheckTimerRef debounce el
+  // chequeo tras el blur (agrupa blur rápido entre campos vecinos, ej.
+  // tabular de "Dirección" a "Barrio"); lastCheckedAddressSignatureRef
+  // evita repetir la misma llamada si el cliente vuelve a salir del mismo
+  // campo sin haber cambiado nada.
+  const [addressWarning, setAddressWarning] = useState("");
+  const addressCheckTimerRef = useRef(null);
+  const lastCheckedAddressSignatureRef = useRef("");
+
   useEffect(() => {
     let cancelled = false;
 
@@ -219,6 +229,14 @@ function CheckoutForm() {
       prev.postalCode === (found || "") ? prev : { ...prev, postalCode: found || "" }
     );
   }, [customer.department, customer.city]);
+
+  // Limpia el debounce del chequeo de dirección si el cliente navega
+  // fuera de /checkout con el timer todavía pendiente.
+  useEffect(() => {
+    return () => {
+      if (addressCheckTimerRef.current) clearTimeout(addressCheckTimerRef.current);
+    };
+  }, []);
 
   if (isLoadingOrder || !order) {
     return (
@@ -336,6 +354,70 @@ function CheckoutForm() {
 
   const setHousingType = (housingType) =>
     setCustomer((prev) => ({ ...prev, housingType }));
+
+  // Chequeo con IA de dirección posiblemente incompleta (ver
+  // app/lib/aiAddressCheck.js) — nunca bloquea el pago, solo muestra un
+  // aviso suave. runAddressCheck se llama con debounce tras el blur (ver
+  // handleAddressFieldBlur más abajo), nunca en cada tecla.
+  const buildAddressSignature = (c) =>
+    JSON.stringify({
+      street: c.street.trim(),
+      housingType: c.housingType,
+      buildingName: c.buildingName.trim(),
+      tower: c.tower.trim(),
+      apartmentNumber: c.apartmentNumber.trim(),
+      additionalInstructions: c.additionalInstructions.trim(),
+      neighborhood: c.neighborhood.trim(),
+      city: c.city.trim(),
+      department: c.department.trim(),
+    });
+
+  const runAddressCheck = async (c) => {
+    const signature = buildAddressSignature(c);
+    if (signature === lastCheckedAddressSignatureRef.current) return;
+    lastCheckedAddressSignatureRef.current = signature;
+
+    // Antes de gastar una llamada de IA: si todavía faltan los campos
+    // mínimos, el formulario ya está incompleto "por construcción" (ver
+    // isFormValid) y no hay nada específico que la IA pueda agregar.
+    if (!c.street.trim() || !c.neighborhood.trim() || !c.city.trim()) {
+      setAddressWarning("");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/ai-address-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          street: c.street,
+          housingType: c.housingType,
+          buildingName: c.buildingName,
+          tower: c.tower,
+          apartmentNumber: c.apartmentNumber,
+          additionalInstructions: c.additionalInstructions,
+          neighborhood: c.neighborhood,
+          city: c.city,
+          department: c.department,
+        }),
+      });
+      const data = await res.json();
+      setAddressWarning(data?.warning || "");
+    } catch (err) {
+      console.error("[checkout] No se pudo verificar la dirección:", err);
+      // No se toca addressWarning — si ya había un aviso previo, se
+      // queda; el chequeo nunca bloquea el pago de todas formas.
+    }
+  };
+
+  // Debounce corto: agrupa el blur rápido entre campos vecinos de
+  // dirección (ej. Dirección -> Barrio -> Ciudad tabulando) en una sola
+  // llamada, en vez de una por cada campo que se abandona.
+  const handleAddressFieldBlur = () => {
+    if (addressCheckTimerRef.current) clearTimeout(addressCheckTimerRef.current);
+    const snapshot = customer;
+    addressCheckTimerRef.current = setTimeout(() => runAddressCheck(snapshot), 600);
+  };
 
   const handlePay = async () => {
     if (!isFormValid || !isWidgetReady || !window.WidgetCheckout) return;
@@ -815,6 +897,7 @@ function CheckoutForm() {
               placeholder="Dirección (calle/carrera y número)"
               value={customer.street}
               onChange={handleChange("street")}
+              onBlur={handleAddressFieldBlur}
               className={INPUT_CLASS}
             />
 
@@ -850,6 +933,7 @@ function CheckoutForm() {
                   placeholder="Nombre del edificio"
                   value={customer.buildingName}
                   onChange={handleChange("buildingName")}
+                  onBlur={handleAddressFieldBlur}
                   className={INPUT_CLASS}
                 />
                 <div className="flex flex-col gap-3 sm:flex-row">
@@ -858,6 +942,7 @@ function CheckoutForm() {
                     placeholder="Torre"
                     value={customer.tower}
                     onChange={handleChange("tower")}
+                    onBlur={handleAddressFieldBlur}
                     className={`flex-1 ${INPUT_CLASS}`}
                   />
                   <input
@@ -865,6 +950,7 @@ function CheckoutForm() {
                     placeholder="Apartamento"
                     value={customer.apartmentNumber}
                     onChange={handleChange("apartmentNumber")}
+                    onBlur={handleAddressFieldBlur}
                     className={`flex-1 ${INPUT_CLASS}`}
                   />
                 </div>
@@ -874,6 +960,7 @@ function CheckoutForm() {
                 placeholder="Indicaciones adicionales (color de la casa, referencias cercanas, etc.)"
                 value={customer.additionalInstructions}
                 onChange={handleChange("additionalInstructions")}
+                onBlur={handleAddressFieldBlur}
                 rows={2}
                 className={`resize-none ${INPUT_CLASS}`}
               />
@@ -885,6 +972,7 @@ function CheckoutForm() {
                 placeholder="Barrio"
                 value={customer.neighborhood}
                 onChange={handleChange("neighborhood")}
+                onBlur={handleAddressFieldBlur}
                 className={`flex-1 ${INPUT_CLASS}`}
               />
               <input
@@ -892,9 +980,14 @@ function CheckoutForm() {
                 placeholder="Ciudad"
                 value={customer.city}
                 onChange={handleChange("city")}
+                onBlur={handleAddressFieldBlur}
                 className={`flex-1 ${INPUT_CLASS}`}
               />
             </div>
+
+            {addressWarning && (
+              <p className="-mt-1 text-xs text-amber-700">⚠️ {addressWarning}</p>
+            )}
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <select
