@@ -9,6 +9,8 @@
 // generar este texto es una mejora de SEO, no debe poder bloquear ni un
 // upload en /estudio ni el registro del producto.
 
+import { getAnthropicHeaders } from "./anthropicHeaders";
+
 const MODEL = "claude-haiku-4-5-20251001";
 
 const PROMPT = `Estás ayudando a una tienda colombiana de cuadros personalizados en vinilo sobre madera. Te muestro la imagen de un diseño (puede tener un fondo de pared/sillón de referencia alrededor, ignóralo — describe solo el diseño/arte central).
@@ -36,11 +38,7 @@ export async function generateProductText({ imageUrl }) {
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
+      headers: getAnthropicHeaders(apiKey),
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 200,

@@ -8,6 +8,8 @@
 // Nunca lanza: si falla (sin API key, red, respuesta inesperada), devuelve
 // null y el checkout sigue su curso normal sin ningún aviso esa vez.
 
+import { getAnthropicHeaders } from "./anthropicHeaders";
+
 const MODEL = "claude-haiku-4-5-20251001";
 
 function buildPrompt({
@@ -49,11 +51,7 @@ export async function checkAddressCompleteness(address) {
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
+      headers: getAnthropicHeaders(apiKey),
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 150,

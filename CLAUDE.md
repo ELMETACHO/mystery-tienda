@@ -58,7 +58,8 @@ Tienda online de cuadros personalizados en vinilo sobre madera (marca "Mystery")
 | `RESEND_FROM_EMAIL` | Remitente (ya verificado: `pedidos@elmetacho.com`) |
 | `MANUFACTURER_EMAIL` | Copia del correo de pedido al fabricante |
 | `REDIS_URL` | Conexión Upstash Redis para historial de clientes recurrentes |
-| `ANTHROPIC_API_KEY` | Claude Haiku 4.5 (visión) — título/descripción de producto en `/estudio` (`app/lib/aiProductText.js`) y diagnóstico de foto en `/crear` (`app/lib/aiPhotoDiagnosis.js`) |
+| `ANTHROPIC_API_KEY` | Claude Haiku 4.5 — todas las integraciones de IA del proyecto (`/estudio`, `/crear`, testimonios del Home, verificación de dirección, chatbot). Es una key a NIVEL DE ORGANIZACIÓN, no vinculada a un workspace — ver nota sobre `ANTHROPIC_WORKSPACE_ID` abajo. |
+| `ANTHROPIC_WORKSPACE_ID` | Requerido junto con `ANTHROPIC_API_KEY` porque esa key es de organización, no de un workspace específico — Anthropic rechaza la llamada con 400 sin el header `anthropic-workspace-id` (ver `app/lib/anthropicHeaders.js`, usado por las 5 integraciones de IA). Sin este env var, TODAS las llamadas a Claude fallan en silencio y cada feature cae a su fallback (septiembre 2026: así estuvo roto en producción varios días — ver lección abajo). |
 
 ## Completo vs. pendiente
 
@@ -66,6 +67,7 @@ Tienda online de cuadros personalizados en vinilo sobre madera (marca "Mystery")
 - Flujo completo subir foto → ajustar/recortar → elegir tamaño → checkout → pago Wompi (sandbox) → confirmación.
 - Verificación server-side del pago, correos transaccionales con diseño de marca, sangrado de impresión, detección de cliente recurrente vía Redis.
 - Responsive completo, HEIC/PDF, validaciones de formulario y resolución.
+- **Chatbot flotante** (septiembre 2026, `app/components/ChatWidget.jsx`) en todas las páginas de cara al cliente (oculto en `/admin`, `/fabricante`, `/estudio`). Claude Haiku 4.5, system prompt armado en tiempo real desde `app/lib/legalContent.js` y `SIZES`/`PRICES` de `app/lib/order.js` (ver `app/lib/chatSystemPrompt.js`) — nunca inventa, solo responde temas de la tienda. Límite de 5 mensajes/24h por sesión anónima (cookie `mystery_chat_session` + contador en Redis, `app/lib/chatLimit.js`), más rate limit por IP (`app/lib/rateLimit.js`) como capa extra contra abuso. Captura de leads (nombre/ciudad/WhatsApp) DENTRO del hilo del chat, después de la primera respuesta del bot, nunca antes — se investigó explícitamente que un formulario previo a cualquier respuesta reduce conversión de forma importante (10-15% vs 1-3%, ver fuentes citadas en la conversación de implementación). Los leads se agregan al MISMO CRM que ya existe en `/admin/crm` (`crm:entries`, vía `recordChatLeadCrmEntry` en `app/lib/manufacturerFinance.js` — inserta solo si el teléfono no está ya en el CRM, nunca sobrescribe una fila de un cliente real) y disparan un correo a `contacto@elmetacho.com` (`sendChatLeadEmail`). Si esa misma persona compra después, la fila se actualiza sola con los datos reales del pedido (mismo match por teléfono que ya usaba el CRM).
 
 **Pendiente / placeholder:**
 - **El sitio ya está publicado en producción en Vercel** y se probó el flujo completo end-to-end en vivo (catálogo, compras, correos) — deja de ser un ítem pendiente.
@@ -215,6 +217,52 @@ powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 3000 -ErrorActio
 Si el segundo comando no devuelve nada, el puerto está libre — recién
 ahí vale la pena volver a levantar `npm run dev` y probar. `pkill -f`
 sirve como intento inicial, pero no basta por sí solo como confirmación.
+
+### Claude Code (el asistente de IA que mantiene este repo) tiene su PROPIA `ANTHROPIC_API_KEY` en el entorno de shell — puede tapar silenciosamente la del proyecto
+Cuando Claude Code corre comandos en la terminal para probar código
+"localmente" (`node --env-file=.env.local ...`, `npm run start`, etc.),
+esos procesos heredan el entorno de la sesión de shell — y esa sesión ya
+tiene su propia `ANTHROPIC_API_KEY` inyectada (la credencial del propio
+Claude Code, para su operación normal, nada que ver con el proyecto).
+Como una variable YA definida en el entorno del proceso padre tiene
+prioridad sobre lo que carga `.env.local` (mismo principio documentado
+para `SITE_URL` más abajo), cualquier prueba "local" del chatbot/
+integraciones de IA terminaba usando la key de Claude Code en vez de la
+key real del proyecto — sin ningún error visible, porque la key de
+Claude Code sí es válida y responde bien.
+
+**Síntoma real (septiembre 2026)**: las 5 integraciones de Claude
+(`aiProductText`, `aiPhotoDiagnosis`, `aiTestimonialSelection`,
+`aiAddressCheck`, chatbot) "funcionaban perfecto" en cada prueba local
+durante toda una sesión de desarrollo, pero fallaban en silencio en
+Vercel (caían a su mensaje de fallback) — porque la key real del
+proyecto (`ANTHROPIC_API_KEY` en `.env.local`/Vercel) resultó ser una key
+de ORGANIZACIÓN, no vinculada a un workspace (ver
+`ANTHROPIC_WORKSPACE_ID` en la tabla de variables de entorno y
+`app/lib/anthropicHeaders.js`) — un problema real que las pruebas locales
+nunca detectaron porque, sin saberlo, nunca estaban usando esa key.
+
+**Antes de confiar en una prueba local de cualquier llamada a la API de
+Anthropic**, confirmar explícitamente qué key se está usando:
+```bash
+# Windows/Git Bash — excluye la key ambiental del shell antes de probar:
+env -u ANTHROPIC_API_KEY node --env-file=.env.local -e "console.log(process.env.ANTHROPIC_API_KEY.slice(0,20))"
+# Debe imprimir el inicio de la key del PROYECTO (.env.local), no otra.
+```
+Si hace falta correr `npm run dev`/`npm run start` con la key correcta,
+anteponer `env -u ANTHROPIC_API_KEY` al comando.
+
+### `mysterycuadros.com` (sin www) redirige a `www.mysterycuadros.com`, no al revés
+Se había asumido (y configurado `SITE_URL`/canonical URLs de SEO) que el
+dominio sin www era el principal, pero el redirect real en Vercel va sin
+www → con www (308 permanente). Esto rompía en silencio cualquier imagen
+absoluta embebida en un correo (`LOGO_URL` en `app/lib/email.js`, ej. el
+logo en el correo de "nuevo lead del chat"): los clientes de correo
+(Gmail incluido) no siguen redirects para `<img src>`. `SITE_URL` (env
+var + fallback en `app/lib/siteUrl.js`) ahora apunta a
+`https://www.mysterycuadros.com` — el dominio que responde 200 directo,
+sin redirect. Si el dominio principal cambia de nuevo en Vercel
+(Settings → Domains), actualizar ambos.
 
 ## Estructura de Google Drive (categorías del catálogo)
 

@@ -8,6 +8,8 @@
 // conservar la selección guardada anteriormente en vez de sobrescribirla
 // con algo vacío.
 
+import { getAnthropicHeaders } from "./anthropicHeaders";
+
 const MODEL = "claude-haiku-4-5-20251001";
 
 function buildPrompt(reviews) {
@@ -36,11 +38,7 @@ export async function selectTestimonials(reviews) {
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
+      headers: getAnthropicHeaders(apiKey),
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 1000,

@@ -60,7 +60,7 @@ function payoutsKey(fabricanteId) {
 const CRM_KEY = "crm:entries";
 
 function sizeLabel(sizeId) {
-  return SIZES.find((s) => s.id === sizeId)?.label || sizeId;
+  return SIZES.find((s) => s.id === sizeId)?.label || sizeId || "—";
 }
 
 // Registra el pedido en fabricante:<id>:orders + suma la comisión al
@@ -345,6 +345,62 @@ export async function recordCrmEntry({ order, customer, paymentMethod }) {
     }
   } catch (err) {
     console.error("[manufacturerFinance] No se pudo registrar la entrada CRM en Redis:", err);
+  }
+}
+
+// Agrega un lead del chat flotante (ver app/api/chat-lead/route.js) al
+// MISMO crm:entries que usa recordCrmEntry — así /admin/crm es la única
+// pantalla donde ver tanto pedidos reales como leads que todavía no han
+// comprado, sin construir una pantalla nueva.
+//
+// UNA fila por teléfono, igual que recordCrmEntry, pero con una regla más
+// estricta sobre CUÁNDO sobrescribir: si ya existe una fila con este
+// teléfono que sea OTRO lead del chat (metodoPago === "Lead del chat"),
+// se actualiza esa misma fila con los datos nuevos (dedup real: nunca dos
+// filas para el mismo lead que escribe varias veces). Pero si el
+// teléfono ya pertenece a un CLIENTE REAL (cualquier otro metodoPago —
+// pedido pagado), NUNCA se toca esa fila: sería un downgrade mostrar
+// "Lead del chat" encima de una compra real. Si esa misma persona compra
+// después, recordCrmEntry sí la actualiza con los datos reales del
+// pedido (mismo match por teléfono).
+export async function recordChatLeadCrmEntry({ nombre, ciudad, whatsapp, pregunta }) {
+  const client = getRedisClient();
+  if (!client) {
+    console.error(
+      "[manufacturerFinance] REDIS_URL no está configurado; no se registró el lead en el CRM."
+    );
+    return;
+  }
+
+  const entry = {
+    nombre,
+    telefono: whatsapp,
+    direccion: ciudad || "",
+    correo: "",
+    sizeId: null,
+    frameType: null,
+    metodoPago: "Lead del chat",
+    cuponOReferido: pregunta || "",
+    fecha: new Date().toISOString(),
+    totalHistorico: 0,
+  };
+
+  try {
+    const raw = await client.lrange(CRM_KEY, 0, -1);
+    const normalizedPhone = normalizePhoneForMatch(whatsapp);
+
+    const matchIndex = raw.findIndex(
+      (r) => normalizedPhone && normalizedPhone === normalizePhoneForMatch(JSON.parse(r).telefono)
+    );
+
+    if (matchIndex === -1) {
+      await client.rpush(CRM_KEY, JSON.stringify(entry));
+    } else if (JSON.parse(raw[matchIndex]).metodoPago === "Lead del chat") {
+      await client.lset(CRM_KEY, matchIndex, JSON.stringify(entry));
+    }
+    // Si existe pero NO es "Lead del chat" (cliente real), no se toca nada.
+  } catch (err) {
+    console.error("[manufacturerFinance] No se pudo registrar el lead del chat en el CRM:", err);
   }
 }
 
