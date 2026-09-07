@@ -94,7 +94,7 @@ export default function CrmApp() {
                   <td className="px-4 py-3 font-medium text-[#1b2a4a]">{e.nombre}</td>
                   <td className="px-4 py-3 text-[#33456b]">{e.telefono || "-"}</td>
                   <td className="px-4 py-3 text-[#33456b]">{e.direccion || "-"}</td>
-                  <td className="px-4 py-3 text-[#33456b]">{e.correo}</td>
+                  <td className="px-4 py-3 text-[#33456b]">{e.correo || "-"}</td>
                   <td className="px-4 py-3 text-[#33456b]">{e.sizeLabel}</td>
                   <td className="px-4 py-3 text-[#33456b]">{e.metodoPago}</td>
                   <td className="px-4 py-3 text-[#33456b]">{e.cuponOReferido || "-"}</td>

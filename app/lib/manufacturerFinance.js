@@ -60,7 +60,7 @@ function payoutsKey(fabricanteId) {
 const CRM_KEY = "crm:entries";
 
 function sizeLabel(sizeId) {
-  return SIZES.find((s) => s.id === sizeId)?.label || sizeId;
+  return SIZES.find((s) => s.id === sizeId)?.label || sizeId || "—";
 }
 
 // Registra el pedido en fabricante:<id>:orders + suma la comisión al
@@ -345,6 +345,53 @@ export async function recordCrmEntry({ order, customer, paymentMethod }) {
     }
   } catch (err) {
     console.error("[manufacturerFinance] No se pudo registrar la entrada CRM en Redis:", err);
+  }
+}
+
+// Agrega un lead del chat flotante (ver app/api/chat-lead/route.js) al
+// MISMO crm:entries que usa recordCrmEntry — así /admin/crm es la única
+// pantalla donde ver tanto pedidos reales como leads que todavía no han
+// comprado, sin construir una pantalla nueva.
+//
+// A diferencia de recordCrmEntry, esto NUNCA sobrescribe una fila
+// existente: si el teléfono ya está en el CRM (la persona ya es cliente
+// real, o ya dejó otro lead antes), sería un downgrade mostrar "Lead del
+// chat" encima de datos de una compra real — mejor no tocar nada. Si esa
+// misma persona compra después, recordCrmEntry sí la actualiza con los
+// datos reales del pedido (mismo match por teléfono).
+export async function recordChatLeadCrmEntry({ nombre, ciudad, whatsapp, pregunta }) {
+  const client = getRedisClient();
+  if (!client) {
+    console.error(
+      "[manufacturerFinance] REDIS_URL no está configurado; no se registró el lead en el CRM."
+    );
+    return;
+  }
+
+  const entry = {
+    nombre,
+    telefono: whatsapp,
+    direccion: ciudad || "",
+    correo: "",
+    sizeId: null,
+    frameType: null,
+    metodoPago: "Lead del chat",
+    cuponOReferido: pregunta || "",
+    fecha: new Date().toISOString(),
+    totalHistorico: 0,
+  };
+
+  try {
+    const raw = await client.lrange(CRM_KEY, 0, -1);
+    const normalizedPhone = normalizePhoneForMatch(whatsapp);
+    const alreadyExists = raw.some(
+      (r) => normalizedPhone && normalizedPhone === normalizePhoneForMatch(JSON.parse(r).telefono)
+    );
+    if (!alreadyExists) {
+      await client.rpush(CRM_KEY, JSON.stringify(entry));
+    }
+  } catch (err) {
+    console.error("[manufacturerFinance] No se pudo registrar el lead del chat en el CRM:", err);
   }
 }
 

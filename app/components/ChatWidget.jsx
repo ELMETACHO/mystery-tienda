@@ -16,6 +16,25 @@ const GREETING = {
     "¡Hola! Soy el asistente de Mystery Cuadros 💜 Pregúntame sobre precios, tamaños, tiempos de entrega, devoluciones o cómo personalizar tu cuadro.",
 };
 
+// Ícono del botón flotante: burbuja de chat + teléfono, inspirado en la
+// silueta reconocible de WhatsApp pero con los colores de marca (nunca el
+// logo real ni su verde — ver CLAUDE.md sobre diferenciarse de otras
+// marcas del mismo dueño).
+function ChatBubbleIcon({ className }) {
+  return (
+    <svg viewBox="0 0 32 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M16 4C9.4 4 4 8.7 4 14.5c0 3 1.4 5.7 3.8 7.6-.2 1.6-.9 3.2-1.9 4.5a.6.6 0 00.6 1c2.3-.5 4.3-1.5 5.8-2.6 1.2.3 2.4.5 3.7.5 6.6 0 12-4.7 12-10.5S22.6 4 16 4z"
+        fill="white"
+      />
+      <path
+        d="M12.3 12.1c.3-.6.6-.6.9-.6h.6c.2 0 .5 0 .7.5.3.6.9 2 1 2.1.1.2.1.4 0 .6-.1.2-.2.3-.4.5l-.5.5c-.2.2-.3.4-.1.7.2.3.8 1.2 1.7 2 1.1 1 2.1 1.3 2.4 1.5.3.2.5.1.7-.1l.6-.7c.2-.3.4-.2.7-.1l1.8.9c.2.1.4.2.4.4.1.6-.1 1.4-.6 1.7-.5.4-1.6.7-2.6.4-1-.3-2.4-.9-4.1-2.4-1.9-1.7-3.1-3.7-3.4-4.4-.2-.6-.7-1.6-.4-2.5z"
+        fill="#a855f7"
+      />
+    </svg>
+  );
+}
+
 // Convierte rutas/links conocidos dentro del texto del bot en links
 // reales cliqueables — el system prompt (app/lib/chatSystemPrompt.js) le
 // pide a la IA que termine cada respuesta con un CTA usando estos mismos
@@ -104,11 +123,19 @@ export default function ChatWidget() {
       });
       const data = await res.json();
 
+      // Un 4xx/5xx (payload raro, endpoint caído) no debe empujar
+      // data.reply=undefined al hilo — eso sí rompería el render (ver
+      // renderMessageContent, que asume string). Se trata igual que un
+      // fallo de red: mismo mensaje de respaldo con WhatsApp.
+      if (!res.ok || typeof data.reply !== "string") {
+        throw new Error(data?.error || `Respuesta inesperada (${res.status})`);
+      }
+
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
       if (typeof data.remaining === "number") setRemaining(data.remaining);
       if (data.limited) setIsLimited(true);
 
-      if (!leadDismissed && !leadSubmitted) setShowLeadCard(true);
+      if (!data.limited && !leadDismissed && !leadSubmitted) setShowLeadCard(true);
     } catch (err) {
       console.error("[chat] No se pudo enviar el mensaje:", err);
       setMessages((prev) => [
@@ -158,9 +185,13 @@ export default function ChatWidget() {
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         aria-label={isOpen ? "Cerrar chat" : "Abrir chat"}
-        className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 text-2xl text-white shadow-lg shadow-accent/50 transition-transform hover:scale-105 sm:bottom-6 sm:right-6"
+        className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 text-white shadow-lg shadow-accent/50 transition-transform hover:scale-105 sm:bottom-6 sm:right-6"
       >
-        {isOpen ? "✕" : "💬"}
+        {isOpen ? (
+          <span className="text-2xl leading-none">✕</span>
+        ) : (
+          <ChatBubbleIcon className="h-7 w-7" />
+        )}
       </button>
 
       {isOpen && (
@@ -209,21 +240,21 @@ export default function ChatWidget() {
                       placeholder="Tu nombre"
                       value={leadName}
                       onChange={(e) => setLeadName(e.target.value)}
-                      className="rounded-lg border border-black/10 bg-[#fffaf0] px-3 py-2 text-xs outline-none focus:border-accent"
+                      className="rounded-lg border border-black/10 bg-[#fffaf0] px-3 py-2 text-xs text-[#1b2a4a] outline-none placeholder:text-[#9aa5b8] focus:border-accent"
                     />
                     <input
                       type="text"
                       placeholder="Tu ciudad (opcional)"
                       value={leadCity}
                       onChange={(e) => setLeadCity(e.target.value)}
-                      className="rounded-lg border border-black/10 bg-[#fffaf0] px-3 py-2 text-xs outline-none focus:border-accent"
+                      className="rounded-lg border border-black/10 bg-[#fffaf0] px-3 py-2 text-xs text-[#1b2a4a] outline-none placeholder:text-[#9aa5b8] focus:border-accent"
                     />
                     <input
                       type="tel"
                       placeholder="Tu WhatsApp"
                       value={leadWhatsapp}
                       onChange={(e) => setLeadWhatsapp(e.target.value)}
-                      className="rounded-lg border border-black/10 bg-[#fffaf0] px-3 py-2 text-xs outline-none focus:border-accent"
+                      className="rounded-lg border border-black/10 bg-[#fffaf0] px-3 py-2 text-xs text-[#1b2a4a] outline-none placeholder:text-[#9aa5b8] focus:border-accent"
                     />
                     {leadError && <p className="text-xs text-red-600">{leadError}</p>}
                     <div className="flex gap-2">
@@ -273,7 +304,7 @@ export default function ChatWidget() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={isLimited || isSending}
-                className="flex-1 rounded-full border border-black/10 bg-[#fffaf0] px-4 py-2.5 text-sm outline-none focus:border-accent disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex-1 rounded-full border border-black/10 bg-[#fffaf0] px-4 py-2.5 text-sm text-[#1b2a4a] outline-none placeholder:text-[#9aa5b8] focus:border-accent disabled:cursor-not-allowed disabled:opacity-60"
               />
               <button
                 type="submit"

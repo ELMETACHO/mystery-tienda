@@ -61,31 +61,43 @@ export async function POST(request) {
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (apiKey) {
-    try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          max_tokens: 400,
-          system: buildChatSystemPrompt(),
-          messages: history,
-        }),
-      });
+    // Un reintento: los errores 429/5xx de Anthropic bajo carga son
+    // transitorios — sin esto, cualquier blip momentáneo se le mostraba
+    // al cliente como "no pude procesar tu mensaje" en vez de la
+    // respuesta real. Nunca reintenta en 4xx que no sea 429 (ej. 400 por
+    // un prompt inválido no se arregla solo).
+    for (let attempt = 0; attempt < 2 && reply === FALLBACK_MESSAGE; attempt++) {
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: MODEL,
+            max_tokens: 400,
+            system: buildChatSystemPrompt(),
+            messages: history,
+          }),
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        const text = data?.content?.find((block) => block.type === "text")?.text;
-        if (text?.trim()) reply = text.trim();
-      } else {
-        console.error("[chat-message] Anthropic respondió", response.status, await response.text());
+        if (response.ok) {
+          const data = await response.json();
+          const text = data?.content?.find((block) => block.type === "text")?.text;
+          if (text?.trim()) reply = text.trim();
+        } else {
+          console.error(
+            `[chat-message] Anthropic respondió (intento ${attempt + 1})`,
+            response.status,
+            await response.text()
+          );
+          if (response.status !== 429 && response.status < 500) break; // 4xx no transitorio: no reintentar.
+        }
+      } catch (err) {
+        console.error(`[chat-message] No se pudo obtener respuesta de la IA (intento ${attempt + 1}):`, err);
       }
-    } catch (err) {
-      console.error("[chat-message] No se pudo obtener respuesta de la IA:", err);
     }
   }
 

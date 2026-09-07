@@ -1,5 +1,5 @@
 import { checkRateLimit, rateLimitResponse } from "../../lib/rateLimit";
-import { saveChatLead } from "../../lib/chatLeads";
+import { recordChatLeadCrmEntry } from "../../lib/manufacturerFinance";
 import { sendChatLeadEmail } from "../../lib/email";
 
 // Guarda un lead capturado dentro del chat (nombre + WhatsApp, ciudad y
@@ -26,20 +26,19 @@ export async function POST(request) {
   const trimmedCiudad = typeof ciudad === "string" ? ciudad.trim().slice(0, 80) : "";
   const trimmedPregunta = typeof pregunta === "string" ? pregunta.trim().slice(0, 500) : "";
 
-  try {
-    await saveChatLead({
-      nombre: trimmedNombre,
-      ciudad: trimmedCiudad,
-      whatsapp: trimmedWhatsapp,
-      pregunta: trimmedPregunta,
-    });
-  } catch (err) {
-    console.error("[chat-lead] No se pudo guardar el lead:", err);
-    return Response.json({ error: "No se pudo guardar tus datos. Intenta de nuevo." }, { status: 500 });
-  }
+  // recordChatLeadCrmEntry nunca lanza (ver app/lib/manufacturerFinance.js)
+  // — un fallo de Redis ahí solo se loguea, no debe impedir que el
+  // visitante vea su mensaje como enviado ni que se intente el correo de
+  // aviso de todas formas.
+  await recordChatLeadCrmEntry({
+    nombre: trimmedNombre,
+    ciudad: trimmedCiudad,
+    whatsapp: trimmedWhatsapp,
+    pregunta: trimmedPregunta,
+  });
 
   // El correo de aviso es un "extra" — si Resend falla, el lead ya quedó
-  // guardado en Redis, no hay que fingir que todo el request falló.
+  // guardado en el CRM, no hay que fingir que todo el request falló.
   try {
     await sendChatLeadEmail({
       nombre: trimmedNombre,
