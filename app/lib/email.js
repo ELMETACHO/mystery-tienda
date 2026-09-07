@@ -895,6 +895,51 @@ export async function sendFabricantePaymentRequestEmail({
 }
 
 // ---------------------------------------------------------------------
+// Correo de "nuevo lead del chat" — disparado desde
+// app/api/chat-lead/route.js cuando un visitante deja sus datos dentro
+// del hilo del chat flotante (ver app/components/ChatWidget.jsx). Va a
+// ADMIN_EMAIL: no hay panel en /admin para ver estos leads todavía, así
+// que este correo es la única forma de enterarse de uno nuevo.
+// ---------------------------------------------------------------------
+
+function chatLeadEmailHtml({ nombre, ciudad, whatsapp, pregunta }) {
+  return `
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:480px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow("Nuevo lead del chat")}
+        <tr>
+          <td style="padding:28px;">
+            <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:16px;line-height:23px;color:${BRAND.ink};"><strong>${nombre}</strong>${ciudad ? ` — ${ciudad}` : ""}</p>
+            <p class="email-text-muted" style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.muted};">WhatsApp: <strong class="email-text-brand" style="color:${BRAND.text};">${whatsapp}</strong></p>
+            ${
+              pregunta
+                ? `<p class="email-text-muted" style="margin:0 0 24px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.muted};">"${pregunta}"</p>`
+                : ""
+            }
+            <p style="margin:0;text-align:center;">
+              <a class="email-btn-bg email-text-white" href="https://wa.me/${whatsapp.replace(/\D/g, "")}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:15px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Escribirle por WhatsApp</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+export async function sendChatLeadEmail({ nombre, ciudad, whatsapp, pregunta, subjectPrefix = "", testRecipientOverride }) {
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: testRecipientOverride || ADMIN_EMAIL,
+    subject: `${subjectPrefix}💬 Nuevo lead del chat: ${nombre}`,
+    html: wrapEmailHtml(chatLeadEmailHtml({ nombre, ciudad, whatsapp, pregunta })),
+  });
+}
+
+// ---------------------------------------------------------------------
 // Correo de "guía generada" al cliente — disparado desde
 // app/api/generate-shipment/route.js justo después de que
 // createManualShipment() devuelve tracking_number + label_url reales
