@@ -36,7 +36,7 @@ const FAQ = [
   {
     pregunta: "¿Qué calidad de foto necesito?",
     respuesta:
-      "¡Entre mejor calidad tenga tu foto mejor se verá en tu pared! Si la imagen que deseas tiene una calidad baja podemos ajustarla con IA.",
+      "¡Entre mejor calidad tenga tu foto mejor se verá en tu pared! Antes de imprimir, revisamos tu foto con ayuda de IA para detectar problemas como baja resolución, poco enfoque o mal encuadre, y nuestro equipo la revisa antes de producir tu cuadro.",
   },
   {
     pregunta: "¿Cuánto tarda en llegar mi cuadro?",

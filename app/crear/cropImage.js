@@ -371,6 +371,28 @@ export function getCroppedImageWithBleed(imageSrc, croppedAreaPixels, bleedPx, p
   });
 }
 
+// Miniatura liviana en JPEG, usada para mandar la foto a un servicio
+// externo (diagnóstico de calidad con IA, ver app/lib/aiPhotoDiagnosis.js)
+// sin pagar el costo/latencia de subir la imagen a resolución completa —
+// para ese diagnóstico basta con una versión chica.
+export function getDownscaledImage(imageSrc, maxDim = 600, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.src = imageSrc;
+    image.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(image.naturalWidth * scale);
+      canvas.height = Math.round(image.naturalHeight * scale);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    image.onerror = reject;
+  });
+}
+
 // Convierte la primera página de un PDF a un dataURL de imagen usando pdfjs-dist.
 export async function pdfFirstPageToImage(file) {
   const pdfjsLib = await import("pdfjs-dist");
