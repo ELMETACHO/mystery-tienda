@@ -7,6 +7,7 @@ import {
 } from "../../lib/chatSession";
 import { incrementChatMessageCount, MAX_CHAT_MESSAGES } from "../../lib/chatLimit";
 import { buildChatSystemPrompt } from "../../lib/chatSystemPrompt";
+import { getAnthropicHeaders } from "../../lib/anthropicHeaders";
 
 const MODEL = "claude-haiku-4-5-20251001";
 const WHATSAPP_URL = "https://wa.me/573202646716";
@@ -70,11 +71,7 @@ export async function POST(request) {
       try {
         const response = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
-          },
+          headers: getAnthropicHeaders(apiKey),
           body: JSON.stringify({
             model: MODEL,
             max_tokens: 400,
