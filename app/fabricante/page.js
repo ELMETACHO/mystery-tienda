@@ -125,9 +125,11 @@ function OrderRow({ order, code, onUpdated }) {
               Guía cancelada{o.cancelReason ? `: ${o.cancelReason}` : ""}
             </span>
           )}
-          {o.needsAiUpscale && (
+          {(o.aiPhotoDiagnosis || o.needsAiUpscale) && (
             <span className="mt-1 text-xs font-medium text-amber-700">
-              ⚠️ Esta imagen requiere escalarla con IA antes de imprimir
+              {o.aiPhotoDiagnosis
+                ? `⚠️ IA detectó: ${o.aiPhotoDiagnosis}`
+                : "⚠️ Esta imagen requiere escalarla con IA antes de imprimir"}
             </span>
           )}
         </div>

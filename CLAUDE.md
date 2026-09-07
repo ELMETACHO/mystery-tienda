@@ -45,7 +45,7 @@ Tienda online de cuadros personalizados en vinilo sobre madera (marca "Mystery")
 - **Todo mobile-first**: la mayoría de clientes compran desde el celular. Patrones repetidos: `<label htmlFor>` en vez de `.click()` para inputs de archivo, `100dvh` con fallback `100vh` para el canvas del confeti (Safari iOS con barra dinámica), sliders con thumb ampliado para el dedo, resúmenes colapsables (`<details>`) en móvil.
 - **Nunca confiar en el cliente para confirmar pagos**: la verificación real siempre ocurre server-side contra la API de Wompi antes de disparar correos o marcar el pedido como pagado.
 - **Precios** (`app/lib/order.js`, `SIZES`): 30x40 = $65.000, 40x50 = $89.000, 50x70 = $149.000 COP — precios definitivos.
-- **Validación de resolución mínima**: referencia visible al usuario en el FAQ ("100px/cm"), aunque los valores reales de `SIZES.minWidth/minHeight` usan una densidad menor (~40px/cm) — no bloquea el flujo, solo muestra un aviso; "se mejorará con IA" es una promesa de producto **aún no implementada**.
+- **Validación de resolución mínima**: `SIZES.minWidth/minHeight` (`app/lib/order.js`) usan una densidad de ~40px/cm — no bloquea el flujo, solo marca `needsAiUpscale`. Desde septiembre 2026, además del chequeo por conteo de píxeles, la foto recortada pasa por un diagnóstico real con IA (Claude Haiku 4.5, visión — `app/lib/aiPhotoDiagnosis.js`) que detecta borrosidad, mal encuadre y mala iluminación además de resolución baja. El resultado nunca se muestra al cliente (ver "Nunca confiar..." abajo, mismo principio de no bloquear ni alarmar al comprador): viaja invisible en el pedido (`order.aiPhotoDiagnosis`) y solo se le muestra al fabricante (correo de "nuevo pedido" y panel `/fabricante`) como texto específico en vez del aviso genérico de siempre. Si la llamada a la IA falla, el pedido sigue su curso normal y cae de vuelta al aviso genérico de `needsAiUpscale`.
 
 ## Variables de entorno (`.env.local`, no versionado)
 
@@ -58,6 +58,7 @@ Tienda online de cuadros personalizados en vinilo sobre madera (marca "Mystery")
 | `RESEND_FROM_EMAIL` | Remitente (ya verificado: `pedidos@elmetacho.com`) |
 | `MANUFACTURER_EMAIL` | Copia del correo de pedido al fabricante |
 | `REDIS_URL` | Conexión Upstash Redis para historial de clientes recurrentes |
+| `ANTHROPIC_API_KEY` | Claude Haiku 4.5 (visión) — título/descripción de producto en `/estudio` (`app/lib/aiProductText.js`) y diagnóstico de foto en `/crear` (`app/lib/aiPhotoDiagnosis.js`) |
 
 ## Completo vs. pendiente
 
@@ -72,8 +73,7 @@ Tienda online de cuadros personalizados en vinilo sobre madera (marca "Mystery")
 - Aplicar el código de descuento `MYSTERY10%` en un pago real (hoy solo se muestra el mensaje al cliente recurrente, no hay lógica de canje).
 - Miniatura de imagen en el correo al cliente (se quitó por incompatibilidad de `cid:` en Gmail; pendiente resolver con una URL pública si se quiere).
 - Link real de Instagram (hoy `href="#"` en Home y en confirmación).
-- Mejora con IA para fotos de baja resolución (mencionada en el FAQ, no implementada).
-- Revisar el mensaje del FAQ sobre "100px/cm" contra los valores reales de `SIZES` en `app/lib/order.js`.
+- ~~Mejora con IA para fotos de baja resolución~~ — resuelto (septiembre 2026): diagnóstico real con visión en `app/lib/aiPhotoDiagnosis.js`, ver detalle arriba en "Validación de resolución mínima". El FAQ ya no promete un ajuste automático de la foto (nunca existió eso) sino la revisión con IA + equipo humano, que sí es exactamente lo que pasa ahora.
 - Confirmar en variables de Vercel si la integración quedó como "Redis" (Upstash) — si cambia de nombre, `REDIS_URL` podría necesitar ajuste.
 - ~~Guía Skydropx automática para pagos completos por Wompi~~ — resuelto (agosto 2026), y además se cambió el diseño para AMBOS tipos de pedido: la guía ya NO se genera automáticamente al pagar (se probó y funcionaba, pero arriesgaba que la guía venciera esperando días a que se produjera el cuadro — pasó de verdad con un pedido real). Ahora `/api/confirm-cod-order` y `confirmApprovedOrder.js` solo guardan la solicitud completa en Redis (`app/lib/manualShipments.js`, TTL 30 días) y el correo al fabricante incluye un botón "✅ Ya está listo — generar guía ahora" (link firmado HMAC, `app/lib/manualShipmentToken.js`) que dispara `/api/generate-shipment` cuando el cuadro esté realmente listo. `createManualShipment()` en `app/lib/skydropx.js` reemplaza al viejo `createCodShipment()` y soporta ambos casos (`isCod: true/false`). El correo al cliente de "va en camino" queda programado 2 horas después de que el fabricante confirma (Resend `scheduledAt: "in 2 hours"`), no al pagar.
 # Contexto adicional — Mystery Tienda

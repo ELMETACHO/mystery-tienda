@@ -38,6 +38,7 @@ export default function ProductBuyButton({ product, sizeId, sizeLabel, frameType
         croppedImage: product.thumbnailUrl,
         printFileId: product.printFileIds?.[sizeId] || null,
         needsAiUpscale: false,
+        aiPhotoDiagnosis: null,
         productId: product.id,
       });
       router.push("/checkout");

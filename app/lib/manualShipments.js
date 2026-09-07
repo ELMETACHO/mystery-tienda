@@ -81,6 +81,7 @@ export async function saveManualShipmentRequest({
       productId: order.productId || null,
       thumbnailUrl: order.productId ? order.croppedImage || null : null,
       needsAiUpscale: order.needsAiUpscale || false,
+      aiPhotoDiagnosis: order.aiPhotoDiagnosis || null,
     };
 
     const record = {

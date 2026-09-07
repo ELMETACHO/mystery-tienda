@@ -13,6 +13,7 @@ import {
   getCroppedImage,
   getCroppedImageWithBleed,
   getDefaultCropArea,
+  getDownscaledImage,
   pdfFirstPageToImage,
 } from "../crear/cropImage";
 import { SIZES, DEFAULT_FRAME_TYPE, getPriceCOP, formatCOP, saveOrder } from "../lib/order";
@@ -277,6 +278,7 @@ export default function CrearFlow({ compact = false }) {
   const [imageSrc, setImageSrc] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [isPreparingOrder, setIsPreparingOrder] = useState(false);
   const [error, setError] = useState("");
 
   const [sizeId, setSizeId] = useState(SIZES[0].id);
@@ -458,46 +460,81 @@ export default function CrearFlow({ compact = false }) {
     console.log("Click en Continuar - imageSrc:", imageSrc, "croppedAreaPixels:", croppedAreaPixels);
     if (!imageSrc) return;
 
-    // Si el usuario nunca interactuó con el zoom/arrastre, react-easy-crop
-    // no habrá emitido croppedAreaPixels todavía: lo calculamos aquí mismo
-    // como respaldo para que "Continuar" siempre tenga un valor válido.
-    const finalCrop =
-      croppedAreaPixels || getDefaultCropArea(imageDimensions, selectedSize.ratio);
+    setIsPreparingOrder(true);
+    try {
+      // Si el usuario nunca interactuó con el zoom/arrastre, react-easy-crop
+      // no habrá emitido croppedAreaPixels todavía: lo calculamos aquí mismo
+      // como respaldo para que "Continuar" siempre tenga un valor válido.
+      const finalCrop =
+        croppedAreaPixels || getDefaultCropArea(imageDimensions, selectedSize.ratio);
 
-    // JPEG (no PNG): las fotos de celular sin comprimir pueden pesar
-    // 10-20MB y superan el límite de payload (~4.5MB) de las funciones
-    // serverless de Vercel al enviarse en el body de /api/confirm-order,
-    // /api/confirm-cod-order y /api/save-pending-order (ver CLAUDE.md).
-    const croppedImage = await getCroppedImage(imageSrc, finalCrop, "jpeg");
-    console.log("Tamaño elegido:", selectedSize.label);
-    console.log("Resolución original:", imageDimensions);
-    console.log("Resolución baja para este tamaño:", isLowResolution);
-    console.log("Imagen recortada (dataURL):", croppedImage);
+      // JPEG (no PNG): las fotos de celular sin comprimir pueden pesar
+      // 10-20MB y superan el límite de payload (~4.5MB) de las funciones
+      // serverless de Vercel al enviarse en el body de /api/confirm-order,
+      // /api/confirm-cod-order y /api/save-pending-order (ver CLAUDE.md).
+      const croppedImage = await getCroppedImage(imageSrc, finalCrop, "jpeg");
+      console.log("Tamaño elegido:", selectedSize.label);
+      console.log("Resolución original:", imageDimensions);
+      console.log("Resolución baja para este tamaño:", isLowResolution);
+      console.log("Imagen recortada (dataURL):", croppedImage);
 
-    // Imagen para el fabricante: mismo recorte + 1cm de sangrado por lado,
-    // escalado a la densidad real del recorte (no un valor fijo de
-    // píxeles) — esta es la que se adjunta en el correo de producción. La
-    // que ve el cliente (croppedImage, arriba) nunca lleva sangrado.
-    const widthCm = Number(selectedSize.id.split("x")[0]);
-    const pxPerCm = finalCrop.width / widthCm;
-    const bleedPx = Math.round(pxPerCm * 1);
-    const printImage = await getCroppedImageWithBleed(imageSrc, finalCrop, bleedPx, pxPerCm, "jpeg");
-    console.log("[sangrado] px/cm:", pxPerCm.toFixed(1), "bleedPx por lado:", bleedPx);
+      // Imagen para el fabricante: mismo recorte + 1cm de sangrado por lado,
+      // escalado a la densidad real del recorte (no un valor fijo de
+      // píxeles) — esta es la que se adjunta en el correo de producción. La
+      // que ve el cliente (croppedImage, arriba) nunca lleva sangrado.
+      const widthCm = Number(selectedSize.id.split("x")[0]);
+      const pxPerCm = finalCrop.width / widthCm;
+      const bleedPx = Math.round(pxPerCm * 1);
+      const printImage = await getCroppedImageWithBleed(imageSrc, finalCrop, bleedPx, pxPerCm, "jpeg");
+      console.log("[sangrado] px/cm:", pxPerCm.toFixed(1), "bleedPx por lado:", bleedPx);
 
-    // No navegamos todavía: mostramos primero la pantalla de confirmación
-    // "Tu cuadro está listo" con el resultado final ya calculado, y
-    // guardamos/navegamos recién cuando el usuario confirma desde ahí.
-    setReadyOrder({
-      sizeId: selectedSize.id,
-      sizeLabel: selectedSize.label,
-      frameType,
-      priceCOP: getPriceCOP(selectedSize.id, frameType),
-      croppedImage,
-      printImage,
-      // Nunca visible para el cliente (ver CLAUDE.md) — solo viaja al
-      // correo del fabricante y al panel /fabricante como aviso interno.
-      needsAiUpscale: isLowResolution,
-    });
+      // Diagnóstico de calidad con IA (visión) — nunca visible para el
+      // cliente (ver CLAUDE.md), solo viaja al fabricante. Se manda una
+      // miniatura, no la foto completa, para que sea rápido y barato. Si
+      // esta llamada falla por cualquier motivo, aiPhotoDiagnosis queda en
+      // null y el pedido sigue su curso normal — needsAiUpscale (el chequeo
+      // de resolución, sin IA) sigue funcionando igual como respaldo.
+      let aiPhotoDiagnosis = null;
+      try {
+        const diagnosisThumbnail = await getDownscaledImage(croppedImage);
+        const res = await fetch("/api/ai-photo-diagnosis", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageDataUrl: diagnosisThumbnail,
+            sizeLabel: selectedSize.label,
+            isLowResolution,
+          }),
+        });
+        const data = await res.json();
+        aiPhotoDiagnosis = data?.diagnosis || null;
+      } catch (err) {
+        console.error("[crear] No se pudo obtener el diagnóstico de IA:", err);
+      }
+
+      // No navegamos todavía: mostramos primero la pantalla de confirmación
+      // "Tu cuadro está listo" con el resultado final ya calculado, y
+      // guardamos/navegamos recién cuando el usuario confirma desde ahí.
+      setReadyOrder({
+        sizeId: selectedSize.id,
+        sizeLabel: selectedSize.label,
+        frameType,
+        priceCOP: getPriceCOP(selectedSize.id, frameType),
+        croppedImage,
+        printImage,
+        // Nunca visibles para el cliente (ver CLAUDE.md) — solo viajan al
+        // correo del fabricante y al panel /fabricante como aviso interno.
+        // needsAiUpscale es el chequeo simple por conteo de píxeles (nunca
+        // falla); aiPhotoDiagnosis es el diagnóstico específico de IA
+        // (puede quedar null si la llamada falló) — email.js/fabricante
+        // usan aiPhotoDiagnosis cuando existe, y caen a needsAiUpscale
+        // como respaldo genérico si no.
+        needsAiUpscale: isLowResolution,
+        aiPhotoDiagnosis,
+      });
+    } finally {
+      setIsPreparingOrder(false);
+    }
   };
 
   const handleConfirmReady = async () => {
@@ -930,9 +967,10 @@ export default function CrearFlow({ compact = false }) {
             <button
               type="button"
               onClick={handleContinue}
-              className="w-full rounded-full bg-accent px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-accent-soft sm:py-3"
+              disabled={isPreparingOrder}
+              className="w-full rounded-full bg-accent px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-60 sm:py-3"
             >
-              Continuar
+              {isPreparingOrder ? "Preparando tu cuadro..." : "Continuar"}
             </button>
 
             <div className="-mt-3 flex items-center justify-center gap-1.5 text-xs text-[#5b6b8c]">

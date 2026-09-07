@@ -420,12 +420,22 @@ function adminEmailHtml({
     </table>
   `;
 
-  // Nota discreta de baja resolución — nunca visible para el cliente (ver
+  // Nota discreta de calidad de foto — nunca visible para el cliente (ver
   // CLAUDE.md), solo para que el fabricante sepa que esta imagen necesita
-  // pasar por escalado con IA antes de imprimir. order.needsAiUpscale se
-  // marca en /crear (CrearFlow.jsx) cuando la foto original no cumple la
-  // resolución mínima para el tamaño elegido.
-  const aiUpscaleNote = order.needsAiUpscale
+  // revisión antes de imprimir. order.aiPhotoDiagnosis es el diagnóstico
+  // específico de Claude (visión, ver app/lib/aiPhotoDiagnosis.js) —
+  // cuando existe se muestra tal cual (ej. "Foto borrosa, considera
+  // escalarla antes de imprimir"); si la llamada a la IA falló o no
+  // detectó nada mientras que el chequeo simple de resolución
+  // (needsAiUpscale, sin IA, nunca falla) sí marcó el pedido, se cae al
+  // aviso genérico de siempre.
+  const photoQualityMessage = order.aiPhotoDiagnosis
+    ? `⚠️ IA detectó: ${order.aiPhotoDiagnosis}`
+    : order.needsAiUpscale
+      ? "⚠️ Esta imagen requiere escalarla con IA antes de imprimir"
+      : null;
+
+  const aiUpscaleNote = photoQualityMessage
     ? `
       <tr>
         <td style="padding:0 20px 16px 20px;">
@@ -433,7 +443,7 @@ function adminEmailHtml({
             <tr>
               <td style="padding:10px 14px;">
                 <p class="email-text-warning" style="margin:0;font-family:${FONT_STACK};font-size:13px;font-weight:bold;color:${BRAND.warning};">
-                  ⚠️ Esta imagen requiere escalarla con IA antes de imprimir
+                  ${photoQualityMessage}
                 </p>
               </td>
             </tr>

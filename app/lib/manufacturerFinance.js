@@ -124,6 +124,10 @@ export async function recordManufacturerOrder({
     // Se muestra en /fabricante (ver app/fabricante/page.js) y en el
     // correo de "nuevo pedido" (ver adminEmailHtml en app/lib/email.js).
     needsAiUpscale: order.needsAiUpscale || false,
+    // Diagnóstico específico de IA (ver app/lib/aiPhotoDiagnosis.js) — si
+    // existe, /fabricante y el correo de "nuevo pedido" lo muestran en vez
+    // del aviso genérico de needsAiUpscale.
+    aiPhotoDiagnosis: order.aiPhotoDiagnosis || null,
     // shipmentId/trackingNumber/carrierName: necesarios para poder
     // cancelar la guía después (ver markManufacturerOrderCancelled) sin
     // tener que volver a buscarla en Skydropx.
