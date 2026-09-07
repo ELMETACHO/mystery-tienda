@@ -160,17 +160,14 @@ const TESTIMONIOS_EJEMPLO = [
   {
     nombre: "Camila R.",
     texto: "Pedí un cuadro de mi perro y quedó igualito. Llegó rapidísimo.",
-    foto: "/images/catalogo/IMG_7340.JPG",
   },
   {
     nombre: "Andrés G.",
     texto: "La calidad de impresión superó lo que esperaba. 100% recomendado.",
-    foto: "/images/catalogo/IMG_7336.PNG",
   },
   {
     nombre: "Laura M.",
     texto: "Súper fácil de personalizar desde el celular. Quedé feliz con el resultado.",
-    foto: "/images/catalogo/IMG_7342.PNG",
   },
 ];
 
@@ -328,30 +325,16 @@ export default async function Home() {
             {/* testimonios viene de Redis (home:testimonials, reseñas reales
                 seleccionadas semanalmente por IA) cuando hay al menos
                 MIN_REAL_TESTIMONIALS — si no, cae a TESTIMONIOS_EJEMPLO
-                arriba. t.foto puede venir null (pedidos de /crear no
-                guardan la foto del cliente, ver CLAUDE.md): en ese caso la
-                tarjeta se muestra sin imagen en vez de una rota/vacía. */}
+                arriba. Sin foto a propósito: nunca se le pide una al
+                cliente (ni en ReviewForm ni en Instagram) y mostrar una
+                foto genérica de pared junto a una reseña real daría a
+                entender que es del cuadro de ese cliente sin serlo. */}
             <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
               {testimonios.map((t, i) => (
                 <div
                   key={`${t.nombre}-${i}`}
                   className="flex flex-col overflow-hidden rounded-2xl border border-black/5 bg-white text-left shadow-sm"
                 >
-                  {t.foto && (
-                    <div className="relative aspect-video w-full overflow-hidden">
-                      <Image
-                        src={t.foto}
-                        alt={
-                          testimoniosSonReales
-                            ? `Cuadro recibido por ${t.nombre}`
-                            : `Cuadro recibido por ${t.nombre} (foto de ejemplo)`
-                        }
-                        fill
-                        sizes="(min-width: 640px) 33vw, 100vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
                   <div className="p-5">
                     <span className="text-sm text-accent" aria-hidden="true">
                       {"★".repeat(t.rating || 5)}

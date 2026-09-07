@@ -54,8 +54,9 @@ export async function GET(request) {
   }
 
   // Une cada reseña elegida con su pedido completado (mismo reference)
-  // para sacar nombre del cliente, tamaño comprado, y foto (solo
-  // disponible en pedidos de catálogo — ver app/lib/completedOrders.js).
+  // para sacar nombre del cliente y tamaño comprado. Sin foto a
+  // propósito: nunca se le pide una al cliente al dejar la reseña, así
+  // que no hay ninguna que mostrar honestamente junto a su testimonio.
   const testimonials = [];
   for (const { review, textoPulido } of selections) {
     const order = await getCompletedOrderByReference(review.reference);
@@ -63,7 +64,6 @@ export async function GET(request) {
       nombre: formatCustomerDisplayName(order?.customerName),
       texto: textoPulido,
       sizeLabel: order?.sizeLabel || null,
-      foto: order?.thumbnailUrl || null,
       rating: review.rating,
     });
   }
