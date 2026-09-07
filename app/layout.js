@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SITE_URL } from "./lib/siteUrl";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -11,12 +12,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
-const SITE_URL =
-  process.env.SITE_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:3000"
-    : "https://tienda.elmetacho.com");
 
 const TITLE = "Mystery — Cuadros personalizados";
 const DESCRIPTION = "Cuadros personalizados en vinilo sobre madera. Tu foto en la pared.";

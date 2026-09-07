@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getBestSellingProducts, getRecentProducts } from "./lib/catalog";
+import { SITE_URL } from "./lib/siteUrl";
 import FoldText from "./components/FoldText";
 import CategoryScroller from "./components/CategoryScroller";
 import ProductScroller from "./components/ProductScroller";
@@ -13,6 +14,7 @@ export const metadata = {
   title: "Mystery Cuadros — Cuadros Personalizados con tu Foto | Envío Gratis Colombia",
   description:
     "Convierte tu foto favorita en un cuadro personalizado en vinilo sobre madera. Elige el tamaño, paga seguro y recíbelo en tu casa — envío gratis a toda Colombia.",
+  alternates: { canonical: SITE_URL },
 };
 
 // Categorías reales de diseño usadas en /estudio para organizar los

@@ -1,11 +1,6 @@
 import { getCatalogProducts } from "./lib/catalog";
 import { ESTUDIO_CATEGORIES } from "./lib/estudioCategories";
-
-const SITE_URL =
-  process.env.SITE_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:3000"
-    : "https://tienda.elmetacho.com");
+import { SITE_URL } from "./lib/siteUrl";
 
 // Sin esto, Next.js prerenderiza el sitemap como estático en build time
 // (no usa cookies/headers, así que lo optimiza por defecto) y quedaría

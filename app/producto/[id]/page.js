@@ -4,13 +4,8 @@ import { notFound } from "next/navigation";
 import { getCatalogProductById } from "../../lib/catalog";
 import { ESTUDIO_CATEGORIES } from "../../lib/estudioCategories";
 import { SIZES, getPriceCOP } from "../../lib/order";
+import { SITE_URL } from "../../lib/siteUrl";
 import ProductSizeSelector from "./ProductSizeSelector";
-
-const SITE_URL =
-  process.env.SITE_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:3000"
-    : "https://tienda.elmetacho.com");
 
 function categoryLabel(categoryId) {
   return ESTUDIO_CATEGORIES.find((c) => c.id === categoryId)?.label || "Diseño";
@@ -30,6 +25,7 @@ export async function generateMetadata({ params }) {
   return {
     title,
     description,
+    alternates: { canonical: `${SITE_URL}/producto/${product.id}` },
     openGraph: {
       title,
       description,
@@ -61,6 +57,33 @@ export default async function ProductPage({ params }) {
       priceCurrency: "COP",
       price: String(CHEAPEST_PRICE_COP),
       availability: "https://schema.org/InStock",
+      hasMerchantReturnPolicy: {
+        "@type": "MerchantReturnPolicy",
+        applicableCountry: "CO",
+        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+        merchantReturnDays: 7,
+      },
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingRate: {
+          "@type": "MonetaryAmount",
+          value: "0",
+          currency: "COP",
+        },
+        shippingDestination: {
+          "@type": "DefinedRegion",
+          addressCountry: "CO",
+        },
+        deliveryTime: {
+          "@type": "ShippingDeliveryTime",
+          transitTime: {
+            "@type": "QuantitativeValue",
+            minValue: 3,
+            maxValue: 5,
+            unitCode: "DAY",
+          },
+        },
+      },
     },
   };
 

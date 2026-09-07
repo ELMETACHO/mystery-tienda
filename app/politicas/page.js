@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { LEGAL_SECTIONS } from "@/app/lib/legalContent";
+import { SITE_URL } from "@/app/lib/siteUrl";
 
 export const metadata = {
   title: "Políticas — Mystery",
   description:
     "Política de privacidad, devoluciones y garantías de Mystery, cuadros personalizados en vinilo sobre madera.",
+  alternates: { canonical: `${SITE_URL}/politicas` },
 };
 
 export default function PoliticasPage() {
