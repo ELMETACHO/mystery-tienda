@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/send-review-emails",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/select-home-testimonials",
+      "schedule": "0 13 * * 1"
     }
   ]
 }
