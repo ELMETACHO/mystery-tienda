@@ -39,12 +39,34 @@ if (!process.env.REDIS_URL) {
 
 const HOME_TESTIMONIALS_KEY = "home:testimonials";
 
-// TODO: reemplazar con el texto real de Instagram. nombre en formato
-// "Nombre I." (inicial de apellido, mismo criterio de privacidad que
-// formatCustomerDisplayName en app/lib/homeTestimonials.js). sizeLabel es
-// opcional (null si no se sabe qué tamaño compró ese cliente).
+// Texto real de clientes vía Instagram (confirmado por el dueño el
+// 2026-09-07). Se limpiaron solo las etiquetas de tamaño/tema que cada
+// cliente agregó entre paréntesis al final de su propio comentario (esa
+// info ya vive en sizeLabel) — el contenido de la reseña en sí no se
+// tocó. Jorge Vargas: el texto original traía "50X70" al inicio y
+// "(30X40...)" al final, contradictorios; el tamaño correcto (50x70) se
+// confirmó directamente con el dueño antes de guardar esto.
 const INSTAGRAM_TESTIMONIALS = [
-  // { nombre: "Nombre I.", texto: "...", sizeLabel: "40 x 50 cm", rating: 5 },
+  {
+    nombre: "Álvaro D.",
+    texto: "Ya llegó el cuadro. Quedó muy bien, no tuve problemas con la entrega.",
+    sizeLabel: "40 x 50 cm",
+  },
+  {
+    nombre: "Majo C.",
+    texto: "Recibí el cuadro 4 días después. Vivo en Huila, lo envió la transportadora Servientrega. ¡Gracias!",
+    sizeLabel: "40 x 50 cm",
+  },
+  {
+    nombre: "Jorge V.",
+    texto: "Pedí uno para un cumpleaños. Me gustó que el empaque llegó protegido.",
+    sizeLabel: "50 x 70 cm",
+  },
+  {
+    nombre: "Gabriela",
+    texto: "¡Me encantó! Siempre quise uno de Marilyn Monroe, la calidad es excelente. Llevo ya una semana con el cuadro. Gracias.",
+    sizeLabel: "40 x 50 cm",
+  },
 ];
 
 if (INSTAGRAM_TESTIMONIALS.length === 0) {
