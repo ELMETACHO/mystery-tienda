@@ -16,21 +16,16 @@ const GREETING = {
     "¡Hola! Soy el asistente de Mystery Cuadros 💜 Pregúntame sobre precios, tamaños, tiempos de entrega, devoluciones o cómo personalizar tu cuadro.",
 };
 
-// Ícono del botón flotante: burbuja de chat + teléfono, inspirado en la
-// silueta reconocible de WhatsApp pero con los colores de marca (nunca el
-// logo real ni su verde — ver CLAUDE.md sobre diferenciarse de otras
-// marcas del mismo dueño).
+// Ícono del botón flotante: glyph de teléfono (Heroicons, MIT), inspirado
+// en la idea de "hablar con alguien" de WhatsApp pero con los colores de
+// marca (nunca el logo real ni su verde — ver CLAUDE.md sobre
+// diferenciarse de otras marcas del mismo dueño). Path centrado por
+// diseño en su viewBox 24x24 — sin composición manual de formas, para
+// evitar el problema de centrado del ícono anterior.
 function ChatBubbleIcon({ className }) {
   return (
-    <svg viewBox="0 0 32 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M16 4C9.4 4 4 8.7 4 14.5c0 3 1.4 5.7 3.8 7.6-.2 1.6-.9 3.2-1.9 4.5a.6.6 0 00.6 1c2.3-.5 4.3-1.5 5.8-2.6 1.2.3 2.4.5 3.7.5 6.6 0 12-4.7 12-10.5S22.6 4 16 4z"
-        fill="white"
-      />
-      <path
-        d="M12.3 12.1c.3-.6.6-.6.9-.6h.6c.2 0 .5 0 .7.5.3.6.9 2 1 2.1.1.2.1.4 0 .6-.1.2-.2.3-.4.5l-.5.5c-.2.2-.3.4-.1.7.2.3.8 1.2 1.7 2 1.1 1 2.1 1.3 2.4 1.5.3.2.5.1.7-.1l.6-.7c.2-.3.4-.2.7-.1l1.8.9c.2.1.4.2.4.4.1.6-.1 1.4-.6 1.7-.5.4-1.6.7-2.6.4-1-.3-2.4-.9-4.1-2.4-1.9-1.7-3.1-3.7-3.4-4.4-.2-.6-.7-1.6-.4-2.5z"
-        fill="#a855f7"
-      />
+    <svg viewBox="0 0 24 24" className={className} fill="white" xmlns="http://www.w3.org/2000/svg">
+      <path d="M1.5 4.5a3 3 0 013-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 01-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 006.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 011.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 01-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5z" />
     </svg>
   );
 }
