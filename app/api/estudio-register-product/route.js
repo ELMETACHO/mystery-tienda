@@ -3,6 +3,7 @@ import { ESTUDIO_COOKIE_NAME, getEstudioSessionToken } from "../../lib/estudioAu
 import { getCategoryFolderId } from "../../lib/estudioCategories";
 import { makeFilePublic } from "../../lib/googleDrive";
 import { addCatalogProduct } from "../../lib/catalog";
+import { generateProductText } from "../../lib/aiProductText";
 
 // Protegido con la misma cookie de sesión que /estudio.
 async function isAuthenticated() {
@@ -52,6 +53,15 @@ export async function POST(request) {
     );
   }
 
+  // Título/descripción únicos generados con IA a partir del mockup, para
+  // que cada producto tenga texto propio en /producto/[id] en vez de
+  // repetir el mismo texto por categoría (ver app/lib/aiProductText.js).
+  // Se genera ANTES de registrar el producto (para guardarlo de una vez),
+  // pero si falla no debe impedir el registro — solo queda sin este texto
+  // y /producto/[id] usa su fallback por categoría.
+  const mockupThumbnailUrl = `https://drive.google.com/thumbnail?id=${mockupFileId}&sz=w500`;
+  const aiText = await generateProductText({ imageUrl: mockupThumbnailUrl });
+
   try {
     // originalRawFileId es la foto SIN recortar que subió el diseñador, y
     // printFileIds son los 3 recortes ya horneados (30x40/40x50/50x70,
@@ -67,6 +77,8 @@ export async function POST(request) {
       printFileIds,
       crop,
       zoom,
+      name: aiText?.name,
+      description: aiText?.description,
     });
     return Response.json({ ok: true, product });
   } catch (err) {

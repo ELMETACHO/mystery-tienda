@@ -43,6 +43,8 @@ export async function addCatalogProduct({
   printFileIds,
   crop,
   zoom,
+  name,
+  description,
 }) {
   const client = getRedisClient();
   if (!client) {
@@ -71,6 +73,12 @@ export async function addCatalogProduct({
     zoom,
     thumbnailUrl: `https://drive.google.com/thumbnail?id=${mockupFileId}&sz=w1000`,
     salesCount: 0,
+    // name/description: título y descripción cortos generados por IA a
+    // partir de la imagen del mockup (ver app/lib/aiProductText.js) — si
+    // la generación falló o no había API key configurada, quedan null y
+    // /producto/[id] cae de vuelta al texto genérico por categoría.
+    name: name || null,
+    description: description || null,
   };
 
   await client.rpush(CATALOG_KEY, JSON.stringify(product));
@@ -187,6 +195,40 @@ export async function incrementProductSalesCount(productId) {
     return true;
   } catch (err) {
     console.error("[catalog] No se pudo incrementar salesCount:", err);
+    return false;
+  }
+}
+
+// Mismo patrón read-modify-write que incrementProductSalesCount — lo usa
+// el script de backfill (scripts/backfill-product-text.js) para rellenar
+// name/description en productos que se subieron antes de que existiera
+// app/lib/aiProductText.js. Nunca lanza, por el mismo motivo.
+export async function updateCatalogProductText(productId, { name, description }) {
+  const client = getRedisClient();
+  if (!client) return false;
+
+  try {
+    const raw = await client.lrange(CATALOG_KEY, 0, -1);
+    const index = raw.findIndex((entry) => {
+      try {
+        return JSON.parse(entry).id === productId;
+      } catch {
+        return false;
+      }
+    });
+
+    if (index === -1) {
+      console.error(`[catalog] updateCatalogProductText: no existe el producto ${productId}`);
+      return false;
+    }
+
+    const product = JSON.parse(raw[index]);
+    product.name = name;
+    product.description = description;
+    await client.lset(CATALOG_KEY, index, JSON.stringify(product));
+    return true;
+  } catch (err) {
+    console.error("[catalog] No se pudo actualizar name/description:", err);
     return false;
   }
 }

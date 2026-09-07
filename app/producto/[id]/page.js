@@ -11,6 +11,21 @@ function categoryLabel(categoryId) {
   return ESTUDIO_CATEGORIES.find((c) => c.id === categoryId)?.label || "Diseño";
 }
 
+// product.name/product.description los genera la IA a partir del mockup
+// al subir en /estudio (ver app/lib/aiProductText.js) — productos subidos
+// antes de que existiera esa generación, o donde falló, no los tienen y
+// caen de vuelta al texto genérico por categoría de siempre.
+function productDisplayTitle(product, label) {
+  return product.name ? `Cuadro ${product.name}` : `Cuadro Personalizado ${label}`;
+}
+
+function productDisplayDescription(product, label) {
+  return (
+    product.description ||
+    `Cuadro personalizado de ${label} en vinilo sobre madera, disponible en 30x40, 40x50 y 50x70 cm.`
+  );
+}
+
 const CHEAPEST_PRICE_COP = getPriceCOP(SIZES[0].id, "tradicional");
 
 export async function generateMetadata({ params }) {
@@ -19,8 +34,8 @@ export async function generateMetadata({ params }) {
   if (!product) return {};
 
   const label = categoryLabel(product.category);
-  const title = `Cuadro Personalizado ${label} — Desde ${CHEAPEST_PRICE_COP.toLocaleString("es-CO")} COP | Mystery Cuadros`;
-  const description = `Cuadro personalizado de ${label} en vinilo sobre madera, disponible en 30x40, 40x50 y 50x70 cm. Envío gratis a toda Colombia.`;
+  const title = `${productDisplayTitle(product, label)} — Desde ${CHEAPEST_PRICE_COP.toLocaleString("es-CO")} COP | Mystery Cuadros`;
+  const description = `${productDisplayDescription(product, label)} Envío gratis a toda Colombia.`;
 
   return {
     title,
@@ -46,8 +61,8 @@ export default async function ProductPage({ params }) {
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: `Cuadro Personalizado ${label}`,
-    description: `Cuadro personalizado de ${label} en vinilo sobre madera, disponible en 30x40, 40x50 y 50x70 cm.`,
+    name: productDisplayTitle(product, label),
+    description: productDisplayDescription(product, label),
     image: [product.thumbnailUrl],
     category: label,
     brand: { "@type": "Brand", name: "Mystery Cuadros" },
@@ -113,7 +128,7 @@ export default async function ProductPage({ params }) {
         >
           <Image
             src={product.thumbnailUrl}
-            alt={`Cuadro personalizado categoría ${label}, en vinilo sobre madera`}
+            alt={product.name ? `Cuadro de ${product.name}, en vinilo sobre madera` : `Cuadro personalizado categoría ${label}, en vinilo sobre madera`}
             fill
             sizes="(min-width: 640px) 448px, 100vw"
             className="object-cover"
@@ -125,7 +140,9 @@ export default async function ProductPage({ params }) {
           <span className="w-fit rounded-full bg-accent/15 px-3 py-1 text-xs font-medium text-accent">
             {label}
           </span>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Cuadro personalizado</h1>
+          <h1 className="font-heading text-2xl font-bold tracking-tight">
+            {product.name ? `Cuadro personalizado — ${product.name}` : "Cuadro personalizado"}
+          </h1>
         </div>
 
         <ProductSizeSelector product={product} />
