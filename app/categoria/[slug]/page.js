@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProductsByCategory } from "../../lib/catalog";
 import { ESTUDIO_CATEGORIES } from "../../lib/estudioCategories";
+import { SITE_URL } from "../../lib/siteUrl";
 import ProductScroller from "../../components/ProductScroller";
 
 // Esta página lee el catálogo real (Redis) en cada visita — nunca debe
@@ -18,6 +19,7 @@ export async function generateMetadata({ params }) {
   return {
     title,
     description: category.description,
+    alternates: { canonical: `${SITE_URL}/categoria/${category.id}` },
     openGraph: { title, description: category.description },
   };
 }
