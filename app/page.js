@@ -6,6 +6,7 @@ import { SITE_URL } from "./lib/siteUrl";
 import FoldText from "./components/FoldText";
 import CategoryScroller from "./components/CategoryScroller";
 import ProductScroller from "./components/ProductScroller";
+import { ESTUDIO_CATEGORIES } from "./lib/estudioCategories";
 
 // Esta página lee el catálogo real (Redis) en cada visita — nunca debe
 // quedar cacheada mostrando productos viejos/borrados.
@@ -18,20 +19,15 @@ export const metadata = {
   alternates: { canonical: SITE_URL },
 };
 
-// Categorías reales de diseño usadas en /estudio para organizar los
-// diseños en Google Drive (ver app/lib/estudioCategories.js).
-const CATEGORIAS = [
-  { id: "abstracto", nombre: "Abstracto", src: "/images/categorias/abstracto.jpg" },
-  { id: "anime", nombre: "Ánime", src: "/images/categorias/anime.jpg" },
-  { id: "deportes", nombre: "Deportes", src: "/images/categorias/deportes.jpg" },
-  { id: "iconic", nombre: "Iconic", src: "/images/categorias/iconic.jpg" },
-  { id: "musica", nombre: "Música", src: "/images/categorias/musica.jpg" },
-  {
-    id: "peliculas-series",
-    nombre: "Películas y Series",
-    src: "/images/categorias/series y películas.jpg",
-  },
-];
+// Categorías reales de diseño, derivadas de la misma fuente única que usa
+// /estudio para organizar los diseños en Google Drive (ver
+// app/lib/estudioCategories.js) — así una categoría nueva aparece acá sola,
+// sin necesidad de mantener una segunda lista a mano.
+const CATEGORIAS = ESTUDIO_CATEGORIES.map((category) => ({
+  id: category.id,
+  nombre: category.label,
+  src: category.coverImage,
+}));
 
 const FAQ = [
   {
