@@ -75,7 +75,7 @@ export default async function CategoriaPage({ params }) {
           }}
         >
           <h2 className="font-heading max-w-xl text-2xl font-extrabold tracking-tight text-[#1b2a4a] sm:text-3xl">
-            ¿Quieres un cuadro personalizado con tus imágenes?
+            No encuentras lo que buscas? créalo tú mismo
           </h2>
           <Link
             href="/crear"
