@@ -77,6 +77,8 @@ export default async function ProductPage({ params }) {
         applicableCountry: "CO",
         returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
         merchantReturnDays: 7,
+        returnMethod: "https://schema.org/ReturnByMail",
+        returnFees: "https://schema.org/FreeReturn",
       },
       shippingDetails: {
         "@type": "OfferShippingDetails",
@@ -91,6 +93,12 @@ export default async function ProductPage({ params }) {
         },
         deliveryTime: {
           "@type": "ShippingDeliveryTime",
+          handlingTime: {
+            "@type": "QuantitativeValue",
+            minValue: 0,
+            maxValue: 2,
+            unitCode: "DAY",
+          },
           transitTime: {
             "@type": "QuantitativeValue",
             minValue: 3,
