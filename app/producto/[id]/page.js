@@ -138,6 +138,7 @@ export default async function ProductPage({ params }) {
             src={product.thumbnailUrl}
             alt={product.name ? `Cuadro de ${product.name}, en vinilo sobre madera` : `Cuadro personalizado categoría ${label}, en vinilo sobre madera`}
             fill
+            unoptimized
             sizes="(min-width: 640px) 448px, 100vw"
             className="object-cover"
             priority
