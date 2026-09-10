@@ -1,8 +1,15 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import Script from "next/script";
 import { SITE_URL } from "./lib/siteUrl";
 import ChatWidget from "./components/ChatWidget";
 import "./globals.css";
+
+// Google Tag Manager — contenedor único (septiembre 2026). Las 3 tags de
+// medición (Meta Pixel, TikTok Pixel, Google Ads) se configuran DENTRO del
+// panel web de GTM, no acá — ver CLAUDE.md para los triggers exactos
+// (begin_checkout/purchase, empujados al dataLayer desde app/lib/gtm.js).
+const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,6 +61,16 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        {GTM_ID && (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
+              height="0"
+              width="0"
+              style={{ display: "none", visibility: "hidden" }}
+            />
+          </noscript>
+        )}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
@@ -61,6 +78,15 @@ export default function RootLayout({ children }) {
         {children}
         <ChatWidget />
         <Analytics />
+        {GTM_ID && (
+          <Script id="gtm-container" strategy="afterInteractive">
+            {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+            })(window,document,'script','dataLayer','${GTM_ID}');`}
+          </Script>
+        )}
       </body>
     </html>
   );

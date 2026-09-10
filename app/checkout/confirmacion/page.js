@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import confetti from "canvas-confetti";
 import { formatCOP, loadOrder, saveOrder } from "../../lib/order";
+import { trackPurchase } from "../../lib/gtm";
 
 // Morado de marca + blanco/dorado, para que el confeti se sienta "Mystery"
 // y no genérico.
@@ -131,6 +132,11 @@ export default function ConfirmacionPage() {
     if (hasCelebratedRef.current) return;
     if (!order || order.payment?.status !== "APPROVED") return;
     hasCelebratedRef.current = true;
+
+    // Evento purchase (GTM) — misma condición y misma única disparada que
+    // el confeti: nunca solo por llegar a la página, solo con pago
+    // verificado APPROVED server-side.
+    trackPurchase(order);
 
     let canvas;
     let cleanupTimer;

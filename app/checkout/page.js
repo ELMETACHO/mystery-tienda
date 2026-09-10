@@ -6,6 +6,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { COD_DEPOSIT_COP, SIZES, formatCOP, loadOrder, saveOrder } from "../lib/order";
 import { lookupPostalCode } from "../lib/postalCodes";
+import { trackBeginCheckout } from "../lib/gtm";
 import FreeShippingBanner from "../components/FreeShippingBanner";
 
 const WOMPI_PUBLIC_KEY = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
@@ -237,6 +238,17 @@ function CheckoutForm() {
       if (addressCheckTimerRef.current) clearTimeout(addressCheckTimerRef.current);
     };
   }, []);
+
+  // Evento begin_checkout (GTM) apenas el pedido termina de cargar y el
+  // cliente llega al formulario — una sola vez por carga de página, sin
+  // importar si después recarga o cambia campos.
+  const hasTrackedBeginCheckoutRef = useRef(false);
+  useEffect(() => {
+    if (hasTrackedBeginCheckoutRef.current) return;
+    if (!order) return;
+    hasTrackedBeginCheckoutRef.current = true;
+    trackBeginCheckout(order);
+  }, [order]);
 
   if (isLoadingOrder || !order) {
     return (
