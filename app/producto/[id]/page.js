@@ -44,7 +44,7 @@ export async function generateMetadata({ params }) {
     openGraph: {
       title,
       description,
-      images: [{ url: product.thumbnailUrl }],
+      images: [{ url: `${SITE_URL}/api/catalog-thumbnail/${product.mockupFileId}` }],
     },
   };
 }
@@ -63,7 +63,7 @@ export default async function ProductPage({ params }) {
     "@type": "Product",
     name: productDisplayTitle(product, label),
     description: productDisplayDescription(product, label),
-    image: [product.thumbnailUrl],
+    image: [`${SITE_URL}/api/catalog-thumbnail/${product.mockupFileId}`],
     category: label,
     brand: { "@type": "Brand", name: "Mystery Cuadros" },
     offers: {
@@ -135,7 +135,7 @@ export default async function ProductPage({ params }) {
           style={{ aspectRatio: 1080 / 1350 }}
         >
           <Image
-            src={product.thumbnailUrl}
+            src={`/api/catalog-thumbnail/${product.mockupFileId}`}
             alt={product.name ? `Cuadro de ${product.name}, en vinilo sobre madera` : `Cuadro personalizado categoría ${label}, en vinilo sobre madera`}
             fill
             unoptimized

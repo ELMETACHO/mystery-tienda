@@ -33,7 +33,14 @@ export const metadata = {
     description: DESCRIPTION,
     url: SITE_URL,
     siteName: "Mystery",
-    images: [{ url: "/images/mockups/mockup1.png", width: 1086, height: 1448, alt: "Cuadro personalizado Mystery" }],
+    images: [
+      {
+        url: "/images/Logo/logo-og.png",
+        width: 1254,
+        height: 1254,
+        alt: "Mystery Cuadros",
+      },
+    ],
     locale: "es_CO",
     type: "website",
   },
@@ -41,7 +48,7 @@ export const metadata = {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
-    images: ["/images/mockups/mockup1.png"],
+    images: ["/images/Logo/logo-og.png"],
   },
 };
 

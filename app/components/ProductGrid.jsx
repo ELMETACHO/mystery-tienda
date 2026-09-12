@@ -32,7 +32,7 @@ export function ProductCard({ item, className = "", light = false, ...rest }) {
         className="relative block aspect-square overflow-hidden"
       >
         <Image
-          src={item.thumbnailUrl}
+          src={`/api/catalog-thumbnail/${item.mockupFileId}`}
           alt={`Cuadro personalizado categoría ${categoryLabel(item.category)}, en vinilo sobre madera`}
           fill
           unoptimized
