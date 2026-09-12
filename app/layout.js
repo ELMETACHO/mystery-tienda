@@ -24,6 +24,17 @@ const geistMono = Geist_Mono({
 const TITLE = "Mystery — Cuadros personalizados";
 const DESCRIPTION = "Cuadros personalizados en vinilo sobre madera. Tu foto en la pared.";
 
+// viewportFit "cover" habilita que el contenido se extienda debajo del
+// notch/isla dinámica y de la barra de gestos — requisito para que Safari
+// 26+ (Liquid Glass) pueda mostrar sus barras como overlay translúcido
+// sobre el sitio en vez de una barra opaca separada. themeColor es el
+// fallback para navegadores que sí siguen respetando esa etiqueta
+// (Chrome Android y versiones de iOS previas a la 26).
+export const viewport = {
+  viewportFit: "cover",
+  themeColor: "#8fcaf0",
+};
+
 export const metadata = {
   metadataBase: new URL(SITE_URL),
   title: TITLE,
