@@ -36,9 +36,9 @@ export const metadata = {
     images: [
       {
         url: "/images/Logo/logo-og.png",
-        width: 1254,
-        height: 1254,
-        alt: "Mystery Cuadros",
+        width: 1200,
+        height: 630,
+        alt: "Mystery Cuadros — Personaliza tu cuadro",
       },
     ],
     locale: "es_CO",
