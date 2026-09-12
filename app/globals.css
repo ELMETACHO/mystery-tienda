@@ -17,8 +17,16 @@
 }
 
 :root {
-  --background: #0a0a0f;
-  --foreground: #f4f3f7;
+  /* Antes #0a0a0f (fondo oscuro original de marca) — pero todas las
+     páginas de cara al cliente (Home, /crear, /checkout, confirmación)
+     ya pintan un fondo celeste claro encima. El navegador (iOS 26 en
+     adelante, sin la etiqueta theme-color) pinta la barra de
+     direcciones/WhatsApp muestreando el background-color REAL del
+     documento — no lo que se ve pintado encima — así que quedaba
+     desincronizado (barra oscura sobre un sitio que se ve claro).
+     Este valor ahora coincide con el celeste real que ve el cliente. */
+  --background: #8fcaf0;
+  --foreground: #1b2a4a;
   --accent: #a855f7;
   --accent-soft: #c084fc;
 }
@@ -33,7 +41,7 @@
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
