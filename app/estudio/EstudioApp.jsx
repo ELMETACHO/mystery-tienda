@@ -612,6 +612,7 @@ export default function EstudioApp({ mockups }) {
                           src={`/images/mockups-estudio/${file}`}
                           alt={file}
                           fill
+                          unoptimized
                           sizes="112px"
                           className="object-cover"
                         />
@@ -638,6 +639,7 @@ export default function EstudioApp({ mockups }) {
                       src={mockupSrc}
                       alt="Fondo elegido"
                       fill
+                      unoptimized
                       sizes="(min-width: 576px) 576px, 100vw"
                       className="object-cover"
                     />

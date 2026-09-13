@@ -208,6 +208,7 @@ export default async function Home() {
               width={155}
               height={100}
               priority
+              unoptimized
               className="h-8 w-auto sm:h-9"
             />
           </Link>

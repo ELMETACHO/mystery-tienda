@@ -140,6 +140,7 @@ export default async function AdsLanding() {
                   src={ej.src}
                   alt={ej.alt}
                   fill
+                  unoptimized
                   sizes="(min-width: 448px) 144px, 33vw"
                   className="object-cover"
                 />

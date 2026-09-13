@@ -648,6 +648,7 @@ export default function CrearFlow({ compact = false }) {
               src={MOCKUP.src}
               alt="Cuadro colgado en la pared (mockup de referencia)"
               fill
+              unoptimized
               sizes="(min-width: 384px) 384px, 100vw"
               className="object-cover"
             />
@@ -809,6 +810,7 @@ export default function CrearFlow({ compact = false }) {
                 alt="Ambiente de referencia"
                 fill
                 priority
+                unoptimized
                 sizes="(min-width: 640px) 576px, 240px"
                 className="object-cover"
               />
@@ -911,6 +913,7 @@ export default function CrearFlow({ compact = false }) {
                     aria-hidden="true"
                     width={120}
                     height={78}
+                    unoptimized
                     className="h-auto w-24 opacity-30"
                   />
                 </div>

@@ -73,6 +73,7 @@ export default function CategoryScroller({ categorias, light = false }) {
               src={cat.src}
               alt={cat.nombre}
               fill
+              unoptimized
               sizes="(min-width: 640px) 20vw, 40vw"
               className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
             />
