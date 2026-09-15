@@ -822,7 +822,7 @@ export async function sendGuideCancelledEmail({
 const OWNER_PAYMENT_REQUEST_EMAIL = "bigmysteryof@gmail.com";
 
 const FABRICANTE_DISPLAY_NAME = {
-  daniela: "Daniela (Premium)",
+  daniela: "Cristhian (Premium)",
   oscar: "Oscar (Tradicional)",
 };
 

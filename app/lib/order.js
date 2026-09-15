@@ -35,7 +35,8 @@ export const SIZES = [
 ];
 
 // Tipos de cuadro (agosto 2026): Premium (con marco trasero de 3cm,
-// fabricado por Daniela, comisión fija $15.000 sin importar el tamaño) y
+// fabricado por Cristhian —antes Daniela, ver fabricantes.js—, comisión
+// fija $15.000 sin importar el tamaño) y
 // Tradicional (sin marco, más delgado, con soporte para colgar, lo fabrica
 // el dueño mismo — comisión $0). "premium" es el default para compatibilidad
 // con pedidos/UI que aún no seleccionan frameType explícitamente.

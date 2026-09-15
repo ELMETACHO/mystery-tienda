@@ -2,6 +2,10 @@ import { FRAME_TYPES } from "./order";
 
 // Configuración de los dos fabricantes independientes (agosto 2026):
 // - "daniela" produce Premium (con marco trasero), comisión fija $15.000.
+//   El id interno se quedó como "daniela" aunque el fabricante real
+//   cambió a su hermano Cristhian (septiembre 2026) — no se renombró la
+//   clave para no romper el fabricanteId ya guardado en pedidos
+//   históricos; el correo/nombre visible sí apunta a Cristhian ahora.
 // - "oscar" produce Tradicional (sin marco), comisión $0 — es el dueño
 //   mismo, lo fabrica él.
 // El correo/código de acceso de cada uno vive en variables de entorno

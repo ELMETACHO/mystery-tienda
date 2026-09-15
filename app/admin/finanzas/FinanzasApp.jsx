@@ -12,7 +12,7 @@ function formatDate(iso) {
 }
 
 const FABRICANTE_LABELS = {
-  daniela: "Daniela — Premium",
+  daniela: "Cristhian — Premium",
   oscar: "Oscar — Tradicional",
 };
 
