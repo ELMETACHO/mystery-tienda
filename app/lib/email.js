@@ -1,7 +1,7 @@
 import { Resend } from "resend";
-import { formatCOP } from "./order";
+import { formatCOP, getFabricanteCommissionCOP } from "./order";
 import { generateManualShipmentToken } from "./manualShipmentToken";
-import { getFabricanteForFrameType } from "./fabricantes";
+import { FABRICANTES, getFabricanteForFrameType } from "./fabricantes";
 import { SITE_URL } from "./siteUrl";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -865,6 +865,71 @@ export async function sendFabricantePaymentRequestEmail({
     to: testRecipientOverride || OWNER_PAYMENT_REQUEST_EMAIL,
     subject: `${subjectPrefix}PAGO A FABRICANTE - MYSTERY CUADROS`,
     html: wrapEmailHtml(paymentRequestEmailHtml({ amount, fabricanteId })),
+  });
+}
+
+// ---------------------------------------------------------------------
+// Correo de "bienvenida" a un fabricante nuevo (ej. reemplazo de
+// fabricante, ver fabricantes.js) — explica qué va a recibir por correo
+// en cada pedido y cómo usar /fabricante, con el link ya armado con su
+// código de acceso. Se dispara a mano (script puntual), no desde ningún
+// flujo automático de la tienda.
+// ---------------------------------------------------------------------
+
+function fabricanteWelcomeEmailHtml({ fabricanteId }) {
+  const fabricante = FABRICANTES[fabricanteId];
+  const fabricanteLabel = FABRICANTE_DISPLAY_NAME[fabricanteId] || "Fabricante";
+  const commissionCOP = getFabricanteCommissionCOP(fabricante?.frameType);
+  const panelUrl = `${SITE_URL}/fabricante?code=${encodeURIComponent(fabricante?.accessCode || "")}`;
+
+  return `
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow("Bienvenido")}
+        <tr>
+          <td style="padding:28px;">
+            <p class="email-text-ink" style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:17px;line-height:24px;color:${BRAND.ink};">¡Hola! Ya quedaste configurado como <strong>${fabricanteLabel}</strong> en Mystery Cuadros — este correo es una guía rápida de cómo va a funcionar todo de acá en adelante.</p>
+
+            <p class="email-text-ink" style="margin:24px 0 8px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;line-height:21px;color:${BRAND.ink};">📩 Cuando alguien compre un cuadro Premium</p>
+            <p class="email-text-muted" style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:14px;line-height:21px;color:${BRAND.muted};">Te va a llegar un correo a esta misma dirección con:</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 0 0;">
+              <tr><td class="email-text-muted" style="font-family:${FONT_STACK};font-size:14px;line-height:22px;color:${BRAND.muted};padding-left:4px;">• La foto en alta resolución, ya lista para imprimir (con el sangrado incluido).</td></tr>
+              <tr><td class="email-text-muted" style="font-family:${FONT_STACK};font-size:14px;line-height:22px;color:${BRAND.muted};padding-left:4px;">• El nombre completo del cliente y la dirección de envío completa.</td></tr>
+              <tr><td class="email-text-muted" style="font-family:${FONT_STACK};font-size:14px;line-height:22px;color:${BRAND.muted};padding-left:4px;">• El tamaño del cuadro (30x40, 40x50 o 50x70).</td></tr>
+              <tr><td class="email-text-muted" style="font-family:${FONT_STACK};font-size:14px;line-height:22px;color:${BRAND.muted};padding-left:4px;">• Un aviso si la foto necesita cuidado extra (baja resolución, mal encuadre, etc.).</td></tr>
+            </table>
+            <p class="email-text-muted" style="margin:12px 0 0 0;font-family:${FONT_STACK};font-size:14px;line-height:21px;color:${BRAND.muted};">Tu comisión es <strong class="email-text-brand" style="color:${BRAND.text};">${formatCOP(commissionCOP)} fijos por cuadro</strong>, sin importar el tamaño — siempre Premium, siempre el mismo monto.</p>
+
+            <p class="email-text-ink" style="margin:24px 0 8px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;line-height:21px;color:${BRAND.ink};">📋 Tu panel — /fabricante</p>
+            <p class="email-text-muted" style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:14px;line-height:21px;color:${BRAND.muted};">Ahí puedes ver todos tus pedidos pendientes, marcar uno como listo para generar la guía de envío cuando termines de imprimirlo, y llevar el control de lo que la tienda te debe (con un botón para solicitar el pago cuando quieras cobrar).</p>
+            <p class="email-text-muted" style="margin:0 0 24px 0;font-family:${FONT_STACK};font-size:14px;line-height:21px;color:${BRAND.muted};">Tu código de acceso es <strong class="email-text-brand" style="color:${BRAND.text};">${fabricante?.accessCode || ""}</strong> — el botón de abajo ya te lleva directo, sin que tengas que escribirlo.</p>
+
+            <p style="margin:0;text-align:center;">
+              <a class="email-btn-bg email-text-white" href="${panelUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:15px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Ir a mi panel</a>
+            </p>
+
+            <p class="email-text-faint" style="margin:24px 0 0 0;font-family:${FONT_STACK};font-size:12px;line-height:18px;color:${BRAND.faint};">Guarda este correo o el link del panel — lo vas a necesitar cada vez que llegue un pedido nuevo.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+export async function sendFabricanteWelcomeEmail({ fabricanteId, testRecipientOverride }) {
+  const fabricante = FABRICANTES[fabricanteId];
+  if (!fabricante?.email) {
+    throw new Error(`[sendFabricanteWelcomeEmail] Fabricante "${fabricanteId}" sin correo configurado.`);
+  }
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: testRecipientOverride || fabricante.email,
+    subject: "Bienvenido a Mystery Cuadros — cómo vas a recibir tus pedidos",
+    html: wrapEmailHtml(fabricanteWelcomeEmailHtml({ fabricanteId })),
   });
 }
 
