@@ -1,6 +1,7 @@
 import { sendOrderEmails } from "./email";
 import { recordOrderAndCheckReturning } from "./loyalty";
 import { processCatalogProductPurchase } from "./catalogPurchase";
+import { upscaleImageDataUrl } from "./upscaleImage";
 import { claimTransaction, releaseTransactionClaim } from "./idempotency";
 import { saveCompletedOrder } from "./completedOrders";
 import { saveManualShipmentRequest } from "./manualShipments";
@@ -65,8 +66,13 @@ export async function confirmApprovedCodOrder({ order, customer, transaction }) 
 
     const { printImageBase64 } = await processCatalogProductPurchase(order);
 
+    // Ver comentario equivalente en confirmApprovedOrder.js.
+    const orderForEmail = printImageBase64
+      ? order
+      : { ...order, printImage: await upscaleImageDataUrl(order.printImage) };
+
     await sendOrderEmails({
-      order,
+      order: orderForEmail,
       customer,
       transaction,
       isReturningCustomer,

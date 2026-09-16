@@ -1,6 +1,7 @@
 import { sendOrderEmails } from "./email";
 import { recordOrderAndCheckReturning } from "./loyalty";
 import { processCatalogProductPurchase } from "./catalogPurchase";
+import { upscaleImageDataUrl } from "./upscaleImage";
 import { claimTransaction, releaseTransactionClaim } from "./idempotency";
 import { saveCompletedOrder } from "./completedOrders";
 import { saveManualShipmentRequest } from "./manualShipments";
@@ -92,8 +93,17 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
     // pedidos normales de /crear (sin order.productId).
     const { printImageBase64 } = await processCatalogProductPurchase(order);
 
+    // Solo pedidos de /crear (foto propia, printImageBase64 null acá —
+    // los de catálogo ya vienen en alta resolución desde /estudio):
+    // mejora la resolución de la foto del cliente con IA antes de que
+    // llegue al correo del fabricante (ver upscaleImage.js). Nunca
+    // lanza ni bloquea — si falla, sigue con la imagen original.
+    const orderForEmail = printImageBase64
+      ? order
+      : { ...order, printImage: await upscaleImageDataUrl(order.printImage) };
+
     await sendOrderEmails({
-      order,
+      order: orderForEmail,
       customer,
       transaction,
       isReturningCustomer,
