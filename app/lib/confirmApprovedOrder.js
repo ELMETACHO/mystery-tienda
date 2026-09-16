@@ -3,6 +3,7 @@ import { sendOrderEmails } from "./email";
 import { recordOrderAndCheckReturning } from "./loyalty";
 import { processCatalogProductPurchase } from "./catalogPurchase";
 import { upscaleImageDataUrl } from "./upscaleImage";
+import { SIZES } from "./order";
 import { claimTransaction, releaseTransactionClaim } from "./idempotency";
 import { saveCompletedOrder } from "./completedOrders";
 import { saveManualShipmentRequest } from "./manualShipments";
@@ -109,11 +110,25 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
     // reintentarse solo porque el correo falló (eso duplicaría comisión
     // de referido, descuento otorgado, etc.). Solo queda logueado en
     // Vercel para revisar a mano si pasa.
+    const sizeConfig = SIZES.find((s) => s.id === order.sizeId);
+    // Ancho físico del archivo CON sangrado (+1cm por lado = +2cm total)
+    // — mismo criterio que CrearFlow.jsx al calcular pxPerCm original.
+    // Necesario para reinsertar la densidad correcta después del upscale
+    // (ver comentario grande en upscaleImage.js).
+    const bledWidthCm = order.sizeId ? Number(order.sizeId.split("x")[0]) + 2 : undefined;
+
     after(async () => {
       try {
         const orderForEmail = printImageBase64
           ? order
-          : { ...order, printImage: await upscaleImageDataUrl(order.printImage) };
+          : {
+              ...order,
+              printImage: await upscaleImageDataUrl(order.printImage, {
+                targetWidth: sizeConfig?.minWidth,
+                targetHeight: sizeConfig?.minHeight,
+                physicalWidthCm: bledWidthCm,
+              }),
+            };
 
         await sendOrderEmails({
           order: orderForEmail,

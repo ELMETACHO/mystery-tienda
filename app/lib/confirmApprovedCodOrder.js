@@ -9,7 +9,7 @@ import { saveManualShipmentRequest } from "./manualShipments";
 import { grantDiscountCode, markDiscountUsed } from "./discount";
 import { recordReferralSale } from "./referrals";
 import { recordCrmEntry } from "./manufacturerFinance";
-import { COD_DEPOSIT_COP } from "./order";
+import { COD_DEPOSIT_COP, SIZES } from "./order";
 
 // Equivalente de confirmApprovedOrder.js, pero para "Pago contraentrega":
 // el cliente pagó solo el anticipo fijo (COD_DEPOSIT_COP) por Wompi, y el
@@ -70,11 +70,21 @@ export async function confirmApprovedCodOrder({ order, customer, transaction }) 
     // Diferido con after() — ver comentario detallado en
     // confirmApprovedOrder.js. El cliente ya tiene su anticipo verificado
     // y su pedido registrado en este punto, no espera al upscale/correos.
+    const sizeConfig = SIZES.find((s) => s.id === order.sizeId);
+    const bledWidthCm = order.sizeId ? Number(order.sizeId.split("x")[0]) + 2 : undefined;
+
     after(async () => {
       try {
         const orderForEmail = printImageBase64
           ? order
-          : { ...order, printImage: await upscaleImageDataUrl(order.printImage) };
+          : {
+              ...order,
+              printImage: await upscaleImageDataUrl(order.printImage, {
+                targetWidth: sizeConfig?.minWidth,
+                targetHeight: sizeConfig?.minHeight,
+                physicalWidthCm: bledWidthCm,
+              }),
+            };
 
         await sendOrderEmails({
           order: orderForEmail,
