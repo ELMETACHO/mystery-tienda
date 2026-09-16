@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { sendOrderEmails } from "./email";
 import { recordOrderAndCheckReturning } from "./loyalty";
 import { processCatalogProductPurchase } from "./catalogPurchase";
@@ -93,29 +94,43 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
     // pedidos normales de /crear (sin order.productId).
     const { printImageBase64 } = await processCatalogProductPurchase(order);
 
-    // Solo pedidos de /crear (foto propia, printImageBase64 null acá —
-    // los de catálogo ya vienen en alta resolución desde /estudio):
-    // mejora la resolución de la foto del cliente con IA antes de que
-    // llegue al correo del fabricante (ver upscaleImage.js). Nunca
-    // lanza ni bloquea — si falla, sigue con la imagen original.
-    const orderForEmail = printImageBase64
-      ? order
-      : { ...order, printImage: await upscaleImageDataUrl(order.printImage) };
+    // El upscale (Replicate, hasta ~55s en el peor caso, ver
+    // upscaleImage.js) y el envío de correos se difieren con after() —
+    // el cliente ya tiene su pago verificado y su pedido registrado en
+    // este punto (CRM, guía manual, etc. arriba), así que no tiene por
+    // qué esperar en su checkout a que termine todo esto. after() corre
+    // DESPUÉS de que la respuesta ya salió al navegador — Vercel
+    // mantiene viva la función el tiempo que haga falta (waitUntil),
+    // sin bloquear la pantalla de confirmación del cliente.
+    //
+    // Un fallo acá adentro (Replicate caído, Resend caído) ya NO libera
+    // el reclamo de idempotencia ni relanza el error — a propósito: el
+    // pago y el registro del pedido ya están confirmados y no deben
+    // reintentarse solo porque el correo falló (eso duplicaría comisión
+    // de referido, descuento otorgado, etc.). Solo queda logueado en
+    // Vercel para revisar a mano si pasa.
+    after(async () => {
+      try {
+        const orderForEmail = printImageBase64
+          ? order
+          : { ...order, printImage: await upscaleImageDataUrl(order.printImage) };
 
-    await sendOrderEmails({
-      order: orderForEmail,
-      customer,
-      transaction,
-      isReturningCustomer,
-      printImageBase64Override: printImageBase64,
+        await sendOrderEmails({
+          order: orderForEmail,
+          customer,
+          transaction,
+          isReturningCustomer,
+          printImageBase64Override: printImageBase64,
+        });
+
+        await saveCompletedOrder({ order, customer, transaction, paymentMethod: "wompi" });
+      } catch (err) {
+        console.error(
+          "[confirmApprovedOrder] Falló el trabajo diferido (upscale/correos/registro):",
+          err
+        );
+      }
     });
-
-    // Registro para la campaña de reseñas Y el reporte financiero (ver
-    // completedOrders.js) — se guarda DESPUÉS de que los correos de
-    // confirmación ya salieron bien, nunca antes: si esto falla, no debe
-    // hacer que se libere el reclamo de idempotencia ni que se reintente
-    // todo el envío de correos de confirmación solo por esto.
-    await saveCompletedOrder({ order, customer, transaction, paymentMethod: "wompi" });
 
     return { alreadyProcessed: false, isReturningCustomer };
   } catch (err) {

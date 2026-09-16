@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { sendOrderEmails } from "./email";
 import { recordOrderAndCheckReturning } from "./loyalty";
 import { processCatalogProductPurchase } from "./catalogPurchase";
@@ -66,25 +67,34 @@ export async function confirmApprovedCodOrder({ order, customer, transaction }) 
 
     const { printImageBase64 } = await processCatalogProductPurchase(order);
 
-    // Ver comentario equivalente en confirmApprovedOrder.js.
-    const orderForEmail = printImageBase64
-      ? order
-      : { ...order, printImage: await upscaleImageDataUrl(order.printImage) };
+    // Diferido con after() — ver comentario detallado en
+    // confirmApprovedOrder.js. El cliente ya tiene su anticipo verificado
+    // y su pedido registrado en este punto, no espera al upscale/correos.
+    after(async () => {
+      try {
+        const orderForEmail = printImageBase64
+          ? order
+          : { ...order, printImage: await upscaleImageDataUrl(order.printImage) };
 
-    await sendOrderEmails({
-      order: orderForEmail,
-      customer,
-      transaction,
-      isReturningCustomer,
-      paymentMethod: "cod",
-      anticipoPagado,
-      saldoPendiente,
-      printImageBase64Override: printImageBase64,
+        await sendOrderEmails({
+          order: orderForEmail,
+          customer,
+          transaction,
+          isReturningCustomer,
+          paymentMethod: "cod",
+          anticipoPagado,
+          saldoPendiente,
+          printImageBase64Override: printImageBase64,
+        });
+
+        await saveCompletedOrder({ order, customer, transaction, paymentMethod: "cod" });
+      } catch (err) {
+        console.error(
+          "[confirmApprovedCodOrder] Falló el trabajo diferido (upscale/correos/registro):",
+          err
+        );
+      }
     });
-
-    // Se guarda DESPUÉS de que los correos de confirmación ya salieron
-    // bien, nunca antes — mismo criterio que confirmApprovedOrder.js.
-    await saveCompletedOrder({ order, customer, transaction, paymentMethod: "cod" });
 
     return { alreadyProcessed: false, isReturningCustomer, anticipoPagado, saldoPendiente };
   } catch (err) {
