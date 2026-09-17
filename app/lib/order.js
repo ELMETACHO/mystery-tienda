@@ -53,7 +53,12 @@ export const FRAME_TYPES = {
     label: "Tradicional",
     description: "Más delgado, con soporte para colgar",
     fabricanteId: "oscar",
-    commissionCOP: 0,
+    // Antes $0 (lo fabricaba el dueño mismo). Desde sept 2026, Cristhian
+    // también fabrica Tradicional por una comisión fija de $10.000 COP
+    // sin importar el tamaño (igual que Premium, pero con su propio
+    // monto) — el dueño sigue comprando el vinilo/madera, esta comisión
+    // es solo por la fabricación.
+    commissionCOP: 10000,
   },
 };
 

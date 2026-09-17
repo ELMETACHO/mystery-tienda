@@ -823,7 +823,7 @@ const OWNER_PAYMENT_REQUEST_EMAIL = "bigmysteryof@gmail.com";
 
 const FABRICANTE_DISPLAY_NAME = {
   daniela: "Cristhian (Premium)",
-  oscar: "Oscar (Tradicional)",
+  oscar: "Cristhian (Tradicional)",
 };
 
 function paymentRequestEmailHtml({ amount, fabricanteId }) {

@@ -18,6 +18,12 @@ export const FABRICANTES = {
     email: process.env.FABRICANTE_EMAIL_PREMIUM,
     accessCode: process.env.FABRICANTE_ACCESS_CODE_PREMIUM,
   },
+  // El id interno se quedó como "oscar" (era el dueño mismo antes de
+  // sept 2026) aunque el fabricante real ahora es Cristhian también acá
+  // — mismo criterio que el id "daniela" arriba: no se renombra la
+  // clave para no romper el fabricanteId ya guardado en pedidos/pagos
+  // históricos. Cristhian entra a /fabricante con un código DISTINTO al
+  // de Premium (dos colas separadas, mismo correo) — ver .env.local.
   oscar: {
     id: "oscar",
     frameType: "tradicional",

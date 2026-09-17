@@ -13,7 +13,7 @@ function formatDate(iso) {
 
 const FABRICANTE_LABELS = {
   daniela: "Cristhian — Premium",
-  oscar: "Oscar — Tradicional",
+  oscar: "Cristhian — Tradicional",
 };
 
 // Un bloque independiente por fabricante — cada uno con su propio saldo,
