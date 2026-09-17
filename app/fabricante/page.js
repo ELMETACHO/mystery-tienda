@@ -220,7 +220,12 @@ function FabricanteContent() {
   const [activeCode, setActiveCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  // data.fabricantes: [{ fabricanteId, label, balance, orders, lastPayment }, ...]
+  // — 1 entrada normalmente, 2 con el código compartido de Cristhian
+  // (Premium + Tradicional, ver app/lib/fabricantes.js). activeTab decide
+  // cuál se muestra; los saldos NUNCA se suman entre pestañas.
   const [data, setData] = useState(null);
+  const [activeTab, setActiveTab] = useState(null);
   const [isRequestingPayment, setIsRequestingPayment] = useState(false);
   const [paymentRequestMessage, setPaymentRequestMessage] = useState("");
 
@@ -239,6 +244,7 @@ function FabricanteContent() {
         return;
       }
       setData(json);
+      setActiveTab(json.fabricantes[0]?.fabricanteId || null);
       setActiveCode(code);
     } catch (err) {
       console.error(err);
@@ -267,7 +273,7 @@ function FabricanteContent() {
       const res = await fetch("/api/fabricante-request-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: activeCode }),
+        body: JSON.stringify({ code: activeCode, fabricanteId: activeTab }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -288,11 +294,20 @@ function FabricanteContent() {
       prev
         ? {
             ...prev,
-            orders: prev.orders.map((o) => (o.reference === updated.reference ? updated : o)),
+            fabricantes: prev.fabricantes.map((f) =>
+              f.fabricanteId === activeTab
+                ? {
+                    ...f,
+                    orders: f.orders.map((o) => (o.reference === updated.reference ? updated : o)),
+                  }
+                : f
+            ),
           }
         : prev
     );
   };
+
+  const activeData = data?.fabricantes.find((f) => f.fabricanteId === activeTab) || null;
 
   return (
     <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
@@ -327,13 +342,39 @@ function FabricanteContent() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {data && (
+      {data && activeData && (
         <div className="flex w-full flex-col gap-4 animate-ready-in">
+          {/* Pestañas: solo se muestran si el código habilita más de un
+              fabricante (código compartido de Cristhian, Premium +
+              Tradicional) — con un solo fabricante no hay nada que
+              elegir, se omiten para no agregar ruido visual. */}
+          {data.fabricantes.length > 1 && (
+            <div className="flex gap-2 rounded-full border border-black/10 bg-[#fffaf0] p-1">
+              {data.fabricantes.map((f) => (
+                <button
+                  key={f.fabricanteId}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(f.fabricanteId);
+                    setPaymentRequestMessage("");
+                  }}
+                  className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                    activeTab === f.fabricanteId
+                      ? "bg-accent text-white shadow-sm"
+                      : "text-[#33456b] hover:text-[#1b2a4a]"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-5 text-center shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)] sm:p-6">
             <div>
-              <p className="text-sm text-[#33456b]">Total pendiente</p>
+              <p className="text-sm text-[#33456b]">Total pendiente {data.fabricantes.length > 1 ? `(${activeData.label})` : ""}</p>
               <p className="text-2xl font-bold text-accent sm:text-3xl">
-                {formatCOP(data.balance)}
+                {formatCOP(activeData.balance)}
               </p>
             </div>
             <button
@@ -355,10 +396,10 @@ function FabricanteContent() {
             )}
           </div>
 
-          {data.balance === 0 && data.lastPayment && (
+          {activeData.balance === 0 && activeData.lastPayment && (
             <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-center text-sm text-emerald-700">
-              ✅ Recibiste tu último pago: {formatCOP(data.lastPayment.amount)} el{" "}
-              {formatDate(data.lastPayment.date)}
+              ✅ Recibiste tu último pago: {formatCOP(activeData.lastPayment.amount)} el{" "}
+              {formatDate(activeData.lastPayment.date)}
             </p>
           )}
 
@@ -366,13 +407,13 @@ function FabricanteContent() {
             Verás todos tus pedidos una vez generes la guía, no antes.
           </p>
 
-          {data.orders.length === 0 ? (
+          {activeData.orders.length === 0 ? (
             <p className="rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-6 text-center text-sm text-[#5b6b8c]">
               No hay saldo pendiente.
             </p>
           ) : (
             <ul className="flex flex-col gap-3">
-              {data.orders.map((o) => (
+              {activeData.orders.map((o) => (
                 <OrderRow key={o.reference} order={o} code={activeCode} onUpdated={handleOrderUpdated} />
               ))}
             </ul>

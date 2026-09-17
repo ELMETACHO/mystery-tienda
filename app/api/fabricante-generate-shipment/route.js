@@ -6,7 +6,7 @@ import {
 } from "../../lib/manualShipments";
 import { getManufacturerOrder, markManufacturerOrderRegenerated } from "../../lib/manufacturerFinance";
 import { sendShippingNotificationEmail } from "../../lib/email";
-import { getFabricanteByAccessCode } from "../../lib/fabricantes";
+import { getFabricantesByAccessCode } from "../../lib/fabricantes";
 
 // Botón "Generar guía nueva" de /fabricante — SOLO para pedidos que están
 // en estado "cancelado" (ver markManufacturerOrderCancelled). Reutiliza
@@ -17,15 +17,27 @@ import { getFabricanteByAccessCode } from "../../lib/fabricantes";
 export async function POST(request) {
   const { code, reference } = await request.json().catch(() => ({}));
 
-  const fabricante = getFabricanteByAccessCode(code);
-  if (!fabricante) {
+  const fabricantes = getFabricantesByAccessCode(code);
+  if (fabricantes.length === 0) {
     return Response.json({ error: "Código incorrecto" }, { status: 401 });
   }
   if (!reference) {
     return Response.json({ error: "Falta la referencia del pedido" }, { status: 400 });
   }
 
-  const order = await getManufacturerOrder(fabricante.id, reference);
+  // Con el código compartido de Cristhian, el pedido puede estar en
+  // cualquiera de sus fabricantes habilitados (Premium o Tradicional) —
+  // se prueba cada uno hasta encontrarlo.
+  let fabricante = null;
+  let order = null;
+  for (const candidate of fabricantes) {
+    const found = await getManufacturerOrder(candidate.id, reference);
+    if (found) {
+      fabricante = candidate;
+      order = found;
+      break;
+    }
+  }
   if (!order) {
     return Response.json({ error: "No se encontró ese pedido" }, { status: 404 });
   }

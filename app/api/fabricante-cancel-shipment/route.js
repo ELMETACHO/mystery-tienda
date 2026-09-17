@@ -2,7 +2,7 @@ import { cancelShipment, findShipmentIdByTrackingNumber } from "../../lib/skydro
 import { getManualShipmentRequest } from "../../lib/manualShipments";
 import { getManufacturerOrder, markManufacturerOrderCancelled } from "../../lib/manufacturerFinance";
 import { sendGuideCancelledEmail, cancelScheduledEmail, sendGuideCorrectionEmail } from "../../lib/email";
-import { getFabricanteByAccessCode } from "../../lib/fabricantes";
+import { getFabricantesByAccessCode } from "../../lib/fabricantes";
 
 // Botón "Cancelar guía" de /fabricante. Mismo código de acceso que
 // /api/fabricante-status (sin ADMIN_PASSWORD) — ver app/fabricante/page.js.
@@ -19,8 +19,8 @@ import { getFabricanteByAccessCode } from "../../lib/fabricantes";
 export async function POST(request) {
   const { code, reference, reason } = await request.json().catch(() => ({}));
 
-  const fabricante = getFabricanteByAccessCode(code);
-  if (!fabricante) {
+  const fabricantes = getFabricantesByAccessCode(code);
+  if (fabricantes.length === 0) {
     return Response.json({ error: "Código incorrecto" }, { status: 401 });
   }
   if (!reference) {
@@ -30,7 +30,17 @@ export async function POST(request) {
     return Response.json({ error: "El motivo es obligatorio" }, { status: 400 });
   }
 
-  const order = await getManufacturerOrder(fabricante.id, reference);
+  // Ver comentario equivalente en fabricante-generate-shipment/route.js.
+  let fabricante = null;
+  let order = null;
+  for (const candidate of fabricantes) {
+    const found = await getManufacturerOrder(candidate.id, reference);
+    if (found) {
+      fabricante = candidate;
+      order = found;
+      break;
+    }
+  }
   if (!order) {
     return Response.json({ error: "No se encontró ese pedido" }, { status: 404 });
   }

@@ -2,33 +2,37 @@ import { FRAME_TYPES } from "./order";
 
 // Configuración de los dos fabricantes independientes (agosto 2026):
 // - "daniela" produce Premium (con marco trasero), comisión fija $15.000.
-//   El id interno se quedó como "daniela" aunque el fabricante real
-//   cambió a su hermano Cristhian (septiembre 2026) — no se renombró la
-//   clave para no romper el fabricanteId ya guardado en pedidos
-//   históricos; el correo/nombre visible sí apunta a Cristhian ahora.
-// - "oscar" produce Tradicional (sin marco), comisión $0 — es el dueño
-//   mismo, lo fabrica él.
-// El correo/código de acceso de cada uno vive en variables de entorno
-// (agregar también en Vercel, ver CLAUDE.md) para no hardcodear datos de
-// contacto reales en el código.
+// - "oscar" produce Tradicional (sin marco), comisión fija $10.000.
+// Ambos ids internos se quedaron con sus nombres originales (Daniela y
+// Oscar-dueño ya no fabrican nada — ver CLAUDE.md) para no romper el
+// fabricanteId ya guardado en pedidos/pagos históricos; correo y código
+// de acceso sí apuntan al fabricante real actual.
+//
+// Desde sept 2026 AMBOS los fabrica Cristhian, con el MISMO código de
+// acceso (accessCode) a propósito — así entra una sola vez a /fabricante
+// y ve las dos colas (Premium/Tradicional) como pestañas separadas, en
+// vez de tener que salir y volver a entrar con un código distinto por
+// cada una (ver getFabricantesByAccessCode abajo y app/fabricante/page.js).
+// Los saldos y correos de "nuevo pedido" siguen 100% separados por
+// fabricanteId — compartir el código de entrada no mezcla la plata de
+// cada cola.
 export const FABRICANTES = {
   daniela: {
     id: "daniela",
+    label: "Premium",
     frameType: "premium",
     email: process.env.FABRICANTE_EMAIL_PREMIUM,
     accessCode: process.env.FABRICANTE_ACCESS_CODE_PREMIUM,
   },
-  // El id interno se quedó como "oscar" (era el dueño mismo antes de
-  // sept 2026) aunque el fabricante real ahora es Cristhian también acá
-  // — mismo criterio que el id "daniela" arriba: no se renombra la
-  // clave para no romper el fabricanteId ya guardado en pedidos/pagos
-  // históricos. Cristhian entra a /fabricante con un código DISTINTO al
-  // de Premium (dos colas separadas, mismo correo) — ver .env.local.
   oscar: {
     id: "oscar",
+    label: "Tradicional",
     frameType: "tradicional",
     email: process.env.FABRICANTE_EMAIL_TRADICIONAL,
-    accessCode: process.env.FABRICANTE_ACCESS_CODE_TRADICIONAL,
+    // Mismo código que Premium a propósito — ver comentario grande
+    // arriba. FABRICANTE_ACCESS_CODE_TRADICIONAL queda sin uso (se deja
+    // definida por si se necesita separar de nuevo en el futuro).
+    accessCode: process.env.FABRICANTE_ACCESS_CODE_PREMIUM,
   },
 };
 
@@ -37,12 +41,21 @@ export function getFabricanteForFrameType(frameType) {
   return entry || FABRICANTES[FRAME_TYPES.premium.fabricanteId];
 }
 
-// Resuelve qué fabricante corresponde a un código de acceso ingresado en
-// /fabricante — usado por /api/fabricante-status para autenticar Y saber a
-// cuál fabricante limitar todas las lecturas/escrituras subsecuentes del
-// panel. Nunca confiar en un fabricanteId que venga suelto del cliente sin
-// pasar por acá primero.
+// Resuelve el/los fabricante(s) que corresponden a un código de acceso
+// ingresado en /fabricante — puede devolver más de uno si el código es
+// compartido (ver comentario grande arriba). Usado por
+// /api/fabricante-status para autenticar y armar una pestaña por cada
+// fabricante que le corresponda a ese código. Nunca confiar en un
+// fabricanteId que venga suelto del cliente sin pasar por acá primero.
+export function getFabricantesByAccessCode(code) {
+  if (!code) return [];
+  return Object.values(FABRICANTES).filter((f) => f.accessCode && f.accessCode === code);
+}
+
+// Variante de un solo resultado, para las acciones (cancelar/generar
+// guía) que además reciben una `reference` de pedido puntual: prueban
+// cada fabricante que el código habilite hasta encontrar el que
+// realmente tiene ese pedido (ver los 3 usos en app/api/fabricante-*).
 export function getFabricanteByAccessCode(code) {
-  if (!code) return null;
-  return Object.values(FABRICANTES).find((f) => f.accessCode && f.accessCode === code) || null;
+  return getFabricantesByAccessCode(code)[0] || null;
 }

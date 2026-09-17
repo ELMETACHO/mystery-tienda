@@ -1,10 +1,17 @@
 import { getManufacturerPendingOrders } from "../../lib/manufacturerFinance";
 import { sendFabricantePaymentRequestEmail } from "../../lib/email";
-import { getFabricanteByAccessCode } from "../../lib/fabricantes";
+import { getFabricantesByAccessCode } from "../../lib/fabricantes";
 
 // Botón "Cobrar saldo" de /fabricante — mismo código de acceso que
 // /api/fabricante-status. Nunca manda correo si no hay saldo pendiente
 // (ver balance === 0 abajo): evita avisos vacíos al admin.
+//
+// Con el código compartido de Cristhian (ver app/lib/fabricantes.js) un
+// mismo código habilita 2 fabricantes (Premium/Tradicional) con saldos
+// DISTINTOS — por eso acá además del código se exige `fabricanteId`
+// explícito (qué pestaña del panel apretó "Cobrar saldo"), validado
+// contra los fabricantes que ese código realmente habilita — nunca se
+// confía en un fabricanteId suelto sin esa validación.
 //
 // IMPORTANTE: sendFabricantePaymentRequestEmail SIEMPRE manda el aviso al
 // correo fijo del dueño (OWNER_PAYMENT_REQUEST_EMAIL), sin importar qué
@@ -13,9 +20,10 @@ import { getFabricanteByAccessCode } from "../../lib/fabricantes";
 // fabricanteId acá solo identifica DE QUIÉN es el saldo (para incluirlo
 // en el cuerpo del correo), nunca decide el destinatario.
 export async function POST(request) {
-  const { code } = await request.json().catch(() => ({}));
+  const { code, fabricanteId } = await request.json().catch(() => ({}));
 
-  const fabricante = getFabricanteByAccessCode(code);
+  const fabricantes = getFabricantesByAccessCode(code);
+  const fabricante = fabricantes.find((f) => f.id === fabricanteId) || fabricantes[0];
   if (!fabricante) {
     return Response.json({ error: "Código incorrecto" }, { status: 401 });
   }
