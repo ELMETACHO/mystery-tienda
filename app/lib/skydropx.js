@@ -128,6 +128,33 @@ const ORIGIN = {
   country: "CO",
 };
 
+// Correo del remitente (address_from.email) que se le manda a Skydropx.
+// Caso real (septiembre 2026): al cambiar de fabricante, MANUFACTURER_EMAIL
+// quedó guardado en Vercel con un salto de línea invisible al final
+// ("correo@gmail.com\n", típico al pegar en el panel) — las
+// transportadoras (Envía y Servientrega) lo rechazaron con
+// SHIPPER_EMAIL_NOT_VALID y NINGUNA guía se pudo generar, aunque el
+// correo en sí era perfectamente válido. Por eso acá el valor SIEMPRE se
+// limpia (trim) y se valida el formato antes de usarlo; si sigue sin
+// ser un correo válido, cae a un respaldo válido en vez de mandar
+// basura a la transportadora. RESEND_FROM_EMAIL trae el formato
+// "Nombre <correo@dominio>", así que del respaldo se extrae solo el
+// correo entre <>.
+const BASIC_EMAIL_REGEX = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
+const FALLBACK_SHIPPER_EMAIL = "contacto@elmetacho.com";
+
+function getShipperEmail() {
+  const candidates = [
+    process.env.MANUFACTURER_EMAIL,
+    (process.env.RESEND_FROM_EMAIL || "").match(/<([^>]+)>/)?.[1] || process.env.RESEND_FROM_EMAIL,
+  ];
+  for (const candidate of candidates) {
+    const cleaned = String(candidate || "").trim();
+    if (BASIC_EMAIL_REGEX.test(cleaned)) return cleaned;
+  }
+  return FALLBACK_SHIPPER_EMAIL;
+}
+
 // Confirmado por soporte junto con el payload de ejemplo: area_level1/2
 // van en mayúsculas (con tilde, no sin ella). Se aplica a los nombres de
 // departamento/ciudad/barrio que vienen del formulario de checkout.
@@ -383,7 +410,7 @@ async function createShipment({ rate, order, customer, reference, isCod }) {
         package_content: "Cuadro decorativo personalizado",
         address_from: {
           name: ORIGIN.name,
-          email: process.env.MANUFACTURER_EMAIL || process.env.RESEND_FROM_EMAIL,
+          email: getShipperEmail(),
           reference: "Origen Mystery",
           phone: ORIGIN.phone,
           street1: ORIGIN.street1,
@@ -394,7 +421,7 @@ async function createShipment({ rate, order, customer, reference, isCod }) {
         },
         address_to: {
           name: customer.fullName,
-          email: customer.email,
+          email: String(customer.email || "").trim(),
           reference: customer.neighborhood || customer.city,
           phone: destinationPhone,
           street1: customer.street,
