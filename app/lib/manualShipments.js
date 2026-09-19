@@ -38,6 +38,22 @@ function manualShipmentKey(reference) {
 
 const MANUAL_SHIPMENT_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 días
 
+async function makeTinyThumbnail(dataUrl) {
+  try {
+    const match = /^data:image\/[a-z+.-]+;base64,(.+)$/i.exec(dataUrl || "");
+    if (!match) return null;
+    const { default: sharp } = await import("sharp");
+    const buf = await sharp(Buffer.from(match[1], "base64"))
+      .resize(160, 160, { fit: "cover" })
+      .jpeg({ quality: 60 })
+      .toBuffer();
+    return `data:image/jpeg;base64,${buf.toString("base64")}`;
+  } catch (err) {
+    console.error("[manualShipments] No se pudo generar la miniatura:", err);
+    return null;
+  }
+}
+
 // Nunca lanza: si esto falla, el pedido de todos modos ya se confirmó (ver
 // confirmApprovedOrder.js / app/api/confirm-cod-order/route.js) — el único
 // efecto de que esto falle es que el botón del correo del fabricante no
@@ -73,13 +89,19 @@ export async function saveManualShipmentRequest({
     // pocos bytes, no una imagen completa. Para pedidos de /crear
     // (sin productId) queda en null a propósito; el panel del fabricante
     // (ver app/fabricante/page.js) muestra un ícono genérico en ese caso.
+    // Pedidos de /crear: miniatura diminuta (~5KB, JPEG 160px) generada acá
+    // para que /fabricante pueda mostrar la foto sin guardar la original.
+    const thumbnailUrl = order.productId
+      ? order.croppedImage || null
+      : await makeTinyThumbnail(order.croppedImage);
+
     const minimalOrder = {
       sizeId: order.sizeId,
       sizeLabel: order.sizeLabel,
       frameType: order.frameType || DEFAULT_FRAME_TYPE,
       priceCOP: order.priceCOP,
       productId: order.productId || null,
-      thumbnailUrl: order.productId ? order.croppedImage || null : null,
+      thumbnailUrl,
       needsAiUpscale: order.needsAiUpscale || false,
       aiPhotoDiagnosis: order.aiPhotoDiagnosis || null,
     };

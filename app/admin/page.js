@@ -29,6 +29,12 @@ const SECTIONS = [
     description: "Ingresos, costos, comisiones y utilidad neta por período.",
     icon: "📊",
   },
+  {
+    href: "/admin/inventario",
+    title: "Inventario",
+    description: "Stock de cuadros y soportes; te avisa cuándo pedir más.",
+    icon: "📦",
+  },
 ];
 
 export default function AdminHubPage() {

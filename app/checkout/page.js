@@ -1271,7 +1271,7 @@ function CheckoutForm() {
                 ? "Este pedido es un regalo — no requiere pago."
                 : paymentMethod === "cod"
                 ? `Anticipo de ${formatCOP(COD_DEPOSIT_COP)} + excedente al recibir · Tarjeta / PSE con Wompi. Sin costo adicional por pagar contraentrega.`
-                : "Tarjeta / PSE con Wompi — sandbox de pruebas, no se realizan cobros reales."}
+                : "🔒 Pago 100% seguro con Wompi · Tarjeta o PSE. Tus datos de pago van cifrados y nunca los almacenamos."}
             </p>
             <p className="text-center text-xs text-[#8a94ac]">
               Al pagar aceptas nuestras{" "}

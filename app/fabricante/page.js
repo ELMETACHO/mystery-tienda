@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
+import InventoryPanel from "../components/InventoryPanel";
 import { useSearchParams } from "next/navigation";
 import { formatCOP, SIZES } from "../lib/order";
 import PasswordInput from "../components/PasswordInput";
@@ -22,6 +23,13 @@ function formatDate(iso) {
 // carga, confirmación) sin afectar al resto de la lista. `code` es el
 // código de acceso ya validado (mismo que /api/fabricante-status), se
 // reenvía en cada acción porque estos endpoints no usan cookie de sesión.
+// Los links de miniatura de Drive fallan como <img> en algunos dispositivos;
+// nuestra ruta /api/catalog-thumbnail/[id] sí es confiable.
+function reliableThumb(url) {
+  const m = /^https:\/\/drive\.google\.com\/thumbnail\?id=([^&]+)/.exec(url || "");
+  return m ? `/api/catalog-thumbnail/${m[1]}` : url;
+}
+
 function OrderRow({ order, code, onUpdated }) {
   const [o, setO] = useState(order);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -94,7 +102,7 @@ function OrderRow({ order, code, onUpdated }) {
         {o.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={o.thumbnailUrl}
+            src={reliableThumb(o.thumbnailUrl)}
             alt=""
             className="h-14 w-14 shrink-0 rounded-lg border border-black/10 object-cover"
           />
@@ -226,6 +234,7 @@ function FabricanteContent() {
   // cuál se muestra; los saldos NUNCA se suman entre pestañas.
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState(null);
+  const [view, setView] = useState("pedidos"); // "pedidos" | "inventario"
   const [isRequestingPayment, setIsRequestingPayment] = useState(false);
   const [paymentRequestMessage, setPaymentRequestMessage] = useState("");
 
@@ -344,6 +353,27 @@ function FabricanteContent() {
 
       {data && activeData && (
         <div className="flex w-full flex-col gap-4 animate-ready-in">
+          <div className="flex gap-2 rounded-full border border-black/10 bg-[#fffaf0] p-1">
+            {[
+              ["pedidos", "Pedidos"],
+              ["inventario", "📦 Inventario"],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setView(id)}
+                className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  view === id ? "bg-accent text-white shadow-sm" : "text-[#33456b] hover:text-[#1b2a4a]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {view === "inventario" && <InventoryPanel code={activeCode} />}
+
+          {view === "pedidos" && (<>
           {/* Pestañas: solo se muestran si el código habilita más de un
               fabricante (código compartido de Cristhian, Premium +
               Tradicional) — con un solo fabricante no hay nada que
@@ -418,6 +448,7 @@ function FabricanteContent() {
               ))}
             </ul>
           )}
+          </>)}
         </div>
       )}
       </div>

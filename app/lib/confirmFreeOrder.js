@@ -1,8 +1,10 @@
+import { after } from "next/server";
 import { sendOrderEmails } from "./email";
 import { recordOrderAndCheckReturning } from "./loyalty";
 import { processCatalogProductPurchase } from "./catalogPurchase";
 import { claimTransaction, releaseTransactionClaim } from "./idempotency";
 import { saveCompletedOrder } from "./completedOrders";
+import { consumeStockForOrder } from "./inventory";
 import { saveManualShipmentRequest } from "./manualShipments";
 import { grantDiscountCode } from "./discount";
 import { redeemGiftCode } from "./giftCodes";
@@ -69,6 +71,10 @@ export async function confirmFreeOrder({
     });
 
     await recordCrmEntry({ order, customer, paymentMethod: "regalo" });
+
+    // Descuenta del inventario físico — diferido con after() para que jamás
+    // demore ni afecte al cliente (idempotente, nunca lanza, solo lo ve el admin).
+    after(() => consumeStockForOrder({ order, reference: transaction.reference }));
 
     const { printImageBase64 } = await processCatalogProductPurchase(order);
 

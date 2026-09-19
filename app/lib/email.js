@@ -1348,3 +1348,30 @@ export async function sendCartRecoveryEmail({
     html: wrapEmailHtml(cartRecoveryEmailHtml({ customer, order, resumeUrl })),
   });
 }
+
+// ---------------------------------------------------------------------
+// Alerta de inventario bajo — disparada desde app/lib/inventory.js cuando
+// una referencia cruza su umbral (o se agota) tras una venta real.
+// ---------------------------------------------------------------------
+export async function sendLowStockEmail(items) {
+  const rows = items
+    .map(
+      (i) =>
+        `<li style="margin:0 0 6px 0;"><strong>${i.label}</strong>: ${
+          i.quantity <= 0 ? "AGOTADO" : `quedan ${i.quantity}`
+        }</li>`
+    )
+    .join("");
+  const html = `
+<div style="font-family:${FONT_STACK};padding:24px;color:${BRAND.ink};">
+  <p style="font-size:18px;font-weight:bold;margin:0 0 12px 0;">⚠️ Stock bajo — hay que pedir más a los proveedores</p>
+  <ul style="padding-left:20px;margin:0 0 16px 0;">${rows}</ul>
+  <p style="margin:0;"><a href="${SITE_URL}/admin/inventario">Ver inventario completo</a></p>
+</div>`;
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: ADMIN_EMAIL,
+    subject: `⚠️ Stock bajo: ${items.map((i) => i.label).join(", ")}`,
+    html: wrapEmailHtml(html),
+  });
+}

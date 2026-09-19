@@ -5,6 +5,7 @@ import { processCatalogProductPurchase } from "./catalogPurchase";
 import { upscaleImageDataUrl } from "./upscaleImage";
 import { claimTransaction, releaseTransactionClaim } from "./idempotency";
 import { saveCompletedOrder } from "./completedOrders";
+import { consumeStockForOrder } from "./inventory";
 import { saveManualShipmentRequest } from "./manualShipments";
 import { grantDiscountCode, markDiscountUsed } from "./discount";
 import { recordReferralSale } from "./referrals";
@@ -64,6 +65,10 @@ export async function confirmApprovedCodOrder({ order, customer, transaction }) 
 
     // Nunca lanza.
     await recordCrmEntry({ order, customer, paymentMethod: "cod" });
+
+    // Descuenta del inventario físico — diferido con after() para que jamás
+    // demore ni afecte al cliente (idempotente, nunca lanza, solo lo ve el admin).
+    after(() => consumeStockForOrder({ order, reference: transaction.reference }));
 
     const { printImageBase64 } = await processCatalogProductPurchase(order);
 

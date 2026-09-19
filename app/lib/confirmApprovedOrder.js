@@ -6,6 +6,7 @@ import { upscaleImageDataUrl } from "./upscaleImage";
 import { SIZES } from "./order";
 import { claimTransaction, releaseTransactionClaim } from "./idempotency";
 import { saveCompletedOrder } from "./completedOrders";
+import { consumeStockForOrder } from "./inventory";
 import { saveManualShipmentRequest } from "./manualShipments";
 import { grantDiscountCode, markDiscountUsed } from "./discount";
 import { recordReferralSale } from "./referrals";
@@ -88,6 +89,10 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
     // la transportadora — así pedidos de prueba, cancelados o nunca
     // fabricados nunca generan una deuda fantasma. Nunca lanza.
     await recordCrmEntry({ order, customer, paymentMethod: "wompi" });
+
+    // Descuenta del inventario físico — diferido con after() para que jamás
+    // demore ni afecte al cliente (idempotente, nunca lanza, solo lo ve el admin).
+    after(() => consumeStockForOrder({ order, reference: transaction.reference }));
 
     // Si el pedido viene de /producto/[id] (catálogo), incrementa el
     // contador de ventas de ese producto y trae el archivo real de
