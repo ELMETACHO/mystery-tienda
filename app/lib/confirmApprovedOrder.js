@@ -7,6 +7,7 @@ import { SIZES } from "./order";
 import { claimTransaction, releaseTransactionClaim } from "./idempotency";
 import { saveCompletedOrder } from "./completedOrders";
 import { consumeStockForOrder } from "./inventory";
+import { savePaidOrderBackup } from "./paidBackup";
 import { saveManualShipmentRequest } from "./manualShipments";
 import { grantDiscountCode, markDiscountUsed } from "./discount";
 import { recordReferralSale } from "./referrals";
@@ -32,6 +33,19 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
   }
 
   try {
+    // Respaldo permanente (1 año) del pedido pagado, con su imagen — se hace
+    // primero y en segundo plano, para que exista aunque cualquier paso
+    // posterior falle. Nunca demora ni afecta al cliente.
+    after(() =>
+      savePaidOrderBackup({
+        reference: transaction.reference,
+        order,
+        customer,
+        paymentMethod: "wompi",
+        transactionId: transaction.id,
+      })
+    );
+
     // Historial de pedidos por correo en KV: se registra el pedido
     // actual y se detecta si el cliente ya tenía uno previo, ANTES de
     // enviar el correo de confirmación.

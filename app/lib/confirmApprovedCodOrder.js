@@ -6,6 +6,7 @@ import { upscaleImageDataUrl } from "./upscaleImage";
 import { claimTransaction, releaseTransactionClaim } from "./idempotency";
 import { saveCompletedOrder } from "./completedOrders";
 import { consumeStockForOrder } from "./inventory";
+import { savePaidOrderBackup } from "./paidBackup";
 import { saveManualShipmentRequest } from "./manualShipments";
 import { grantDiscountCode, markDiscountUsed } from "./discount";
 import { recordReferralSale } from "./referrals";
@@ -35,6 +36,19 @@ export async function confirmApprovedCodOrder({ order, customer, transaction }) 
   const saldoPendiente = order.priceCOP - COD_DEPOSIT_COP;
 
   try {
+    // Respaldo permanente (1 año) del pedido pagado, con su imagen — se hace
+    // primero y en segundo plano, para que exista aunque cualquier paso
+    // posterior falle. Nunca demora ni afecta al cliente.
+    after(() =>
+      savePaidOrderBackup({
+        reference: transaction.reference,
+        order,
+        customer,
+        paymentMethod: "cod",
+        transactionId: transaction.id,
+      })
+    );
+
     // Nunca lanza (ver manualShipments.js) — si esto falla, el pedido
     // sigue su curso igual; el único efecto es que el botón del correo
     // del fabricante no podrá generar la guía más adelante.

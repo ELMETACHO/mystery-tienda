@@ -562,16 +562,30 @@ function CheckoutForm() {
             order: fullOrder,
             customer,
           }),
+          signal: AbortSignal.timeout(20000),
         });
         confirmation = await res.json();
+        if (res.status === 402) {
+          // El servidor SÍ verificó y Wompi NO lo tiene aprobado.
+          setIsPaying(false);
+          setPayError("El pago no fue aprobado. Puedes intentarlo de nuevo.");
+          return;
+        }
         if (!res.ok) throw new Error(confirmation.error || "Verificación fallida");
       } catch (err) {
         console.error(err);
-        setIsPaying(false);
-        setPayError(
-          "No pudimos confirmar tu pago con Wompi. Si el cobro se realizó, contáctanos."
-        );
-        return;
+        // Wompi ya aprobó el pago en el navegador: NUNCA se le muestra un
+        // error al cliente por un problema interno nuestro. Sigue a la
+        // pantalla final; la confirmación del pedido se recupera en
+        // segundo plano (webhook de Wompi + cron de conciliación).
+        if (transaction.status !== "APPROVED") {
+          setIsPaying(false);
+          setPayError(
+            "No pudimos confirmar tu pago con Wompi. Si el cobro se realizó, contáctanos."
+          );
+          return;
+        }
+        confirmation = { reference, status: transaction.status, isReturningCustomer: false };
       }
 
       setIsPaying(false);
@@ -691,16 +705,34 @@ function CheckoutForm() {
             order: fullOrder,
             customer,
           }),
+          signal: AbortSignal.timeout(20000),
         });
         confirmation = await res.json();
+        if (res.status === 402) {
+          setIsConfirmingCod(false);
+          setPayError("El anticipo no fue aprobado. Puedes intentarlo de nuevo.");
+          return;
+        }
         if (!res.ok) throw new Error(confirmation.error || "Verificación fallida");
       } catch (err) {
         console.error(err);
-        setIsConfirmingCod(false);
-        setPayError(
-          "No pudimos confirmar tu anticipo con Wompi. Si el cobro se realizó, contáctanos."
-        );
-        return;
+        // Igual que en handlePay: si Wompi aprobó, el cliente ve su pantalla
+        // final sin importar lo que falle internamente; el pedido se
+        // recupera en segundo plano.
+        if (transaction.status !== "APPROVED") {
+          setIsConfirmingCod(false);
+          setPayError(
+            "No pudimos confirmar tu anticipo con Wompi. Si el cobro se realizó, contáctanos."
+          );
+          return;
+        }
+        confirmation = {
+          reference,
+          status: transaction.status,
+          isReturningCustomer: false,
+          anticipoPagado: COD_DEPOSIT_COP,
+          saldoPendiente: fullOrder.priceCOP - COD_DEPOSIT_COP,
+        };
       }
 
       setIsConfirmingCod(false);
