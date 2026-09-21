@@ -2,6 +2,9 @@ import { getAllPendingOrders, markCartRecoveryEmailSent } from "../../../lib/pen
 import { getCompletedOrderByReference } from "../../../lib/completedOrders";
 import { generateCartRecoveryToken } from "../../../lib/cartRecoveryToken";
 import { sendCartRecoveryEmail } from "../../../lib/email";
+import { fetchWompiTransactionsByReference } from "../../../lib/wompi";
+import { confirmApprovedOrder } from "../../../lib/confirmApprovedOrder";
+import { confirmApprovedCodOrder } from "../../../lib/confirmApprovedCodOrder";
 import { claimCartRecoveryEmail, releaseCartRecoveryEmailClaim } from "../../../lib/idempotency";
 
 // Vercel Hobby (el plan actual) solo permite cron jobs nativos de una
@@ -32,8 +35,39 @@ export async function GET(request) {
   const pendingOrders = await getAllPendingOrders();
   const now = Date.now();
 
+  // Conciliación: un pedido "pendiente" cuyo pago SÍ fue aprobado en Wompi
+  // es un pago real que no se confirmó (ni por el navegador del cliente ni
+  // por el webhook) — se confirma acá con los datos guardados. Es
+  // idempotente (claimTransaction), así que no duplica nada si otro camino
+  // ya lo procesó. Nunca se le manda correo de "carrito abandonado" a
+  // alguien que ya pagó.
+  const reconciled = new Set();
+  for (const pending of pendingOrders) {
+    const createdAt = new Date(pending.createdAt || 0).getTime();
+    if (!createdAt || now - createdAt < 5 * 60 * 1000) continue;
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      if (await getCompletedOrderByReference(pending.reference)) continue;
+      // eslint-disable-next-line no-await-in-loop
+      const txs = await fetchWompiTransactionsByReference(pending.reference);
+      const approved = txs.find((t) => t.status === "APPROVED");
+      if (!approved) continue;
+
+      const confirmFn = pending.paymentMethod === "cod" ? confirmApprovedCodOrder : confirmApprovedOrder;
+      // eslint-disable-next-line no-await-in-loop
+      const result = await confirmFn({ order: pending.order, customer: pending.customer, transaction: approved });
+      reconciled.add(pending.reference);
+      console.error(
+        `[cron/reconcile] Pago aprobado sin confirmar RECUPERADO: reference=${pending.reference} alreadyProcessed=${Boolean(result?.alreadyProcessed)}`
+      );
+    } catch (err) {
+      console.error(`[cron/reconcile] Falló la conciliación de reference=${pending.reference}:`, err);
+    }
+  }
+
   const dueOrders = [];
   for (const pending of pendingOrders) {
+    if (reconciled.has(pending.reference)) continue;
     if (pending.cartRecoveryEmailSentAt) continue;
     if (!pending.customer?.email || !pending.order?.croppedImage) continue;
 
@@ -92,6 +126,7 @@ export async function GET(request) {
   return Response.json({
     ok: true,
     checked: pendingOrders.length,
+    reconciled: reconciled.size,
     due: dueOrders.length,
     sent,
     failed,
