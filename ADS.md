@@ -184,3 +184,91 @@ decisión final de cómo repartir esto en la práctica.**
 - [PMax vs Search: Google Ads Budget Reallocation 2026](https://jetfuel.agency/performance-max-vs-search-how-should-ecommerce-brands-reallocate-google-ads-budget-in-2026/)
 - [Reddit Ads Minimum Spend / small budget consensus](https://www.stackmatix.com/blog/reddit-ads-minimum-spend)
 - [Credit vs debit card fraud protection for ad spend](https://www.moneycrashers.com/credit-vs-debit-fraud-protection)
+
+---
+
+## Campaña 1 — TikTok "Mystery - Ventas - Sep2026" (resultados reales, 14–22 sept 2026)
+
+- **Gasto total:** $400.000 COP. **Conversiones reportadas por TikTok:** 7.
+  **CPA real:** $57.142,86 COP/venta (dato de TikTok, coincide exacto con
+  400.000/7).
+- **Cruce contra pedidos reales del sitio** (Redis, excluyendo compras de
+  prueba del propio dueño): 7 pedidos reales confirmados en la misma
+  ventana (14–22 sept) — el número de TikTok coincide con ventas reales,
+  no son conversiones fantasma.
+  - Ingreso total de esas 7 ventas: **$543.000 COP** (mezcla de 30x40/
+    40x50/50x70, Premium y Tradicional).
+  - Ganancia neta real de esas 7 ventas (margen $17.000-27.000/venta, ver
+    tabla de arriba): **≈$150.000-190.000 COP**.
+  - Resultado: **el gasto publicitario ($400.000) fue 2-2.5x más grande
+    que TODA la ganancia neta de lo que vendió** — la campaña no se pagó
+    sola. Pérdida neta de la ronda: **≈$210.000-250.000 COP**.
+  - CPA real ($57.143) está **4-11x por encima** del CPA objetivo
+    ($5.000-13.500) definido arriba.
+
+### Auditoría técnica del píxel (TikTok Events Manager, revisado 22 sept 2026)
+Diagnóstico "Crítico" en 4 puntos — TODOS con impacto de CPA cuantificado
+por el propio TikTok:
+1. **Falta `content_id` en el 100% de los eventos** (11 días de
+   antigüedad) — TikTok reporta -8% de CPA en Video Shopping Ads cuando
+   este campo llega bien. `app/lib/gtm.js` sí manda `item_id` (el sizeId,
+   ej. "30x40") dentro de `ecommerce.items[0]` en cada evento — el
+   problema está del lado del TAG de TikTok dentro de GTM (tagmanager.
+   google.com), que no está mapeando esa variable al parámetro
+   `content_id` que espera TikTok. **Revisar en GTM la configuración del
+   tag de TikTok Pixel → Content ID → apuntar a la variable de capa de
+   datos `ecommerce.items.0.item_id`.**
+2. **Falta correo/teléfono en 58% de los eventos, y el teléfono llega
+   inválido en 8%** — TikTok reporta -13% de CPA promedio cuando llegan
+   completos y válidos (esto es "Advanced Matching": permite a TikTok
+   reconocer al mismo usuario entre dispositivos). El teléfono debe ir en
+   formato E.164 (`+57...`, solo dígitos tras el +) para no marcarse como
+   inválido.
+3. **"Eventos ausentes" — falta el embudo completo**: hoy solo llegan
+   señales de `PageView`/`InitiateCheckout`/`Purchase`. No hay
+   `ViewContent` (ver un diseño del catálogo), `AddToCart` (equivalente:
+   confirmar tamaño en `/crear`), `AddPaymentInfo`, ni
+   `CompleteRegistration`. TikTok reporta -5.7% a -7.7% de CPA cuando el
+   embudo completo está instrumentado — con solo 2 señales, el algoritmo
+   tiene mucha menos información para decidir a quién mostrarle el
+   anuncio.
+4. **Sin catálogo conectado al píxel** — bloquea el "product match" (que
+   TikTok pueda mostrar el diseño específico que alguien vio, no solo un
+   anuncio genérico) para remarketing dinámico más adelante.
+
+**Ninguno de estos 4 puntos es un problema del código del sitio** (el
+`dataLayer` ya manda lo necesario) — son configuración pendiente dentro
+del contenedor de GTM (tagmanager.google.com), específicamente en el tag
+del píxel de TikTok. Corregirlos no cuesta presupuesto de pauta, solo
+tiempo de configuración, y TikTok mismo cuantifica la mejora esperada.
+
+### Decisión para la Campaña 2
+- **Arreglar los 4 puntos del píxel ANTES de recargar presupuesto** — es
+  la mejora de más alto impacto por menor esfuerzo disponible ahora
+  mismo, y no cuesta nada de pauta.
+- **Seguir solo en TikTok por ahora** — Meta se suma después como capa de
+  RETARGETING (remarketing a quien ya vio el video o inició checkout sin
+  pagar), no como una segunda campaña fría paralela — es el modelo que
+  reporta mejor resultado combinado según la investigación (TikTok para
+  descubrimiento, Meta para volver a impactar a quien ya mostró interés).
+  Repartir el presupuesto entre las dos desde cero, con este tamaño de
+  presupuesto, diluye la señal de ambas (ver sección 4 arriba).
+- **Concentrar en menos videos, mejor elegidos**: en vez de rotar los 8
+  videos parejo, dejar correr esta ronda 5-7 días sin tocar nada, medir
+  cuál tuvo mejor "hook rate" (retención de los primeros 3 segundos) y
+  quedarse con 2-3 ganadores para la siguiente tanda — coincide con el
+  patrón "escribe 11 variaciones de gancho, prueba 5, escala 2" que
+  reporta la comunidad.
+- **Fórmula de guion recomendada para nuevas piezas** (gancho 0-3s →
+  problema 3-10s → producto como solución 10-20s → CTA final 3-5s,
+  20-34s de duración total, nunca mencionar la marca en los primeros 3
+  segundos): probada por la comunidad como la estructura que más
+  convierte en UGC de TikTok — ver fuentes.
+
+## Fuentes consultadas (ronda 2, sept 2026)
+- [TikTok Ads Conversion Rate: 10 Signs It's Working — Darkroom](https://www.darkroomagency.com/observatory/10-signs-of-good-tiktok-ad-conversions-and-how-to-achieve-them)
+- [2026 TikTok Conversion Ads That Actually Lower Your CPA — TikAdTools](https://tikadtools.com/blog/tiktok-conversion-ads/)
+- [UGC Script Templates: 10 Proven Structures & 20 Hook Formulas (2026) — Reloop](https://reloop.so/blog/article/ugc-script-templates/)
+- [The First 3 Seconds: UGC Ad Hooks — Hustler Marketing](https://www.hustlermarketing.com/blog/how-to-write-ugc-ad-hooks-that-stop-the-scroll-on-meta-and-tiktok/)
+- [Facebook Ads vs TikTok Ads: Which Platform Wins in 2026? — AdManage](https://admanage.ai/blog/facebook-ads-vs-tiktok-ads)
+- [TikTok Ads vs. Facebook Ads — Triple Whale](https://www.triplewhale.com/blog/tiktok-ads-vs-facebook-ads)
