@@ -86,6 +86,16 @@ export default function ChatWidget() {
   const [isSendingLead, setIsSendingLead] = useState(false);
   const [leadError, setLeadError] = useState("");
 
+  // "Estado de mi pedido": mini-formulario propio (NO pasa por la IA — ver
+  // /api/chat-order-status) que pide un dato de contacto y responde con el
+  // estado real desde Redis. hasSentMessage oculta los chips de acceso
+  // rápido después del primer mensaje real, para no estorbar una vez la
+  // conversación ya arrancó (siguen accesibles reabriendo el chat).
+  const [showOrderStatusForm, setShowOrderStatusForm] = useState(false);
+  const [orderContact, setOrderContact] = useState("");
+  const [isCheckingOrder, setIsCheckingOrder] = useState(false);
+  const [hasSentMessage, setHasSentMessage] = useState(false);
+
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -95,11 +105,17 @@ export default function ChatWidget() {
 
   if (HIDDEN_PREFIXES.some((p) => pathname?.startsWith(p))) return null;
 
-  const handleSend = async (e) => {
-    e.preventDefault();
-    const text = input.trim();
+  // presetText: usado por los chips de acceso rápido (preguntas frecuentes)
+  // para enviar una pregunta canónica sin que el cliente tenga que
+  // escribirla — mismo camino que un mensaje normal (pasa por la IA), así
+  // la respuesta queda igual de al día que cualquier otra.
+  const handleSend = async (e, presetText) => {
+    e?.preventDefault();
+    const text = (presetText ?? input).trim();
     if (!text || isSending || isLimited) return;
 
+    setHasSentMessage(true);
+    setShowOrderStatusForm(false);
     const nextMessages = [...messages, { role: "user", content: text }];
     setMessages(nextMessages);
     setInput("");
@@ -152,6 +168,47 @@ export default function ChatWidget() {
       ]);
     } finally {
       setIsSending(false);
+    }
+  };
+
+  // Consulta de estado de pedido: respuesta determinística desde Redis
+  // (/api/chat-order-status), NUNCA generada por la IA — así nunca inventa
+  // un número de guía o una fecha. Se muestra como un mensaje más del bot
+  // dentro del mismo hilo, para que se sienta parte de la conversación.
+  const handleOrderStatusSubmit = async (e) => {
+    e.preventDefault();
+    const contact = orderContact.trim();
+    if (!contact || isCheckingOrder) return;
+
+    setHasSentMessage(true);
+    setMessages((prev) => [...prev, { role: "user", content: `Estado de mi pedido: ${contact}` }]);
+    setShowOrderStatusForm(false);
+    setOrderContact("");
+    setIsCheckingOrder(true);
+
+    try {
+      const res = await fetch("/api/chat-order-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contact }),
+      });
+      const data = await res.json();
+      const reply =
+        typeof data.message === "string"
+          ? data.message
+          : `No pudimos consultar tu pedido justo ahora. Escríbenos por WhatsApp: ${WHATSAPP_URL}`;
+      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+    } catch (err) {
+      console.error("[chat] No se pudo consultar el estado del pedido:", err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `No pudimos consultar tu pedido justo ahora. Escríbenos por WhatsApp: ${WHATSAPP_URL}`,
+        },
+      ]);
+    } finally {
+      setIsCheckingOrder(false);
     }
   };
 
@@ -307,6 +364,82 @@ export default function ChatWidget() {
               )}
             </div>
           </div>
+
+          {/* Accesos rápidos: "Estado de mi pedido" tiene su propio flujo
+              (mini-formulario, respuesta desde Redis, ver
+              handleOrderStatusSubmit); los demás son preguntas frecuentes
+              que se envían como un mensaje normal a la IA. Se ocultan tras
+              el primer mensaje real para no estorbar una conversación ya
+              en curso. */}
+          {!hasSentMessage && !isLimited && !showOrderStatusForm && (
+            <div className="flex flex-wrap gap-1.5 border-t border-black/5 bg-white px-3 py-2.5">
+              <button
+                type="button"
+                onClick={() => setShowOrderStatusForm(true)}
+                className="rounded-full border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent"
+              >
+                📦 Estado de mi pedido
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleSend(e, "¿Cuáles son los tamaños y precios?")}
+                className="rounded-full border border-black/10 px-3 py-1.5 text-xs font-medium text-[#33456b]"
+              >
+                💰 Tamaños y precios
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleSend(e, "¿Cuánto tarda el envío?")}
+                className="rounded-full border border-black/10 px-3 py-1.5 text-xs font-medium text-[#33456b]"
+              >
+                🚚 Tiempos de envío
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleSend(e, "¿Cuál es la política de devoluciones y garantía?")}
+                className="rounded-full border border-black/10 px-3 py-1.5 text-xs font-medium text-[#33456b]"
+              >
+                ↩️ Devoluciones
+              </button>
+            </div>
+          )}
+
+          {showOrderStatusForm && (
+            <form
+              onSubmit={handleOrderStatusSubmit}
+              className="flex flex-col gap-2 border-t border-black/5 bg-white px-3 py-3"
+            >
+              <p className="text-xs font-medium text-[#1b2a4a]">
+                Escribe el correo o celular con el que pagaste:
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Correo o celular"
+                  value={orderContact}
+                  onChange={(e) => setOrderContact(e.target.value)}
+                  disabled={isCheckingOrder}
+                  autoFocus
+                  className="flex-1 rounded-full border border-black/10 bg-[#fffaf0] px-4 py-2.5 text-sm text-[#1b2a4a] outline-none placeholder:text-[#9aa5b8] focus:border-accent disabled:cursor-not-allowed disabled:opacity-60"
+                />
+                <button
+                  type="submit"
+                  disabled={!orderContact.trim() || isCheckingOrder}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Consultar"
+                >
+                  {isCheckingOrder ? "…" : "➤"}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOrderStatusForm(false)}
+                className="self-start text-xs font-medium text-[#5b6b8c] hover:text-[#1b2a4a]"
+              >
+                Cancelar
+              </button>
+            </form>
+          )}
 
           <form onSubmit={handleSend} className="flex flex-col gap-1 bg-white px-3 py-3">
             <div className="flex items-center gap-2">

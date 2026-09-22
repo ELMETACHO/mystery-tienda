@@ -232,3 +232,59 @@ export async function saveScheduledEmailId(reference, emailId) {
     return false;
   }
 }
+
+// Busca la solicitud de envío MÁS RECIENTE cuyo cliente coincida con el
+// teléfono o correo dado — usado por el chatbot (ver /api/chat-order-status)
+// para responder "¿dónde está mi pedido?" sin que el cliente tenga que
+// escribir una referencia que nunca se le mostró. Solo cubre pedidos
+// pagados en los últimos 30 días (TTL de este registro, ver arriba) — en
+// la práctica cubre de sobra la ventana real de fabricación + envío.
+//
+// Coincidencia por substring (no exacta) para tolerar variaciones de
+// formato (+57 vs sin prefijo, mayúsculas/espacios en el correo).
+export async function findLatestManualShipmentByContact({ phone, email }) {
+  const client = getRedisClient();
+  if (!client) return null;
+
+  const normalizedPhone = String(phone || "").replace(/\D/g, "");
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!normalizedPhone && !normalizedEmail) return null;
+
+  try {
+    const keys = [];
+    let cursor = "0";
+    do {
+      const [next, batch] = await client.scan(cursor, "MATCH", "manual-shipment:*", "COUNT", 200);
+      cursor = next;
+      keys.push(...batch);
+    } while (cursor !== "0");
+
+    if (keys.length === 0) return null;
+
+    const raw = await client.mget(...keys);
+    const matches = raw
+      .map((entry) => {
+        if (!entry) return null;
+        try {
+          return JSON.parse(entry);
+        } catch {
+          return null;
+        }
+      })
+      .filter((record) => {
+        if (!record?.customer) return false;
+        const recPhone = String(record.customer.phone || "").replace(/\D/g, "");
+        const recEmail = String(record.customer.email || "").trim().toLowerCase();
+        const phoneMatches = normalizedPhone && recPhone && recPhone.includes(normalizedPhone);
+        const emailMatches = normalizedEmail && recEmail && recEmail === normalizedEmail;
+        return Boolean(phoneMatches || emailMatches);
+      });
+
+    if (matches.length === 0) return null;
+    matches.sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)));
+    return matches[0];
+  } catch (err) {
+    console.error("[manualShipments] No se pudo buscar la solicitud por contacto:", err);
+    return null;
+  }
+}
