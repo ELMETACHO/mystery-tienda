@@ -53,10 +53,44 @@ export function getCroppedImage(imageSrc, croppedAreaPixels, format = "png") {
 // Dibuja `image` recortando el rectángulo `srcRect` (en coordenadas de la
 // imagen original, que puede sobresalir de sus límites) dentro de un canvas
 // del tamaño de `srcRect`. Donde el rectángulo se sale del área real de la
-// imagen, extiende el último píxel disponible (edge clamp) en vez de dejar
-// transparencia — parte central 1:1 + hasta 8 franjas/esquinas de borde
-// estiradas a partir de una tira de 1px del borde real.
-function drawWithEdgeClamp(ctx, image, srcRect) {
+// imagen (sangrado que no existe en la foto), lo rellena con REFLEJO
+// ("sangrado espejo", estándar en imprenta): la franja de la propia foto
+// pegada al borde se refleja hacia afuera, así el margen queda continuo y
+// natural. Antes se estiraba 1 solo píxel del borde ("edge clamp"), lo que
+// dejaba rayas horizontales/verticales de un solo color.
+//
+// Si el margen es más ancho que la franja disponible en la foto, el reflejo
+// rebota (espejo del espejo) en vez de quedarse corto — equivale a reflejar
+// de forma periódica. Corre primero en horizontal (filas reales) y luego en
+// vertical sobre el propio canvas ya extendido, así las esquinas también
+// quedan reflejadas en ambos ejes.
+
+// Dibuja `source[sr]` en `dest`, opcionalmente invertido en X y/o Y.
+function drawStrip(ctx, source, sr, dr, flipX, flipY) {
+  ctx.save();
+  ctx.translate(flipX ? dr.x + dr.w : dr.x, flipY ? dr.y + dr.h : dr.y);
+  ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+  ctx.drawImage(source, sr.x, sr.y, sr.w, sr.h, 0, 0, dr.w, dr.h);
+  ctx.restore();
+}
+
+// Divide un margen de `margin` px en segmentos de hasta `span` px (el ancho
+// de la franja real disponible). Segmentos pares: reflejo directo (t = d);
+// impares: el reflejo rebota y vuelve hacia el borde (t = 2*span-1-d).
+function mirrorSegments(margin, span) {
+  const segments = [];
+  for (let start = 0, k = 0; start < margin; start += span, k++) {
+    const len = Math.min(span, margin - start);
+    const flipped = k % 2 === 0;
+    // Distancia (desde el borde real, hacia adentro) del primer píxel de
+    // origen que cubre este segmento.
+    const srcDistance = flipped ? 0 : span - len;
+    segments.push({ start, len, flipped, srcDistance });
+  }
+  return segments;
+}
+
+function drawWithMirrorEdges(ctx, image, srcRect) {
   const naturalWidth = image.naturalWidth;
   const naturalHeight = image.naturalHeight;
 
@@ -78,7 +112,7 @@ function drawWithEdgeClamp(ctx, image, srcRect) {
 
   if (overlapWidth <= 0 || overlapHeight <= 0) {
     // El recorte quedó completamente fuera de la imagen (no debería pasar
-    // en uso normal): no hay nada real que dibujar ni de qué borde clonar.
+    // en uso normal): no hay nada real que dibujar ni de dónde reflejar.
     return;
   }
 
@@ -95,62 +129,50 @@ function drawWithEdgeClamp(ctx, image, srcRect) {
     overlapHeight
   );
 
-  // Franjas de borde (izquierda/derecha/arriba/abajo): 1px del borde real,
-  // estirado para rellenar el margen que se salía de la imagen.
-  if (leftMargin > 0) {
-    ctx.drawImage(image, srcLeft, srcTop, 1, overlapHeight, 0, destY, leftMargin, overlapHeight);
-  }
-  if (rightMargin > 0) {
-    ctx.drawImage(
+  // Pasada horizontal (solo las filas reales de la foto), origen: la imagen.
+  for (const seg of mirrorSegments(leftMargin, overlapWidth)) {
+    drawStrip(
+      ctx,
       image,
-      srcRight - 1,
-      srcTop,
-      1,
-      overlapHeight,
-      destX + overlapWidth,
-      destY,
-      rightMargin,
-      overlapHeight
+      { x: srcLeft + seg.srcDistance, y: srcTop, w: seg.len, h: overlapHeight },
+      { x: destX - seg.start - seg.len, y: destY, w: seg.len, h: overlapHeight },
+      seg.flipped,
+      false
     );
   }
-  if (topMargin > 0) {
-    ctx.drawImage(image, srcLeft, srcTop, overlapWidth, 1, destX, 0, overlapWidth, topMargin);
-  }
-  if (bottomMargin > 0) {
-    ctx.drawImage(
+  for (const seg of mirrorSegments(rightMargin, overlapWidth)) {
+    drawStrip(
+      ctx,
       image,
-      srcLeft,
-      srcBottom - 1,
-      overlapWidth,
-      1,
-      destX,
-      destY + overlapHeight,
-      overlapWidth,
-      bottomMargin
+      { x: srcRight - seg.srcDistance - seg.len, y: srcTop, w: seg.len, h: overlapHeight },
+      { x: destX + overlapWidth + seg.start, y: destY, w: seg.len, h: overlapHeight },
+      seg.flipped,
+      false
     );
   }
 
-  // Esquinas: 1 píxel de la esquina real, estirado al rectángulo de esquina.
-  if (leftMargin > 0 && topMargin > 0) {
-    ctx.drawImage(image, srcLeft, srcTop, 1, 1, 0, 0, leftMargin, topMargin);
+  // Pasada vertical sobre el ancho COMPLETO del canvas (ya con los márgenes
+  // laterales rellenos) — origen: el propio canvas, así las esquinas salen
+  // reflejadas en ambos ejes sin costuras.
+  const canvas = ctx.canvas;
+  for (const seg of mirrorSegments(topMargin, overlapHeight)) {
+    drawStrip(
+      ctx,
+      canvas,
+      { x: 0, y: destY + seg.srcDistance, w: canvas.width, h: seg.len },
+      { x: 0, y: destY - seg.start - seg.len, w: canvas.width, h: seg.len },
+      false,
+      seg.flipped
+    );
   }
-  if (rightMargin > 0 && topMargin > 0) {
-    ctx.drawImage(image, srcRight - 1, srcTop, 1, 1, destX + overlapWidth, 0, rightMargin, topMargin);
-  }
-  if (leftMargin > 0 && bottomMargin > 0) {
-    ctx.drawImage(image, srcLeft, srcBottom - 1, 1, 1, 0, destY + overlapHeight, leftMargin, bottomMargin);
-  }
-  if (rightMargin > 0 && bottomMargin > 0) {
-    ctx.drawImage(
-      image,
-      srcRight - 1,
-      srcBottom - 1,
-      1,
-      1,
-      destX + overlapWidth,
-      destY + overlapHeight,
-      rightMargin,
-      bottomMargin
+  for (const seg of mirrorSegments(bottomMargin, overlapHeight)) {
+    drawStrip(
+      ctx,
+      canvas,
+      { x: 0, y: destY + overlapHeight - seg.srcDistance - seg.len, w: canvas.width, h: seg.len },
+      { x: 0, y: destY + overlapHeight + seg.start, w: canvas.width, h: seg.len },
+      false,
+      seg.flipped
     );
   }
 }
@@ -333,8 +355,9 @@ function canvasToDataUrlWithDensity(canvas, pxPerCm, format = "png") {
 
 // Igual que getCroppedImage, pero expande el área de recorte `bleedPx`
 // píxeles a izquierda, derecha y abajo — NO arriba (sangrado para producción) antes de dibujar. Si el área
-// expandida se sale de los límites de la imagen original, extiende el
-// borde (edge clamp) en vez de dejar transparencia o fallar. Pensada para
+// expandida se sale de los límites de la imagen original, lo rellena
+// con reflejo (sangrado espejo, ver drawWithMirrorEdges) en vez de dejar
+// transparencia o fallar. Pensada para
 // la imagen que recibe el fabricante — la que ve el cliente en el sitio
 // sigue usando getCroppedImage() sin sangrado.
 //
@@ -367,7 +390,7 @@ export function getCroppedImageWithBleed(imageSrc, croppedAreaPixels, bleedPx, p
       canvas.height = expandedRect.height;
       const ctx = canvas.getContext("2d");
 
-      drawWithEdgeClamp(ctx, image, expandedRect);
+      drawWithMirrorEdges(ctx, image, expandedRect);
 
       canvasToDataUrlWithDensity(canvas, pxPerCm, format).then(resolve, reject);
     };
