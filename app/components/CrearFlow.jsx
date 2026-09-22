@@ -478,7 +478,7 @@ export default function CrearFlow({ compact = false }) {
       console.log("Resolución baja para este tamaño:", isLowResolution);
       console.log("Imagen recortada (dataURL):", croppedImage);
 
-      // Imagen para el fabricante: mismo recorte + 1cm de sangrado por lado,
+      // Imagen para el fabricante: mismo recorte + 1cm de sangrado a izquierda, derecha y abajo (NO arriba),
       // escalado a la densidad real del recorte (no un valor fijo de
       // píxeles) — esta es la que se adjunta en el correo de producción. La
       // que ve el cliente (croppedImage, arriba) nunca lleva sangrado.

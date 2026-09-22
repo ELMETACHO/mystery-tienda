@@ -332,7 +332,7 @@ function canvasToDataUrlWithDensity(canvas, pxPerCm, format = "png") {
 }
 
 // Igual que getCroppedImage, pero expande el área de recorte `bleedPx`
-// píxeles por lado (sangrado para producción) antes de dibujar. Si el área
+// píxeles a izquierda, derecha y abajo — NO arriba (sangrado para producción) antes de dibujar. Si el área
 // expandida se sale de los límites de la imagen original, extiende el
 // borde (edge clamp) en vez de dejar transparencia o fallar. Pensada para
 // la imagen que recibe el fabricante — la que ve el cliente en el sitio
@@ -351,11 +351,15 @@ export function getCroppedImageWithBleed(imageSrc, croppedAreaPixels, bleedPx, p
     image.crossOrigin = "anonymous";
     image.src = imageSrc;
     image.onload = () => {
+      // Sangrado en izquierda, derecha e INFERIOR — nunca arriba (pedido del
+      // fabricante: el borde superior del archivo coincide con el borde
+      // superior del cuadro, así alinea las puntas de arriba al pegar y
+      // recorta el excedente de los otros tres lados).
       const expandedRect = {
         x: croppedAreaPixels.x - bleedPx,
-        y: croppedAreaPixels.y - bleedPx,
+        y: croppedAreaPixels.y,
         width: croppedAreaPixels.width + bleedPx * 2,
-        height: croppedAreaPixels.height + bleedPx * 2,
+        height: croppedAreaPixels.height + bleedPx,
       };
 
       const canvas = document.createElement("canvas");

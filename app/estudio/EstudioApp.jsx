@@ -421,7 +421,7 @@ export default function EstudioApp({ mockups }) {
           pxPerCm,
           bleedPx,
           finalCanvasWidthPx: pixelsForSize.width + bleedPx * 2,
-          finalCanvasHeightPx: pixelsForSize.height + bleedPx * 2,
+          finalCanvasHeightPx: pixelsForSize.height + bleedPx, // sin sangrado arriba
         });
         const dataUrl = await getCroppedImageWithBleed(imageSrc, pixelsForSize, bleedPx, pxPerCm);
         printFiles[size.id] = {

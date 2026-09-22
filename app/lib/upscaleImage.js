@@ -16,7 +16,7 @@ import sharp from "sharp";
 // (getCroppedImageWithBleed) incrusta la densidad real (px/cm) en los
 // bytes del JPEG/PNG, para que cualquier software (Photoshop, etc.)
 // muestre el tamaño físico correcto (tamaño vendido + 1cm de sangrado
-// por lado) sin importar cuántos píxeles tenga el archivo. Replicate
+// a izquierda, derecha y abajo; sin sangrado arriba) sin importar cuántos píxeles tenga el archivo. Replicate
 // devuelve un PNG nuevo SIN esa metadata (density genérica o ausente) —
 // si no se reinserta, el archivo mejorado pierde el dato de "a qué
 // tamaño físico corresponde" y se abre mal (se ve más chico de lo que

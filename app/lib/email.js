@@ -554,7 +554,7 @@ function adminEmailHtml({
               <tr>
                 <td style="padding:12px 14px;">
                   <p class="email-text-bleed-note" style="margin:0;font-family:${FONT_STACK};font-size:13px;line-height:19px;color:#4c1d95;">
-                    📎 La imagen adjunta incluye <strong>1 cm de sangrado por lado</strong> sobre el tamaño solicitado (<strong>${order.sizeLabel}</strong>). Recortar al tamaño final tras imprimir.
+                    📎 La imagen adjunta incluye <strong>1 cm de sangrado a izquierda, derecha y abajo</strong> sobre el tamaño solicitado (<strong>${order.sizeLabel}</strong>). <strong>Arriba NO lleva sangrado:</strong> el borde superior de la imagen es el borde superior del cuadro — alinear las esquinas de arriba y recortar el excedente de los otros tres lados.
                   </p>
                 </td>
               </tr>

@@ -35,6 +35,12 @@ const SECTIONS = [
     description: "Stock de cuadros y soportes; te avisa cuándo pedir más.",
     icon: "📦",
   },
+  {
+    href: "/admin/respaldos",
+    title: "Respaldos de pedidos",
+    description: "Datos de entrega e imagen de cada pedido pagado (guardados 1 año).",
+    icon: "🛟",
+  },
 ];
 
 export default function AdminHubPage() {
