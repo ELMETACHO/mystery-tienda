@@ -91,5 +91,18 @@ export function trackPurchase(order) {
         },
       ],
     },
+    // Correo/celular del comprador (sin hashear — TikTok/Meta lo hashean
+    // ellos mismos en el navegador antes de mandarlo, nunca viaja en
+    // texto plano a sus servidores) — ver ADS.md, auditoría del píxel:
+    // TikTok reporta -13% de CPA cuando esto llega completo y válido
+    // ("Advanced Matching"). Solo disponible en `purchase` (acá el
+    // formulario del cliente ya está lleno); en `begin_checkout` el
+    // cliente puede no haberlo escrito todavía.
+    user_data: {
+      email: order.customer?.email || "",
+      phone: order.customer?.phone
+        ? `${order.customer.phonePrefix || "+57"}${order.customer.phone}`.replace(/[^\d+]/g, "")
+        : "",
+    },
   });
 }
