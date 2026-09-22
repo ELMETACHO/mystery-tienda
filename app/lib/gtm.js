@@ -15,6 +15,46 @@ export function pushToDataLayer(event) {
   }
 }
 
+// Vista del "producto" (la página de personalización, /crear o el flujo
+// embebido en /ads) — sin esto, TikTok/Meta solo tenían 2 señales
+// (InitiateCheckout y Purchase) para todo el embudo, muy poca información
+// para decidir a quién mostrarle el anuncio. No lleva tamaño/precio
+// todavía (el cliente recién está empezando), solo marca que alguien
+// llegó a interactuar con el producto real, no solo con la landing.
+export function trackViewContent() {
+  pushToDataLayer({
+    event: "view_item",
+    ecommerce: {
+      currency: "COP",
+      items: [{ item_id: "cuadro-personalizado", item_name: "Cuadro personalizado Mystery" }],
+    },
+  });
+}
+
+// Equivalente a "agregar al carrito": se dispara justo cuando el cliente
+// confirma foto + tamaño y ve la pantalla "Tu cuadro está listo" — la
+// señal de intención más fuerte antes de llegar al checkout. sizeId viaja
+// como item_id, el mismo campo que el tag de TikTok en GTM debe mapear a
+// `content_id` (ver ADS.md, auditoría del píxel).
+export function trackAddToCart(order) {
+  if (!order?.sizeId) return;
+  pushToDataLayer({
+    event: "add_to_cart",
+    ecommerce: {
+      currency: "COP",
+      value: order.priceCOP,
+      items: [
+        {
+          item_id: order.sizeId,
+          item_name: `Cuadro personalizado ${order.sizeLabel || order.sizeId}`,
+          price: order.priceCOP,
+          quantity: 1,
+        },
+      ],
+    },
+  });
+}
+
 export function trackBeginCheckout(order) {
   if (!order) return;
   pushToDataLayer({

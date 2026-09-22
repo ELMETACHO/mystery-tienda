@@ -17,6 +17,7 @@ import {
   pdfFirstPageToImage,
 } from "../crear/cropImage";
 import { SIZES, DEFAULT_FRAME_TYPE, getPriceCOP, formatCOP, saveOrder } from "../lib/order";
+import { trackViewContent, trackAddToCart } from "../lib/gtm";
 import FrameTypeSelector from "./FrameTypeSelector";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
@@ -273,6 +274,13 @@ function ScaleSilhouette({ heightCm, currentColorClass }) {
 // página) y quita el padding propio de página completa. El resto del
 // comportamiento es idéntico.
 export default function CrearFlow({ compact = false }) {
+  // ViewContent: se dispara una sola vez al montar — ver ADS.md, el
+  // embudo de TikTok/Meta no tenía ninguna señal entre "llegó a la
+  // landing" y "empezó el checkout".
+  useEffect(() => {
+    trackViewContent();
+  }, []);
+
   const router = useRouter();
   const canvasWrapperRef = useRef(null);
   const [imageSrc, setImageSrc] = useState(null);
@@ -515,7 +523,7 @@ export default function CrearFlow({ compact = false }) {
       // No navegamos todavía: mostramos primero la pantalla de confirmación
       // "Tu cuadro está listo" con el resultado final ya calculado, y
       // guardamos/navegamos recién cuando el usuario confirma desde ahí.
-      setReadyOrder({
+      const preparedOrder = {
         sizeId: selectedSize.id,
         sizeLabel: selectedSize.label,
         frameType,
@@ -531,7 +539,12 @@ export default function CrearFlow({ compact = false }) {
         // como respaldo genérico si no.
         needsAiUpscale: isLowResolution,
         aiPhotoDiagnosis,
-      });
+      };
+      setReadyOrder(preparedOrder);
+      // AddToCart: la señal de intención más fuerte antes del checkout —
+      // ver ADS.md, el tag de TikTok en GTM debe mapear item_id a
+      // content_id para que esto también arregle ese diagnóstico.
+      trackAddToCart(preparedOrder);
     } finally {
       setIsPreparingOrder(false);
     }
