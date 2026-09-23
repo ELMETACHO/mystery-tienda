@@ -239,6 +239,10 @@ export async function POST(request) {
       customer: record.customer,
       reference: ref,
       isCod: record.paymentMethod === "cod",
+      // El saldo pendiente real (precio total - anticipo ya pagado) — ver
+      // skydropx.js: antes se declaraba/cobraba el precio TOTAL otra vez
+      // contraentrega, encima del anticipo ya pagado.
+      codAmountCOP: record.saldoPendiente,
     });
 
     if (!shipment.trackingNumber) {

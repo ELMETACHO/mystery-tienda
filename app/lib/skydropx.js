@@ -233,15 +233,51 @@ function buildDestinationAddress(customer) {
   };
 }
 
+// Tamaños fuera de catálogo (pedidos especiales cotizados a mano por
+// Oscar, ej. 100x140 — no aparecen como opción de compra en /crear/
+// /checkout, SIZES se queda intacto para no ofrecerlos ahí) pero que sí
+// necesitan generar una guía real de Skydropx. Medidas de caja basadas en
+// la cotización real hecha para Barranquilla (sept 2026, ver ADS.md/
+// conversación) — ajustar aquí si se cotiza un tamaño especial distinto.
+const CUSTOM_SIZE_SPECS = {
+  "100x140": { packageCm: { length: 145, width: 105, height: 8 }, weightKg: 10 },
+};
+
 function getSizeSpec(sizeId) {
-  const size = SIZES.find((s) => s.id === sizeId);
+  const size = SIZES.find((s) => s.id === sizeId) || CUSTOM_SIZE_SPECS[sizeId];
   if (!size) {
     throw new Error(`Tamaño desconocido para cotizar envío: ${sizeId}`);
   }
   return size;
 }
 
-async function createQuotation({ order, customer, isCod }) {
+// BUG REAL corregido (sept 2026, ver conversación): para pedidos
+// contraentrega, `order.priceCOP` es SIEMPRE el precio TOTAL del cuadro
+// (nunca se reduce por el anticipo ya pagado — ver saveManualShipmentRequest
+// en manualShipments.js). Hasta este cambio, ese mismo `order.priceCOP`
+// total se mandaba tal cual a Skydropx como `declared_value`/
+// `declared_amount` — y Skydropx SÍ cobra ese valor exacto contraentrega
+// (confirmado contra su propio panel: pedidos reales mostraban el precio
+// completo como "Monto" a cobrar, no el saldo). Resultado: todo cliente
+// contraentrega pagaba el anticipo de $20.000 (COD_DEPOSIT_COP, ver
+// order.js) Y DESPUÉS el precio completo otra vez al recibir — $20.000 de
+// más por pedido, silenciosamente, desde que existe esta guía manual.
+//
+// Ahora, para pedidos con isCod=true, se declara/cobra el SALDO pendiente
+// (codAmountCOP, viene de record.saldoPendiente en manualShipments.js) en
+// vez del precio total. Para pedidos de pago completo (isCod=false) no
+// cambia nada: no hay nada que cobrar contraentrega, así que se sigue
+// declarando el precio total como valor asegurado del paquete.
+function getCodAmount({ order, isCod, codAmountCOP }) {
+  if (!isCod) return order.priceCOP;
+  // Respaldo defensivo: si por lo que sea no llega codAmountCOP (ej. una
+  // guía vieja generada antes de este cambio, sin saldoPendiente guardado),
+  // caer al precio total es el comportamiento previo — no ideal, pero
+  // nunca lanza ni bloquea la generación de la guía.
+  return typeof codAmountCOP === "number" ? codAmountCOP : order.priceCOP;
+}
+
+async function createQuotation({ order, customer, isCod, codAmountCOP }) {
   const { packageCm, weightKg } = getSizeSpec(order.sizeId);
 
   const res = await skydropxFetch("/api/v1/quotations", {
@@ -269,7 +305,7 @@ async function createQuotation({ order, customer, isCod }) {
           // asegurado del paquete, usamos el precio de venta del cuadro.
           // (No aparece en el ejemplo de soporte, pero SÍ lo confirmamos
           // nosotros mismos en vivo como campo obligatorio — se mantiene.)
-          declared_amount: getDeclaredValue(order.priceCOP),
+          declared_amount: getDeclaredValue(getCodAmount({ order, isCod, codAmountCOP })),
         },
       },
     }),
@@ -393,8 +429,8 @@ async function pollShipmentUntilReady(shipmentId, { attempts = 6, delayMs = 2000
 // La respuesta también es formato JSON:API: el tracking_number, label_url y
 // carrier real NO están en data.attributes sino en included[] (el recurso
 // "package") — data.attributes solo tiene master_tracking_number.
-async function createShipment({ rate, order, customer, reference, isCod }) {
-  const declaredValue = getDeclaredValue(order.priceCOP);
+async function createShipment({ rate, order, customer, reference, isCod, codAmountCOP }) {
+  const declaredValue = getDeclaredValue(getCodAmount({ order, isCod, codAmountCOP }));
   const destinationPhone = normalizePhone(customer.phone);
 
   const res = await skydropxFetch("/api/v1/shipments", {
@@ -513,8 +549,8 @@ async function createShipment({ rate, order, customer, reference, isCod }) {
 // confirmación: cualquier error se captura en ese endpoint, donde queda
 // registrado para reintentar (la solicitud en Redis sigue en status
 // "pending" — ver app/lib/manualShipments.js).
-export async function createManualShipment({ order, customer, reference, isCod }) {
-  const quotationId = await createQuotation({ order, customer, isCod });
+export async function createManualShipment({ order, customer, reference, isCod, codAmountCOP }) {
+  const quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
   const rates = await pollQuotationRates(quotationId);
 
   const bestRate = pickRate(rates, { isCod });
@@ -533,7 +569,7 @@ export async function createManualShipment({ order, customer, reference, isCod }
     throw err;
   }
 
-  return createShipment({ rate: bestRate, order, customer, reference, isCod });
+  return createShipment({ rate: bestRate, order, customer, reference, isCod, codAmountCOP });
 }
 
 // Cancela una guía ya generada. Endpoint descubierto probando contra la

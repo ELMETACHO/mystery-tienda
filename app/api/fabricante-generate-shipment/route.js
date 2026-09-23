@@ -63,6 +63,9 @@ export async function POST(request) {
       customer: manualRecord.customer,
       reference,
       isCod: manualRecord.paymentMethod === "cod",
+      // Ver skydropx.js (getCodAmount): declara/cobra el SALDO pendiente,
+      // no el precio total otra vez.
+      codAmountCOP: manualRecord.saldoPendiente,
     });
   } catch (err) {
     console.error("[fabricante-generate-shipment] Falló la creación de guía en Skydropx:", err);
