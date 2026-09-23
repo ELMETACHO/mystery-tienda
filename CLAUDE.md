@@ -1,4 +1,5 @@
 @AGENTS.md
+@BITACORA.md
 
 # Mystery — resumen del proyecto
 
