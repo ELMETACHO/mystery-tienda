@@ -272,3 +272,100 @@ tiempo de configuración, y TikTok mismo cuantifica la mejora esperada.
 - [The First 3 Seconds: UGC Ad Hooks — Hustler Marketing](https://www.hustlermarketing.com/blog/how-to-write-ugc-ad-hooks-that-stop-the-scroll-on-meta-and-tiktok/)
 - [Facebook Ads vs TikTok Ads: Which Platform Wins in 2026? — AdManage](https://admanage.ai/blog/facebook-ads-vs-tiktok-ads)
 - [TikTok Ads vs. Facebook Ads — Triple Whale](https://www.triplewhale.com/blog/tiktok-ads-vs-facebook-ads)
+
+---
+
+## Corrección del píxel — completada y publicada (22 sept 2026)
+
+Los 4 puntos críticos del diagnóstico (ver sección anterior) ya se
+corrigieron en GTM y se probaron uno por uno con datos reales antes de
+publicar — **Versión 4 del contenedor** (`GTM-M8BSXNX8`), publicada el
+22 sept 2026 a las 18:49 por oscarmetacho@gmail.com.
+
+### Qué se cambió
+- **Variables nuevas** (Variable de capa de datos): `DLV - content_id`
+  (`ecommerce.items.0.item_id`), `DLV - email` (`user_data.email`),
+  `DLV - phone` (`user_data.phone`).
+- **`TikTok Pixel - CompletePayment`**: se agregó `ttq.identify({email,
+  phone_number})` antes del track, y `contents: [{content_id,
+  content_type:'product', quantity:1}]` al evento.
+- **`TikTok Pixel - InitiateCheckout`**: se agregó el mismo bloque
+  `contents` con `content_id` (sin `identify`, porque en ese punto el
+  cliente puede no haber llenado el formulario todavía).
+- **`Meta Pixel - Purchase`**: se agregó `fbq('init', PIXEL_ID, {em, ph})`
+  justo antes del track (Advanced Matching de Meta), más `content_ids:
+  [content_id]` y `content_type:'product'`.
+- **`Meta Pixel - InitiateCheckout`**: se agregó `content_ids`/
+  `content_type`.
+- **4 tags nuevos** (con sus activadores nuevos `view_item` y
+  `add_to_cart`, evento personalizado): `TikTok Pixel - ViewContent`,
+  `TikTok Pixel - AddToCart`, `Meta Pixel - ViewContent`, `Meta Pixel -
+  AddToCart` — cierran el hueco de "eventos ausentes" que reportaba
+  TikTok.
+- **Código del sitio** (`app/lib/gtm.js`, `app/components/CrearFlow.jsx`):
+  se agregaron `trackViewContent()` (dispara al montar `/crear` o el
+  flujo embebido en `/ads`) y `trackAddToCart(order)` (dispara justo
+  cuando el cliente confirma foto+tamaño, pantalla "Tu cuadro está
+  listo") — antes del embudo solo tenía 2 señales (`begin_checkout` y
+  `purchase`). `trackPurchase(order)` también se amplió para mandar
+  `user_data.email`/`phone` del cliente (viene de `order.customer`, solo
+  disponible en la pantalla de confirmación, no antes).
+
+### Validado en Vista previa de GTM con datos reales
+- `add_to_cart` confirmado con `item_id:"30x40"` real (vía
+  `dataLayer.filter(e => e.event === "add_to_cart")` en consola).
+- Los 4 tags nuevos dispararon "Activada"/"Completada" en la sesión de
+  prueba.
+- `purchase` (simulado por consola con una referencia real,
+  `mystery-cod-1790120019176`, porque el navegador se quedó atascado en
+  la pantalla de Wompi sin volver al sitio — el pedido igual se confirmó
+  solo, vía el webhook ya corregido) mostró `TikTok Pixel -
+  CompletePayment` y `Meta Pixel - Purchase` como "Completada", con
+  `content_id`/`value`/`email`/`phone` reales.
+
+### Siguiente paso: confirmar la mejora
+Esperar 24-48h desde la publicación y volver a revisar TikTok Events
+Manager → Diagnóstico — buscar que bajen/desaparezcan los 4 puntos
+críticos originales. Recién con eso confirmado se decide el presupuesto
+de la Campaña 2 (no antes — ver tabla de decisión en la sección
+anterior: CPA real <$25k → escalar; $25k-$40k → no recargar, seguir
+optimizando; >$40k → pausar).
+
+## Resultado por video — Campaña 1 (9-22 sept 2026, revisado a nivel Anuncio)
+
+| Video | Gasto | Impresiones | CTR | CPA | Conversiones |
+|---|---|---|---|---|---|
+| 5.MOV | $254.894 (64% del total) | 55.027 | 1,34% | $50.979 | 5 |
+| 8.MOV | $77.032 | 25.175 | 0,75% | $77.032 | 1 |
+| 6.MOV | $24.173 | 7.802 | 1,06% | **$24.173 (mejor CPA)** | 1 |
+| 7.MOV | $15.737 | 16.588 | 0,55% | — | 0 |
+| 1.MOV | $13.333 | 4.299 | 1,14% | — | 0 |
+| 2.MOV | $6.288 | 2.204 | **1,18% (mejor CTR)** | — | 0 |
+| 3.MOV | $4.710 | 1.349 | 0,37% (el peor) | — | 0 |
+| 4.MOV | $3.833 | 1.340 | 0,67% | — | 0 |
+
+- **TikTok mismo ya "votó" por 5.MOV**, asignándole el 64% de todo el
+  presupuesto por su cuenta — es la señal más confiable de cuál
+  funciona, más que cualquier lectura manual.
+- **6.MOV es la sorpresa**: con solo 6% del presupuesto, sacó el mejor
+  CPA de la ronda (casi la mitad que 5.MOV) — candidato fuerte a que se
+  sostenga con más volumen.
+- **1.MOV y 2.MOV tuvieron mejor CTR que 5.MOV** pero con tan poco gasto
+  que nunca llegaron a convertir — no están descartados, solo sin probar
+  a fondo.
+- **3.MOV, 4.MOV, 7.MOV y 8.MOV quedan fuera de la Campaña 2** (peor
+  CTR/CPA de la tanda, sin señal positiva que los sostenga).
+
+**Decisión para la Campaña 2 (videos)**: **5.MOV + 6.MOV + 1.MOV**
+(1.MOV elegido sobre 2.MOV por tener más impresiones detrás de un CTR
+parecido — dato más confiable con esa muestra tan chica).
+
+## Aviso de Search Console (no relacionado con ads) — resuelto, era falsa alarma
+"Duplicada: el usuario no ha indicado ninguna versión canónica" en 12
+páginas de `/producto/[id]`, con fecha de rastreo del 31 ago-10 sept.
+Verificado en vivo (22 sept): esas páginas SÍ tienen `<link
+rel="canonical">` correcto hoy — el aviso reflejaba el estado de hace 3
+semanas, antes de que Google volviera a rastrearlas. Acción: pulsar
+"Validar corrección" en Search Console para pedir un recrawl, sin tocar
+código. No afecta tráfico pagado ni conversiones, solo indexación
+orgánica.
