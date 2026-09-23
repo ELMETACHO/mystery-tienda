@@ -166,7 +166,19 @@ export async function upscaleImageDataUrl(
         if (outMeta.width) {
           const pxPerCm = outMeta.width / physicalWidthCm;
           const densityDpi = Math.round(pxPerCm * 2.54);
-          outBuffer = await sharp(outBuffer).withMetadata({ density: densityDpi }).png().toBuffer();
+          // icc:'srgb' — Replicate devuelve el PNG sin perfil de color
+          // embebido; sin esto, el software de impresión de Cris (el
+          // "RIP") tiene que ADIVINAR qué es cada valor RGB al convertir a
+          // CMYK, y suele adivinar mal en azules/verdes saturados,
+          // oscureciendo o apagando la impresión final frente a lo que se
+          // veía en pantalla (reportado por Cris, sept 2026). Insertar el
+          // perfil no cambia un solo píxel — solo declara explícitamente
+          // "esto es sRGB" — así que nunca se nota en pantalla, únicamente
+          // al imprimir.
+          outBuffer = await sharp(outBuffer)
+            .withMetadata({ density: densityDpi, icc: "srgb" })
+            .png()
+            .toBuffer();
           contentType = "image/png";
         }
       } catch (err) {
