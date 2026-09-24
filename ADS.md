@@ -369,3 +369,91 @@ semanas, antes de que Google volviera a rastrearlas. Acción: pulsar
 "Validar corrección" en Search Console para pedir un recrawl, sin tocar
 código. No afecta tráfico pagado ni conversiones, solo indexación
 orgánica.
+
+---
+
+## Ronda 3 de investigación (24 sept 2026) — temporada, presupuesto, rentabilidad, contenido
+
+### El problema real de la Campaña 1 NO fue el costo del tráfico
+Embudo reconstruido con los datos por video (tabla de arriba):
+~114.000 impresiones → CPM ≈ $3.500 COP (rango normal Colombia: $1.500–4.000)
+→ ~1.190 clics (CPC ≈ $336) → 7 compras = **conversión clic→compra ≈ 0,6 %**.
+Benchmark TikTok optimizado a conversión: ~1,9 %. Con el MISMO tráfico, subir
+la conversión a ~1,8 % baja el CPA de $57.000 a ~$19.000 (punto de
+equilibrio ≈ $20.000). **La palanca es la landing/oferta, no el presupuesto.**
+
+### Datos reales de pedidos (Redis `completed-orders`, 24 sept)
+- 12 pedidos reales de clientes (sin contar pruebas ni armados a mano).
+- **9 de 12 (75 %) fueron contraentrega** → "Paga al recibir" es el
+  argumento de venta #1. Debe aparecer en el anuncio (texto en pantalla/
+  CTA), no solo en la landing.
+- Ticket promedio ≈ $75.000 (sin el especial de 100x140). El más vendido
+  es el más barato: 30x40 Tradicional $55.000 (4 de 12).
+- Límite de datos: Redis solo guarda el final del embudo. Visitas a `/ads`,
+  subidas de foto y abandono por paso hay que sacarlos de GA4 (Explorar →
+  Exploración de embudo: page_view `/ads` → view_item → add_to_cart →
+  begin_checkout → add_payment_info → purchase; view_item/add_to_cart
+  existen solo desde el 22 sept, add_payment_info desde el 24 sept).
+
+### Riesgo en `/ads`: urgencia falsa
+`CountdownBanner` (reinicia cada hora, no hay oferta real detrás) y
+`ViewersCounter` (número aleatorio 20–100) son urgencia simulada. Riesgo
+doble: políticas de anuncios de TikTok (landing engañosa) y Estatuto del
+Consumidor (Ley 1480, publicidad engañosa — la vigila la SIC). Además
+puede restar confianza al comprador colombiano, que ya desconfía de
+comprar en línea (por eso gana la contraentrega). Pendiente decidir: reemplazar por urgencia REAL
+(ej. "Pide antes del 12 dic y llega antes de Navidad").
+
+### Temporada y presupuesto
+- Amor y Amistad ya pasó (19 sept). Octubre = valle de regalos en Colombia
+  y el mes de CPM más caro del Q4 (dato EE.UU. 2024: oct $5,84 > nov $5,11
+  > dic $4,90). **Temporada fuerte: mediados de nov → ~12-15 dic**
+  (Navidad + prima de diciembre + CPM bajando; corte por tiempos de
+  producción/envío).
+- Octubre = prueba chica: $20.000–30.000/día, 7–10 días
+  ($150.000–250.000), videos 5/6/1.MOV. **Regla de corte: video que gaste
+  $60.000 (3× CPA de equilibrio) sin venta → se apaga.**
+- Escalar en nov-dic SOLO si el CPA de octubre quedó < ~$25.000; subir de
+  a 30–40 % por vez.
+- No hace falta "salir de aprendizaje" (50 ventas) para ser rentable — lo
+  que manda es CPA vs. margen. Opción para aprender más rápido con poco
+  volumen: grupo aparte optimizado a InitiateCheckout/AddToCart, juzgado
+  por costo por VENTA real, no por evento.
+- Margen por venta usado para decisiones: ~$20.000 (dentro del rango
+  $17.000–27.000 de arriba).
+
+### Orgánico + pago
+- Simultáneos se ayudan: el orgánico es el laboratorio gratis de
+  creativos; el que retenga y genere comentarios de compra se pauta como
+  **Spark Ad** (reportado: −37 % CPA, +24 % conversión vs. anuncio normal).
+- Pago: un solo canal (TikTok). Orgánico: mismo video en TikTok + Reels,
+  exportado SIN marca de agua de TikTok, texto/portada nativos de cada red.
+- Meta: CPM 30–50 % más caro que TikTok para <35 años en Colombia, pero
+  público mayor (mamás 30–50, comprador fuerte de regalos). Entra en
+  noviembre como RETARGETING (vieron video / checkout sin pagar), no en frío.
+
+### Guion: fórmula "Grefg" (video de Lord Draugr, dic 2020) adaptada a 20-30s
+Principios del análisis que siguen vigentes (la retención sigue siendo lo
+que el algoritmo premia): objetivo claro al inicio → "escalera" de
+intensidad con altibajos (le pasan cosas buenas y malas) → clímax → cierre
+que vuelve al concepto inicial. Lo épico = lo DIFÍCIL (mostrar el
+obstáculo). Música que sube, se corta en un tropiezo y explota recién en
+el clímax. Cambios de plano/zoom para tensión.
+Lo que NO aplica a un anuncio de 20-30s: el "bloque de comunidad"
+(sorteo/anuncio) y el teaser — no hay tiempo; el acto 1 se comprime al
+gancho de 0-2s. Sí aplica al orgánico largo (60-90s, storytime, sorteos).
+Adaptación: foto difícil/dañada/borrosa (obstáculo) → proceso con
+tropiezo (IA, impresión, empaque) → revelación/reacción de quien lo recibe
+(clímax) → cierre + CTA "paga al recibir".
+
+### Fuentes (ronda 3)
+- [TikTok Ads Cost 2026 — AdManage](https://admanage.ai/blog/tiktok-ads-cost)
+- [How to Start TikTok Ads with a Small Budget — Coinis](https://coinis.com/how-to/start-tiktok-ads-with-small-budget)
+- [TikTok Spark Ads 2026 — TikAdTools](https://tikadtools.com/blog/tiktok-spark-ads/)
+- [Spark Ads e-commerce 2026 — SearchTheTrend](https://www.searchthetrend.com/blog/spark-ads-tiktok)
+- [Ecommerce Benchmarks 2026 — Triple Whale](https://www.triplewhale.com/blog/ecommerce-benchmarks)
+- [Cuánto cuesta Meta Ads en Colombia 2026 — Consolidación Digital](https://www.consolidaciondigital.com/blog/performance-marketing/cuanto-cuesta-meta-ads-colombia)
+- [TikTok Ads para empresas en Colombia 2026 — Sense Digital](https://sense-digital.co/blog/posts/2026-05-05-tiktok-ads-publicidad-empresas-colombia-2026.html)
+- [GREFG Y LA NARRATIVA ÉPICA EN YOUTUBE — Lord Draugr](https://www.youtube.com/watch?v=dsjTrNesgKE)
+- [TikTok Ad Creative Best Practices 2026 — Stackmatix](https://www.stackmatix.com/blog/tiktok-ad-creative-best-practices-2026)
+- [11 TikTok video ideas for merchants — Practical Ecommerce](https://www.practicalecommerce.com/11-tiktok-video-ideas-for-merchants)
