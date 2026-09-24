@@ -220,3 +220,72 @@ real), porque su pago no pasó por el flujo normal del sitio:
 - **Pendiente**: que Cris confirme el color en la próxima impresión.
 
 Commits: `795c493` (Servientrega/localhost/cancelar), `47ead09` (sRGB).
+
+---
+
+## Sesión del 24 sept 2026 — tope de envío, Servientrega de vuelta, doble clic, guías duplicadas
+
+### 1. Regeneración de las 3 guías Servientrega — verificada OK
+Cris canceló y regeneró las 3 (Juan Pablo → Envía 014163948168; Arle →
+Coordinadora 58104007148; Galindo → Envía 014163948194). Cancelar resta la
+comisión y regenerar la vuelve a sumar (`markManufacturerOrderCancelled` /
+`markManufacturerOrderRegenerated`): queda $15.000 una sola vez por cuadro.
+**Fix de sobrecobro COD confirmado de punta a punta**: la guía física de
+Juan Pablo dice "Valor a recaudar $45.000" (saldo, no el total).
+
+### 2. Guías duplicadas por doble clic — causa raíz + limpieza
+- Dos clics seguidos en el botón del correo creaban DOS guías en Skydropx
+  (números consecutivos) y sumaban la comisión dos veces. El sistema solo
+  guardaba una, así que la gemela quedaba activa y cobrada sin que nadie la
+  viera. Casos: Arle 2259223771 (gemela de …772), Juan Pablo 2259224221
+  (gemela de …222, 1 segundo de diferencia).
+- Las 2 gemelas se cancelaron desde acá (reembolsadas, $36.921).
+- Saldo de Cris corregido a mano de $90.000 → $75.000 (sobraban $15.000 del
+  doble registro de Juan Pablo del 23 sept). Sin pagos registrados aún.
+- **Blindaje** (`acquireShipmentGenerationLock` en `manualShipments.js`,
+  SET NX 90s por pedido): generar (correo), regenerar y cancelar (panel)
+  solo dejan pasar una petición a la vez y releen el estado tras tomar el
+  candado. `markManufacturerBalancePaid` ahora usa GETSET atómico.
+- Revisados el resto de botones del sitio (checkout, regalo, reseñas,
+  referidos, chat, /estudio, admin): todos se deshabilitan al primer toque y
+  el pago se confirma de forma idempotente por transacción de Wompi. El
+  problema era exclusivo del formulario HTML plano del correo.
+
+### 3. Tope de costo de envío: $26.000 (`MAX_SHIPPING_COST_COP`, `skydropx.js`)
+- Motivo: guía Coordinadora a Maicao (Arle, COD) costó $64.913 — pérdida.
+  Servientrega cotizaba ~$24.400 al mismo destino.
+- **Servientrega vuelve a competir por precio** (se elige la más barata,
+  incluida ella); si gana, sigue el aviso de protección extra a Cris.
+- Si la tarifa más barata > $26.000: no se genera guía. Si la guía final
+  sale por encima aunque la cotización no, se cancela sola.
+- **Cotización apenas se paga** (`checkShippingCoverageAfterPayment` en
+  `app/lib/noCoverage.js`, dentro del `after()` de `confirmApprovedOrder` /
+  `confirmApprovedCodOrder`): invisible para el cliente (pedido explícito de
+  Oscar — el checkout NUNCA debe frenarse ni mostrar nada). Si supera el
+  tope: el pedido NO se le manda a Cris, no se descuenta inventario, estado
+  `no_coverage` en `manual-shipment:*`, correo al cliente ("no enviamos a tu
+  ciudad, devolución programada") y aviso a contacto@ con el monto a
+  devolver. **La devolución la hace Oscar a mano** (Wompi/Nequi). Si la
+  cotización falla, el pedido sigue normal y queda el tope al generar guía
+  como red de seguridad. Pedidos de regalo solo pasan por esa segunda red.
+- Probado en vivo solo la cotización (Maicao COD → Servientrega $24.605).
+  **Pendiente**: ver el primer caso real "sin cobertura" de punta a punta.
+- Decisión de precios: NO subir precios ni cobrar envío en checkout (la
+  mayoría de guías cuestan $8.700–$13.700, envío gratis se mantiene).
+
+### 4. Animación "Estoy generando la guía…"
+Pedido de Cris: la página del botón del correo quedaba en blanco 10-30s.
+Ahora muestra overlay con spinner y pasos cada 5s; "Generar guía nueva" en
+`/fabricante` muestra el mismo aviso.
+
+### Pendientes abiertos
+- Cris debe preguntar en Servientrega qué empaque exigen (caja plana a
+  medida con las mismas medidas declaradas en Skydropx, para evitar
+  "Cargos extra").
+- Opcional: pedir a soporte Skydropx (ticket #47432505243) rebaja de la
+  guía Coordinadora 58104007148 ($64.913, ya en tránsito, no cancelable).
+- Sigue pendiente de sesiones anteriores: campo aparte para monto COD vs.
+  valor declarado en Skydropx; confirmar color sRGB en impresión.
+
+Commits: `c72e16a` (tope + Servientrega), `21c10b0` (cotizar al pagar),
+`b5f46da` (doble clic), `1f1ed43` (animación), `95ea7aa` (GETSET finanzas).
