@@ -1,5 +1,9 @@
 import { cancelShipment, findShipmentIdByTrackingNumber } from "../../lib/skydropx";
-import { getManualShipmentRequest } from "../../lib/manualShipments";
+import {
+  getManualShipmentRequest,
+  acquireShipmentGenerationLock,
+  releaseShipmentGenerationLock,
+} from "../../lib/manualShipments";
 import { getManufacturerOrder, markManufacturerOrderCancelled } from "../../lib/manufacturerFinance";
 import { sendGuideCancelledEmail, cancelScheduledEmail, sendGuideCorrectionEmail } from "../../lib/email";
 import { getFabricantesByAccessCode } from "../../lib/fabricantes";
@@ -48,6 +52,27 @@ export async function POST(request) {
     return Response.json({ error: "Esa guía ya está cancelada" }, { status: 400 });
   }
 
+  // Mismo candado que la generación de guía (ver
+  // acquireShipmentGenerationLock): con doble clic, dos cancelaciones
+  // simultáneas le restarían DOS veces la comisión al fabricante.
+  if (!(await acquireShipmentGenerationLock(reference))) {
+    return Response.json(
+      { error: "Ya se está procesando un cambio en la guía de este pedido. Espera un minuto y recarga la página." },
+      { status: 409 }
+    );
+  }
+  try {
+    const fresh = await getManufacturerOrder(fabricante.id, reference);
+    if (!fresh || fresh.status === "cancelado") {
+      return Response.json({ error: "Esa guía ya está cancelada" }, { status: 400 });
+    }
+    return await cancelLocked({ fabricante, order: fresh, reference, reason });
+  } finally {
+    await releaseShipmentGenerationLock(reference);
+  }
+}
+
+async function cancelLocked({ fabricante, order, reference, reason }) {
   // Se necesita de todos modos (customer real con email, y
   // scheduledEmailId del aviso "va en camino" ya programado) además de
   // como fallback para el trackingNumber cuando falta shipmentId.

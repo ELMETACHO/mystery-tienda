@@ -3,6 +3,8 @@ import {
   getManualShipmentRequest,
   markManualShipmentGenerated,
   saveScheduledEmailId,
+  acquireShipmentGenerationLock,
+  releaseShipmentGenerationLock,
 } from "../../lib/manualShipments";
 import { createManualShipment } from "../../lib/skydropx";
 import { sendShippingNotificationEmail, sendExtraProtectionEmail } from "../../lib/email";
@@ -149,7 +151,7 @@ function confirmPage({ ref, token, record }) {
       <p style="margin:0 0 20px 0;font-size:14px;line-height:20px;color:${BRAND.ink};">
         Toca el botón SOLO si ya tienes el cuadro listo para entregar en la transportadora.
       </p>
-      <form method="POST" action="/api/generate-shipment">
+      <form method="POST" action="/api/generate-shipment" onsubmit="var b=this.querySelector('button');if(b.disabled){return false;}b.disabled=true;b.style.opacity='0.6';b.textContent='Generando guía… no cierres esta página';">
         <input type="hidden" name="ref" value="${escapeHtml(ref)}">
         <input type="hidden" name="token" value="${escapeHtml(token)}">
         <button type="submit" style="display:block;width:100%;background-color:${BRAND.solid};color:#ffffff;font-size:15px;font-weight:bold;border:none;border-radius:999px;padding:14px 0;cursor:pointer;">✅ Ya fabriqué el cuadro - generar guía</button>
@@ -194,6 +196,29 @@ function resultPage({ ok, trackingNumber, carrierName, labelUrl, errorMessage, r
       <p style="margin:0;font-size:13px;color:${BRAND.muted};">Puedes volver a intentarlo desde el mismo link del correo.</p>
     `,
   });
+}
+
+function inProgressPage() {
+  return renderPage({
+    title: "Generando guía — Mystery",
+    bodyHtml: `
+      <p style="margin:0 0 12px 0;font-size:16px;font-weight:bold;color:${BRAND.ink};">⏳ La guía de este pedido ya se está generando.</p>
+      <p style="margin:0;font-size:14px;color:${BRAND.muted};">No la vuelvas a generar. Espera un minuto y abre de nuevo el link del correo para ver el número de guía.</p>
+    `,
+  });
+}
+
+// Otra petición (doble clic, otra pestaña) tiene el candado de generación
+// de este pedido: en vez de crear una segunda guía, se espera a que esa
+// termine y se muestra su resultado.
+async function waitForOtherGeneration(ref) {
+  for (let i = 0; i < 20; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const record = await getManualShipmentRequest(ref);
+    if (record?.status === "generated" && record.trackingNumber) return alreadyGeneratedPage(record);
+    if (record?.status === "no_coverage") return noCoveragePage();
+  }
+  return inProgressPage();
 }
 
 // El envío superó MAX_SHIPPING_COST_COP (ver app/lib/noCoverage.js): no hay
@@ -260,7 +285,21 @@ export async function POST(request) {
     return noCoveragePage();
   }
 
+  if (!(await acquireShipmentGenerationLock(ref))) {
+    return waitForOtherGeneration(ref);
+  }
+
   try {
+    // Se relee DESPUÉS de tomar el candado: otra petición pudo terminar de
+    // generar la guía entre la lectura de arriba y este punto.
+    const fresh = await getManualShipmentRequest(ref);
+    if (fresh?.status === "generated" && fresh.trackingNumber) {
+      return alreadyGeneratedPage(fresh);
+    }
+    if (fresh?.status === "no_coverage") {
+      return noCoveragePage();
+    }
+
     const shipment = await createManualShipment({
       order: record.order,
       customer: record.customer,
@@ -351,5 +390,9 @@ export async function POST(request) {
     }
     console.error("[generate-shipment] Falló la creación de guía en Skydropx:", err);
     return resultPage({ ok: false, errorMessage: err.message || String(err) });
+  } finally {
+    // En éxito el status ya quedó "generated" (la idempotencia de arriba
+    // cubre los clics siguientes); en fallo, liberarlo permite reintentar.
+    await releaseShipmentGenerationLock(ref);
   }
 }

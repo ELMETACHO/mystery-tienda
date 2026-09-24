@@ -3,6 +3,8 @@ import {
   getManualShipmentRequest,
   markManualShipmentGenerated,
   saveScheduledEmailId,
+  acquireShipmentGenerationLock,
+  releaseShipmentGenerationLock,
 } from "../../lib/manualShipments";
 import { getManufacturerOrder, markManufacturerOrderRegenerated } from "../../lib/manufacturerFinance";
 import { sendShippingNotificationEmail, sendExtraProtectionEmail } from "../../lib/email";
@@ -54,6 +56,32 @@ export async function POST(request) {
     return Response.json(
       { error: "Ya no tenemos los datos guardados de este pedido (venció a los 30 días)." },
       { status: 404 }
+    );
+  }
+
+  // Candado contra el doble clic (ver acquireShipmentGenerationLock): solo
+  // una petición a la vez genera la guía de este pedido. Se mantiene hasta
+  // que el pedido vuelve a quedar "activo", y se relee el estado después de
+  // tomarlo por si otra petición ya lo regeneró mientras tanto.
+  if (!(await acquireShipmentGenerationLock(reference))) {
+    return Response.json(
+      { error: "La guía de este pedido ya se está generando. Espera un minuto y recarga la página." },
+      { status: 409 }
+    );
+  }
+  try {
+    return await generateLocked({ fabricante, reference, manualRecord });
+  } finally {
+    await releaseShipmentGenerationLock(reference);
+  }
+}
+
+async function generateLocked({ fabricante, reference, manualRecord }) {
+  const order = await getManufacturerOrder(fabricante.id, reference);
+  if (!order || order.status !== "cancelado") {
+    return Response.json(
+      { error: "Este pedido ya tiene una guía nueva. Recarga la página." },
+      { status: 409 }
     );
   }
 

@@ -204,6 +204,51 @@ export async function markManualShipmentGenerated(
   }
 }
 
+// Candado contra el DOBLE CLIC al generar guía. El chequeo de idempotencia
+// por status "generated" no alcanza: dos clics con 1 segundo de diferencia
+// (caso real, Juan Pablo García, 23 sept 2026) llegan ambos antes de que
+// el primero termine — Skydropx creó DOS guías y al fabricante se le sumó
+// la comisión dos veces. Con SET NX solo una petición a la vez puede
+// generar la guía de un mismo pedido. El TTL cubre el peor caso de
+// cotización + creación con reintentos (~25s) con margen; si la función
+// muere a mitad de camino, el candado se libera solo al vencer.
+const GENERATION_LOCK_TTL_SECONDS = 90;
+
+function generationLockKey(reference) {
+  return `${manualShipmentKey(reference)}:generating`;
+}
+
+// true si se obtuvo el candado. Si Redis no está disponible devuelve true
+// (mismo criterio que el resto del archivo: nunca bloquear la operación
+// por un fallo de Redis).
+export async function acquireShipmentGenerationLock(reference) {
+  const client = getRedisClient();
+  if (!client) return true;
+  try {
+    const result = await client.set(
+      generationLockKey(reference),
+      "1",
+      "EX",
+      GENERATION_LOCK_TTL_SECONDS,
+      "NX"
+    );
+    return result === "OK";
+  } catch (err) {
+    console.error("[manualShipments] No se pudo tomar el candado de generación:", err);
+    return true;
+  }
+}
+
+export async function releaseShipmentGenerationLock(reference) {
+  const client = getRedisClient();
+  if (!client) return;
+  try {
+    await client.del(generationLockKey(reference));
+  } catch (err) {
+    console.error("[manualShipments] No se pudo liberar el candado de generación:", err);
+  }
+}
+
 // Marca la solicitud como "no_coverage": el envío superó el tope de costo
 // (ver MAX_SHIPPING_COST_COP en app/lib/skydropx.js), no se generó guía y
 // hay que devolverle el dinero al cliente (ver app/lib/noCoverage.js).
