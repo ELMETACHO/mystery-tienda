@@ -30,6 +30,44 @@ function reliableThumb(url) {
   return m ? `/api/catalog-thumbnail/${m[1]}` : url;
 }
 
+// Mismo aviso de "estoy generando la guía" que la página del botón del
+// correo (ver generatingOverlayHtml en app/api/generate-shipment/route.js):
+// generar la guía tarda 10-30s y Cris prefería ver que sí está pasando algo.
+const GENERATING_STEPS = [
+  "Cotizando transportadoras",
+  "Eligiendo la opción más económica",
+  "Creando la guía en la transportadora",
+  "Esperando el número de guía",
+  "Ya casi está listo",
+];
+
+function GeneratingNotice() {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const id = setInterval(
+      () => setStep((s) => Math.min(s + 1, GENERATING_STEPS.length - 1)),
+      5000
+    );
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/10 px-3 py-3"
+    >
+      <span className="h-7 w-7 shrink-0 animate-spin rounded-full border-[3px] border-accent/25 border-t-accent" />
+      <div className="flex flex-col">
+        <span className="text-sm font-semibold text-[#1b2a4a]">Estoy generando la guía…</span>
+        <span key={step} className="animate-pulse text-xs font-medium text-accent">
+          {GENERATING_STEPS[step]}
+        </span>
+        <span className="text-[11px] text-[#5b6b8c]">Puede tardar hasta 30 segundos. No cierres esta página.</span>
+      </div>
+    </div>
+  );
+}
+
 function OrderRow({ order, code, onUpdated }) {
   const [o, setO] = useState(order);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -195,16 +233,18 @@ function OrderRow({ order, code, onUpdated }) {
         </div>
       )}
 
-      {status === "cancelado" && (
-        <button
-          type="button"
-          onClick={handleGenerateNew}
-          disabled={isSubmitting}
-          className="self-start rounded-full bg-accent px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {isSubmitting ? "Generando..." : "Generar guía nueva"}
-        </button>
-      )}
+      {status === "cancelado" &&
+        (isSubmitting ? (
+          <GeneratingNotice />
+        ) : (
+          <button
+            type="button"
+            onClick={handleGenerateNew}
+            className="self-start rounded-full bg-accent px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-accent-soft"
+          >
+            Generar guía nueva
+          </button>
+        ))}
 
       {message && (
         <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-700">

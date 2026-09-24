@@ -141,6 +141,66 @@ function deadlineWarningHtml() {
     : `<p style="margin:0 0 20px 0;padding:12px 14px;background-color:${BRAND.warningBg};border-radius:8px;font-size:14px;font-weight:bold;color:${BRAND.warning};">🕐 Ya pasó el horario de hoy — vuelve mañana más temprano y genera la guía antes de las 4:00 PM para evitar que venza.</p>`;
 }
 
+// Pantalla de "estoy generando la guía" (pedido de Cris, sept 2026): la
+// cotización + creación en Skydropx tarda 10-30s y, sin nada en pantalla,
+// parecía que el botón no había hecho nada. Al enviar el formulario se
+// desactiva el botón (evita el doble clic) y se muestra un overlay con
+// spinner y pasos que van cambiando mientras el servidor responde; la
+// página de resultado reemplaza todo esto sola cuando llega.
+function generatingOverlayHtml() {
+  return `
+      <style>
+        @keyframes mysterySpin { to { transform: rotate(360deg); } }
+        @keyframes mysteryFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        #generating-overlay { display:none; position:fixed; inset:0; z-index:50; background:rgba(242,239,249,0.97); align-items:center; justify-content:center; padding:24px; }
+        #generating-overlay.visible { display:flex; }
+        #generating-spinner { width:56px; height:56px; border-radius:50%; border:5px solid #e9d5ff; border-top-color:${BRAND.solid}; animation:mysterySpin 0.9s linear infinite; margin:0 auto 20px auto; }
+        #generating-step { animation:mysteryFade 0.4s ease; }
+      </style>
+      <div id="generating-overlay" role="status" aria-live="polite">
+        <div style="max-width:360px;text-align:center;font-family:${FONT_STACK};">
+          <div id="generating-spinner"></div>
+          <p style="margin:0 0 8px 0;font-size:18px;font-weight:bold;color:${BRAND.ink};">Estoy generando la guía…</p>
+          <p id="generating-step" style="margin:0 0 16px 0;font-size:15px;color:${BRAND.solid};font-weight:bold;">Cotizando transportadoras</p>
+          <p style="margin:0;font-size:13px;line-height:19px;color:${BRAND.muted};">Puede tardar hasta 30 segundos.<br>No cierres ni recargues esta página.</p>
+        </div>
+      </div>
+      <script>
+        function startGenerating(form) {
+          var button = form.querySelector("button");
+          if (button.disabled) return false;
+          button.disabled = true;
+          document.getElementById("generating-overlay").className = "visible";
+          var steps = [
+            "Cotizando transportadoras",
+            "Eligiendo la opción más económica",
+            "Creando la guía en la transportadora",
+            "Esperando el número de guía",
+            "Ya casi está listo",
+          ];
+          var i = 0;
+          var stepEl = document.getElementById("generating-step");
+          setInterval(function () {
+            if (i < steps.length - 1) i++;
+            stepEl.textContent = steps[i];
+            stepEl.style.animation = "none";
+            void stepEl.offsetWidth;
+            stepEl.style.animation = "";
+          }, 5000);
+          return true;
+        }
+        // Si Cris vuelve con el botón "atrás" del navegador, la página
+        // puede restaurarse desde caché con el overlay visible — se oculta.
+        window.addEventListener("pageshow", function (e) {
+          if (e.persisted) {
+            document.getElementById("generating-overlay").className = "";
+            var b = document.querySelector("form button");
+            if (b) b.disabled = false;
+          }
+        });
+      </script>`;
+}
+
 function confirmPage({ ref, token, record }) {
   return renderPage({
     title: "Generar guía — Mystery",
@@ -151,11 +211,12 @@ function confirmPage({ ref, token, record }) {
       <p style="margin:0 0 20px 0;font-size:14px;line-height:20px;color:${BRAND.ink};">
         Toca el botón SOLO si ya tienes el cuadro listo para entregar en la transportadora.
       </p>
-      <form method="POST" action="/api/generate-shipment" onsubmit="var b=this.querySelector('button');if(b.disabled){return false;}b.disabled=true;b.style.opacity='0.6';b.textContent='Generando guía… no cierres esta página';">
+      <form method="POST" action="/api/generate-shipment" onsubmit="return startGenerating(this);">
         <input type="hidden" name="ref" value="${escapeHtml(ref)}">
         <input type="hidden" name="token" value="${escapeHtml(token)}">
         <button type="submit" style="display:block;width:100%;background-color:${BRAND.solid};color:#ffffff;font-size:15px;font-weight:bold;border:none;border-radius:999px;padding:14px 0;cursor:pointer;">✅ Ya fabriqué el cuadro - generar guía</button>
       </form>
+      ${generatingOverlayHtml()}
     `,
   });
 }
