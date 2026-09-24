@@ -43,14 +43,22 @@ export default function StickyBuyButton({ targetId }) {
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       aria-hidden={isTargetVisible}
     >
-      <button
-        type="button"
-        onClick={handleClick}
-        tabIndex={isTargetVisible ? -1 : 0}
-        className="flex w-full items-center justify-center rounded-full bg-accent px-6 py-4 text-base font-bold text-white shadow-lg shadow-accent/30 active:bg-accent-soft"
-      >
-        Comprar ahora
-      </button>
+      {/* pr-[4.5rem]: hueco a la derecha para el botón flotante del chat
+          (ChatWidget lo alinea a esta barra en /ads) — sin esto, el chat
+          tapaba el borde del botón de compra. */}
+      <div className="pr-[4.5rem]">
+        <button
+          type="button"
+          onClick={handleClick}
+          tabIndex={isTargetVisible ? -1 : 0}
+          className="flex w-full items-center justify-center rounded-full bg-accent px-6 py-4 text-base font-bold text-white shadow-lg shadow-accent/30 active:bg-accent-soft"
+        >
+          Comprar ahora
+        </button>
+        <p className="mt-1.5 text-center text-[11px] font-semibold text-[#33456b]">
+          🚚 Envío gratis · 💵 Paga al recibir
+        </p>
+      </div>
     </div>
   );
 }
