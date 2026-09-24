@@ -3,6 +3,7 @@ import { formatCOP, getFabricanteCommissionCOP } from "./order";
 import { generateManualShipmentToken } from "./manualShipmentToken";
 import { FABRICANTES, getFabricanteForFrameType } from "./fabricantes";
 import { EMAIL_SITE_URL as SITE_URL } from "./siteUrl";
+import { embedSrgbProfile } from "./printColorProfile";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -624,10 +625,14 @@ export async function sendOrderEmails({
   // extractImageBase64 valida el formato antes de adjuntar, así que un dato
   // corrupto o ausente simplemente no se adjunta en vez de mandar un PNG
   // roto.
-  const printBase64 =
+  // embedSrgbProfile: perfil de color sRGB para TODOS los archivos de
+  // impresión (ver app/lib/printColorProfile.js) — Cris confirmó que con
+  // el perfil el color impreso sale mucho mejor.
+  const printBase64 = await embedSrgbProfile(
     printImageBase64Override ||
-    extractImageBase64(order.printImage) ||
-    extractImageBase64(order.croppedImage);
+      extractImageBase64(order.printImage) ||
+      extractImageBase64(order.croppedImage)
+  );
   if (!printBase64) {
     console.error(
       "[email] order.printImage/croppedImage no es un data URL de imagen válido — no se adjuntará ningún archivo al correo del fabricante."
