@@ -74,7 +74,10 @@ export async function POST(request) {
   } catch (err) {
     console.error("[fabricante-cancel-shipment] Falló la cancelación en Skydropx:", err);
     return Response.json(
-      { error: "No se pudo cancelar la guía en Skydropx. Intenta de nuevo." },
+      // Se incluye el motivo real de Skydropx (ej. la guía ya fue
+      // escaneada por la transportadora y no admite cancelación) para que
+      // el fabricante sepa si reintentar sirve o hay que avisar a Mystery.
+      { error: `No se pudo cancelar la guía en Skydropx. ${err.message || ""}`.trim() },
       { status: 502 }
     );
   }

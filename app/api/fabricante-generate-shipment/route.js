@@ -5,7 +5,7 @@ import {
   saveScheduledEmailId,
 } from "../../lib/manualShipments";
 import { getManufacturerOrder, markManufacturerOrderRegenerated } from "../../lib/manufacturerFinance";
-import { sendShippingNotificationEmail } from "../../lib/email";
+import { sendShippingNotificationEmail, sendExtraProtectionEmail } from "../../lib/email";
 import { getFabricantesByAccessCode } from "../../lib/fabricantes";
 
 // Botón "Generar guía nueva" de /fabricante — SOLO para pedidos que están
@@ -120,5 +120,22 @@ export async function POST(request) {
     console.error("[fabricante-generate-shipment] Falló el correo de guía nueva:", emailErr);
   }
 
-  return Response.json({ ok: true, order: updated || order });
+  // Servientrega fue la única opción (ver pickRate en skydropx.js).
+  if (shipment.requiresExtraProtection) {
+    try {
+      await sendExtraProtectionEmail({
+        order: manualRecord.order,
+        customer: manualRecord.customer,
+        trackingNumber: shipment.trackingNumber,
+      });
+    } catch (emailErr) {
+      console.error("[fabricante-generate-shipment] Falló el aviso de protección extra:", emailErr);
+    }
+  }
+
+  return Response.json({
+    ok: true,
+    order: updated || order,
+    requiresExtraProtection: shipment.requiresExtraProtection,
+  });
 }

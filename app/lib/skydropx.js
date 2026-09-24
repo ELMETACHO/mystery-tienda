@@ -358,20 +358,35 @@ function cheapestOf(rates) {
   });
 }
 
-// Para pedidos SIN contraentrega (pago completo por Wompi) no hay
-// restricción de transportadora — cualquiera que haya cotizado sirve,
-// simplemente se toma la más barata. Para contraentrega, solo cuentan las
-// que sabemos que soportan recaudo en efectivo (COD_CARRIERS).
-function pickRate(rates, { isCod }) {
-  if (!isCod) return cheapestOf(rates);
+function rateCarrierName(rate) {
+  return String(rate.carrier_name || rate.carrier || rate.provider_name || "").toLowerCase();
+}
 
-  const eligible = rates.filter((rate) => {
-    const carrierName = String(
-      rate.carrier_name || rate.carrier || rate.provider_name || ""
-    ).toLowerCase();
-    return COD_CARRIERS.some((name) => carrierName.includes(name));
-  });
-  return cheapestOf(eligible);
+// Servientrega queda "vetada" (sept 2026): empezó a exigir protección
+// adicional, caja y valor declarado para los cuadros, y devolvió pedidos
+// que no cumplían — demasiada fricción. Solo se usa como ÚLTIMO recurso,
+// cuando es la única transportadora que cotizó para esa dirección; en ese
+// caso createManualShipment marca requiresExtraProtection para avisarle al
+// fabricante que debe proteger mucho más el cuadro.
+function isServientrega(rate) {
+  return rateCarrierName(rate).includes("servientrega");
+}
+
+// Para pedidos SIN contraentrega (pago completo por Wompi) no hay
+// restricción de transportadora — cualquiera que haya cotizado sirve.
+// Para contraentrega, solo cuentan las que sabemos que soportan recaudo en
+// efectivo (COD_CARRIERS). En ambos casos se toma la más barata que NO sea
+// Servientrega, y solo si no queda ninguna se cae a Servientrega.
+function pickRate(rates, { isCod }) {
+  const eligible = isCod
+    ? rates.filter((rate) => COD_CARRIERS.some((name) => rateCarrierName(rate).includes(name)))
+    : rates;
+
+  const preferred = cheapestOf(eligible.filter((rate) => !isServientrega(rate)));
+  if (preferred) return { rate: preferred, requiresExtraProtection: false };
+
+  const fallback = cheapestOf(eligible);
+  return { rate: fallback, requiresExtraProtection: Boolean(fallback) };
 }
 
 // La creación de guía en Skydropx es ASÍNCRONA: el POST a /api/v1/shipments
@@ -553,7 +568,7 @@ export async function createManualShipment({ order, customer, reference, isCod, 
   const quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
   const rates = await pollQuotationRates(quotationId);
 
-  const bestRate = pickRate(rates, { isCod });
+  const { rate: bestRate, requiresExtraProtection } = pickRate(rates, { isCod });
   if (!bestRate) {
     // Se marca con noEligibleCarrier para distinguir "cotizó pero ninguna
     // transportadora disponible" de un error técnico — ver
@@ -569,7 +584,11 @@ export async function createManualShipment({ order, customer, reference, isCod, 
     throw err;
   }
 
-  return createShipment({ rate: bestRate, order, customer, reference, isCod, codAmountCOP });
+  const shipment = await createShipment({ rate: bestRate, order, customer, reference, isCod, codAmountCOP });
+  // true solo cuando Servientrega fue la ÚNICA opción (ver pickRate) — los
+  // llamadores le avisan al fabricante que debe proteger mucho más el
+  // cuadro (sendExtraProtectionEmail en app/lib/email.js).
+  return { ...shipment, requiresExtraProtection };
 }
 
 // Cancela una guía ya generada. Endpoint descubierto probando contra la

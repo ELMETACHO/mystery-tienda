@@ -5,7 +5,7 @@ import {
   saveScheduledEmailId,
 } from "../../lib/manualShipments";
 import { createManualShipment } from "../../lib/skydropx";
-import { sendShippingNotificationEmail } from "../../lib/email";
+import { sendShippingNotificationEmail, sendExtraProtectionEmail } from "../../lib/email";
 import { recordManufacturerOrder } from "../../lib/manufacturerFinance";
 import { getFabricanteForFrameType } from "../../lib/fabricantes";
 
@@ -157,12 +157,17 @@ function confirmPage({ ref, token, record }) {
   });
 }
 
-function resultPage({ ok, trackingNumber, carrierName, labelUrl, errorMessage }) {
+function extraProtectionWarningHtml() {
+  return `<p style="margin:0 0 16px 0;padding:12px 14px;background-color:${BRAND.warningBg};border-radius:8px;font-size:14px;line-height:20px;color:${BRAND.warning};"><strong>⚠️ Esta guía salió por SERVIENTREGA</strong> (fue la única transportadora disponible). Protege el cuadro MUCHO más: protección adicional, dentro de una caja y con el valor declarado. Si no, lo devuelven.</p>`;
+}
+
+function resultPage({ ok, trackingNumber, carrierName, labelUrl, errorMessage, requiresExtraProtection }) {
   if (ok) {
     return renderPage({
       title: "Guía generada — Mystery",
       bodyHtml: `
         <p style="margin:0 0 16px 0;font-size:16px;font-weight:bold;color:${BRAND.ink};">✅ Guía generada exitosamente.</p>
+        ${requiresExtraProtection ? extraProtectionWarningHtml() : ""}
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:8px;">
           <tr><td style="padding:14px 16px;">
             <p style="margin:0 0 4px 0;font-size:13px;color:${BRAND.success};">Número de guía</p>
@@ -296,11 +301,26 @@ export async function POST(request) {
       console.error("[generate-shipment] Falló el correo de guía generada:", emailErr);
     }
 
+    // Servientrega fue la única opción (ver pickRate en skydropx.js) —
+    // aviso por correo al fabricante, además del banner en la página.
+    if (shipment.requiresExtraProtection) {
+      try {
+        await sendExtraProtectionEmail({
+          order: record.order,
+          customer: record.customer,
+          trackingNumber: shipment.trackingNumber,
+        });
+      } catch (emailErr) {
+        console.error("[generate-shipment] Falló el aviso de protección extra:", emailErr);
+      }
+    }
+
     return resultPage({
       ok: true,
       trackingNumber: shipment.trackingNumber,
       carrierName: shipment.carrierName,
       labelUrl: shipment.labelUrl,
+      requiresExtraProtection: shipment.requiresExtraProtection,
     });
   } catch (err) {
     console.error("[generate-shipment] Falló la creación de guía en Skydropx:", err);

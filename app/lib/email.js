@@ -2,7 +2,7 @@ import { Resend } from "resend";
 import { formatCOP, getFabricanteCommissionCOP } from "./order";
 import { generateManualShipmentToken } from "./manualShipmentToken";
 import { FABRICANTES, getFabricanteForFrameType } from "./fabricantes";
-import { SITE_URL } from "./siteUrl";
+import { EMAIL_SITE_URL as SITE_URL } from "./siteUrl";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -804,6 +804,73 @@ export async function sendGuideCancelledEmail({
     subject: `${subjectPrefix}⚠️ Guía cancelada por el fabricante`,
     html: wrapEmailHtml(
       guideCancelledEmailHtml({ order, customer, reference, reason, trackingNumber, carrierName })
+    ),
+  });
+}
+
+// ---------------------------------------------------------------------
+// Aviso al fabricante: la guía salió por Servientrega porque fue la ÚNICA
+// transportadora disponible para esa dirección (ver pickRate en
+// app/lib/skydropx.js — Servientrega está vetada salvo como último
+// recurso). Servientrega exige protección adicional, caja y valor
+// declarado; si el cuadro no va así, lo devuelve. Va al fabricante que
+// corresponde al pedido + copia al admin.
+// ---------------------------------------------------------------------
+
+function extraProtectionEmailHtml({ order, customer, trackingNumber, commercialValueCOP }) {
+  return `
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow()}
+        <tr>
+          <td style="padding:16px 20px 0 20px;">
+            <table class="email-banner-warning-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.warningBg};border-radius:8px;">
+              <tr>
+                <td style="padding:12px 14px;">
+                  <p class="email-text-warning" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.warning};">⚠️ Esta guía salió por SERVIENTREGA</p>
+                  <p class="email-text-ink" style="margin:0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.ink};">Fue la única transportadora disponible para esta dirección. Servientrega exige que el cuadro vaya <strong>MUY bien protegido</strong>: protección adicional (esquineros + plástico burbuja), <strong>dentro de una caja</strong>, y con el <strong>valor declarado</strong> reportado. Si no va así, lo devuelven.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px;">
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Cliente</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${escapeHtml(customer.fullName)} · ${escapeHtml(customer.city)}</p>
+
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Tamaño</p>
+            <p class="email-text-muted" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;color:${BRAND.muted};">${escapeHtml(order.sizeLabel || order.sizeId)}</p>
+
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Guía Servientrega</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:'Courier New',Courier,monospace;font-size:14px;color:${BRAND.ink};">${escapeHtml(trackingNumber || "-")}</p>
+
+            <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Valor comercial del cuadro (si lo piden en el punto)</p>
+            <p class="email-text-ink" style="margin:0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${formatCOP(commercialValueCOP)}</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+export async function sendExtraProtectionEmail({
+  order,
+  customer,
+  trackingNumber,
+  subjectPrefix = "",
+  testRecipientOverride,
+}) {
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: testRecipientOverride || adminRecipientsForFrameType(order.frameType),
+    subject: `${subjectPrefix}⚠️ Guía por SERVIENTREGA — proteger MUY bien el cuadro (${customer.fullName})`,
+    html: wrapEmailHtml(
+      extraProtectionEmailHtml({ order, customer, trackingNumber, commercialValueCOP: order.priceCOP })
     ),
   });
 }

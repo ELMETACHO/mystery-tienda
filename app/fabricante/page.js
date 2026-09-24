@@ -87,7 +87,11 @@ function OrderRow({ order, code, onUpdated }) {
       const updated = json.order || { ...o, status: "activo" };
       setO(updated);
       onUpdated(updated);
-      setMessage("✅ Guía nueva generada");
+      setMessage(
+        json.requiresExtraProtection
+          ? "✅ Guía nueva generada — ⚠️ salió por SERVIENTREGA (única opción): protege el cuadro MUCHO más, en caja y con valor declarado. Te llegó un correo con los detalles."
+          : "✅ Guía nueva generada"
+      );
     } catch (err) {
       console.error(err);
       setError(err.message);
@@ -191,7 +195,7 @@ function OrderRow({ order, code, onUpdated }) {
         </div>
       )}
 
-      {!message && status === "cancelado" && (
+      {status === "cancelado" && (
         <button
           type="button"
           onClick={handleGenerateNew}
