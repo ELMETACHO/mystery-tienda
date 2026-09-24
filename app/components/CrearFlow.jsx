@@ -556,6 +556,45 @@ export default function CrearFlow({ compact = false }) {
     router.push("/checkout");
   };
 
+  // Puente con la barra fija de /ads (StickyBuyButton, que vive fuera de
+  // este componente): se publica en qué paso va el cliente para que la
+  // barra muestre y ejecute la MISMA acción que el botón principal de
+  // ese paso — antes, con la foto ya subida, "Comprar ahora" solo hacía
+  // scroll hacia arriba y dejaba al cliente lejos de "Continuar".
+  const crearStage = readyOrder ? "ready" : imageSrc ? "edit" : "upload";
+  useEffect(() => {
+    const detail = { stage: crearStage, isBusy: isPreparingOrder };
+    window.dispatchEvent(new CustomEvent("crearflow:state", { detail }));
+  }, [crearStage, isPreparingOrder]);
+
+  const primaryActionRef = useRef(null);
+  // Si "Continuar" vino de la barra fija, el cliente está scrolleado más
+  // abajo: cuando aparezca "Tu cuadro está listo" hay que llevarlo hasta
+  // ahí. Se hace al aparecer (no al tocar), porque el cambio de alto de la
+  // página al reemplazar el editor cancelaba el scroll hecho antes.
+  const scrollToReadyRef = useRef(false);
+  const readyScreenRef = useRef(null);
+  useEffect(() => {
+    primaryActionRef.current = () => {
+      if (isPreparingOrder) return;
+      if (readyOrder) handleConfirmReady();
+      else if (imageSrc) {
+        scrollToReadyRef.current = true;
+        handleContinue();
+      }
+    };
+  });
+  useEffect(() => {
+    if (!readyOrder || !scrollToReadyRef.current) return;
+    scrollToReadyRef.current = false;
+    readyScreenRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [readyOrder]);
+  useEffect(() => {
+    const onPrimaryAction = () => primaryActionRef.current?.();
+    window.addEventListener("crearflow:primary-action", onPrimaryAction);
+    return () => window.removeEventListener("crearflow:primary-action", onPrimaryAction);
+  }, []);
+
   // Bloque de texto (título + subtítulos) de la primera pantalla — se
   // renderiza en dos posiciones posibles según el viewport (nunca las
   // dos a la vez): arriba de todo en móvil, o junto al DriftWall en
@@ -645,7 +684,10 @@ export default function CrearFlow({ compact = false }) {
       />
 
       {readyOrder ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-5 py-8 text-center">
+        <div
+          ref={readyScreenRef}
+          className="flex flex-1 scroll-mt-12 flex-col items-center justify-center gap-5 py-8 text-center"
+        >
           {/* Composición sobre foto de pared real, en vez del cuadro suelto
               sobre fondo simple: se siente como el resultado final ya
               colgado, no solo una imagen recortada. El tamaño de la

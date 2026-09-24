@@ -105,6 +105,38 @@ export async function getCompletedOrders() {
   }
 }
 
+// "Juan Pablo García Aponte" → "Juan G.", "Arle Medina Pérez" → "Arle M."
+// — nunca el nombre completo: esto se muestra públicamente en /ads.
+// Con 4+ palabras se asume 2 nombres + 2 apellidos (lo común en
+// Colombia) y se usa la tercera; con 2 o 3, la última — "Oscar Javier
+// Delgadillo" y "Oscar Delgadillo" quedan ambos como "Oscar D." en vez de
+// parecer dos clientes distintos.
+function publicDisplayName(fullName) {
+  const words = String(fullName || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return null;
+  const first = words[0][0].toUpperCase() + words[0].slice(1).toLowerCase();
+  const surname = words.length >= 4 ? words[2] : words[words.length - 1];
+  return surname ? `${first} ${surname[0].toUpperCase()}.` : first;
+}
+
+// Ventas reales para el aviso "Fulano compró un cuadro" de /ads
+// (RecentPurchaseToast). Excluye pedidos de prueba (referencia con
+// "test") y los de valor 0 (regalos). Una sola entrada por nombre
+// visible, con el tamaño de su compra más reciente — así un cliente con
+// varios pedidos (o las compras de prueba del dueño) no se repite.
+// Nunca lanza (getCompletedOrders ya devuelve [] si Redis falla).
+export async function getRecentSalesForToast() {
+  const orders = await getCompletedOrders();
+  const byName = new Map();
+  for (const o of orders) {
+    if (/test/i.test(o.reference || "") || !(o.priceCOP > 0)) continue;
+    const name = publicDisplayName(o.customerName);
+    if (!name || !o.sizeLabel) continue;
+    byName.set(name, { name, size: o.sizeLabel.replace(/\s*x\s*/, "x") });
+  }
+  return [...byName.values()];
+}
+
 export async function getCompletedOrderByReference(reference) {
   const orders = await getCompletedOrders();
   return orders.find((o) => o.reference === reference) || null;

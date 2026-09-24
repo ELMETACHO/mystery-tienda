@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { getRecentProducts } from "../lib/catalog";
+import { getRecentSalesForToast } from "../lib/completedOrders";
 import CrearFlow from "../components/CrearFlow";
 import ProductScroller from "../components/ProductScroller";
 import OfferBadges from "../components/ads/OfferBadges";
@@ -35,7 +36,10 @@ const EJEMPLOS = [
 ];
 
 export default async function AdsLanding() {
-  const recientes = await getRecentProducts(200);
+  const [recientes, ventasRecientes] = await Promise.all([
+    getRecentProducts(200),
+    getRecentSalesForToast(),
+  ]);
 
   return (
     <div className="relative flex min-h-full flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
@@ -200,10 +204,10 @@ export default async function AdsLanding() {
         </section>
       </main>
 
-      {/* Aviso discreto de compra reciente — ventas reales, ver
-          RecentPurchaseToast. Independiente del botón fijo (posiciones
+      {/* Aviso discreto de compra reciente — ventas reales (histórico +
+          completed-orders en vivo), ver RecentPurchaseToast. Independiente del botón fijo (posiciones
           distintas), no interfiere con su ocultamiento por scroll. */}
-      <RecentPurchaseToast />
+      <RecentPurchaseToast liveSales={ventasRecientes} />
 
       {/* 11. CTA FIJO — ya no navega a /crear, hace scroll suave hasta la
           sección embebida del punto 6 dentro de esta misma página. */}
