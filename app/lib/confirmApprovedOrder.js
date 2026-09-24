@@ -12,6 +12,7 @@ import { saveManualShipmentRequest } from "./manualShipments";
 import { grantDiscountCode, markDiscountUsed } from "./discount";
 import { recordReferralSale } from "./referrals";
 import { recordCrmEntry } from "./manufacturerFinance";
+import { checkShippingCoverageAfterPayment } from "./noCoverage";
 
 // Lógica de confirmación de un pago YA VERIFICADO como APPROVED contra
 // Wompi — compartida entre /api/confirm-order (cuando el cliente
@@ -104,10 +105,6 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
     // fabricados nunca generan una deuda fantasma. Nunca lanza.
     await recordCrmEntry({ order, customer, paymentMethod: "wompi" });
 
-    // Descuenta del inventario físico — diferido con after() para que jamás
-    // demore ni afecte al cliente (idempotente, nunca lanza, solo lo ve el admin).
-    after(() => consumeStockForOrder({ order, reference: transaction.reference }));
-
     // Si el pedido viene de /producto/[id] (catálogo), incrementa el
     // contador de ventas de ese producto y trae el archivo real de
     // impresión desde Drive para adjuntarlo — no hace nada para
@@ -138,6 +135,24 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
 
     after(async () => {
       try {
+        // Cotiza el envío ANTES de mandarle el pedido al fabricante (ver
+        // app/lib/noCoverage.js): si supera el tope, se activa la
+        // devolución y el pedido nunca llega a fabricarse. El cliente no
+        // ve ni espera nada de esto — ya tiene su confirmación en pantalla.
+        const covered = await checkShippingCoverageAfterPayment({
+          reference: transaction.reference,
+          order,
+          customer,
+          paymentMethod: "wompi",
+          saldoPendiente: 0,
+        });
+        if (!covered) return;
+
+        // Descuenta del inventario físico (idempotente, nunca lanza, solo
+        // lo ve el admin) — después de la cotización, para no descontar
+        // un cuadro que nunca se va a fabricar.
+        await consumeStockForOrder({ order, reference: transaction.reference });
+
         const orderForEmail = printImageBase64
           ? order
           : {

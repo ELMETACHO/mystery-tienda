@@ -572,6 +572,24 @@ async function createShipment({ rate, order, customer, reference, isCod, codAmou
   };
 }
 
+// Solo COTIZA (no crea guía, no cobra nada) y devuelve la tarifa que
+// createManualShipment elegiría — usado justo después de confirmar un
+// pago (ver app/lib/noCoverage.js) para saber ANTES de fabricar si el
+// envío va a superar MAX_SHIPPING_COST_COP. Devuelve null si la
+// cotización falla o no hay tarifa elegible: en ese caso no se decide
+// nada y queda como red de seguridad el tope al generar la guía.
+export async function quoteCheapestShipping({ order, customer, isCod, codAmountCOP }) {
+  const quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
+  const rates = await pollQuotationRates(quotationId);
+  const { rate } = pickRate(rates, { isCod });
+  if (!rate || !Number.isFinite(ratePrice(rate))) return null;
+  return {
+    costCOP: Math.round(ratePrice(rate)),
+    carrierName: rateCarrierName(rate),
+    exceedsCap: ratePrice(rate) > MAX_SHIPPING_COST_COP,
+  };
+}
+
 // Orquesta cotización → elegir la mejor tarifa → crear la guía, para
 // AMBOS tipos de pedido: contraentrega (isCod: true, solo transportadoras
 // que soportan recaudo — COD_CARRIERS) y pago completo por Wompi (isCod:

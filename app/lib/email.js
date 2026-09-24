@@ -1339,7 +1339,11 @@ export async function sendNoCoverageCustomerEmail({ customer, subjectPrefix = ""
   });
 }
 
-function noCoverageAdminEmailHtml({ reference, customer, paymentMethod, amountPaidCOP, shippingCostCOP, carrierName }) {
+function noCoverageAdminEmailHtml({ reference, customer, paymentMethod, amountPaidCOP, shippingCostCOP, carrierName, stage }) {
+  const stageNote =
+    stage === "payment"
+      ? "Se detectó apenas pagó: el pedido NO se le envió al fabricante, así que no se fabrica nada."
+      : "Se detectó al generar la guía: el cuadro probablemente YA está fabricado — el fabricante tiene instrucción de no despacharlo.";
   const row = (label, value) => `
     <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">${label}</p>
     <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;color:${BRAND.ink};">${value}</p>`;
@@ -1352,12 +1356,19 @@ function noCoverageAdminEmailHtml({ reference, customer, paymentMethod, amountPa
         <tr>
           <td style="padding:24px 28px;">
             <p class="email-text-warning" style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:16px;font-weight:bold;color:${BRAND.warning};">💸 Hay que devolverle el dinero a este cliente</p>
-            <p class="email-text-ink" style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.ink};">El envío más barato cuesta ${formatCOP(shippingCostCOP)}${carrierName ? ` (${escapeHtml(carrierName)})` : ""}, más que el tope. No se generó guía. Al cliente ya le llegó un correo avisándole que no enviamos a su ciudad y que la devolución está programada.</p>
+            <p class="email-text-ink" style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.ink};">El envío más barato cuesta ${formatCOP(shippingCostCOP)}${carrierName ? ` (${escapeHtml(carrierName)})` : ""}, más que el tope. No se generó guía. ${stageNote} ${amountPaidCOP > 0 ? "Al cliente ya le llegó un correo avisándole que no enviamos a su ciudad y que la devolución está programada." : "Pedido de regalo: no hay dinero que devolver y al cliente no se le envió ningún correo."}</p>
             ${row("Cliente", escapeHtml(customer.fullName))}
             ${row("Correo / celular", `${escapeHtml(customer.email)} · ${escapeHtml(customer.phone)}`)}
             ${row("Destino", [customer.city, customer.department].filter(Boolean).map(escapeHtml).join(", "))}
             ${row("Referencia", escapeHtml(reference))}
-            ${row("Método de pago", paymentMethod === "cod" ? "Contraentrega (solo pagó el anticipo)" : "Pago completo por Wompi")}
+            ${row(
+              "Método de pago",
+              paymentMethod === "cod"
+                ? "Contraentrega (solo pagó el anticipo)"
+                : paymentMethod === "regalo"
+                  ? "Regalo (código al 100%)"
+                  : "Pago completo por Wompi"
+            )}
             ${row("Monto a devolver (según el sistema — verifícalo en Wompi)", `<strong>${formatCOP(amountPaidCOP)}</strong>`)}
           </td>
         </tr>
@@ -1372,7 +1383,7 @@ export async function sendNoCoverageAdminEmail({ subjectPrefix = "", testRecipie
   await resend.emails.send({
     from: FROM_EMAIL,
     to: testRecipientOverride || ADMIN_EMAIL,
-    subject: `${subjectPrefix}💸 Devolver dinero — sin envío a ${data.customer.city || "su ciudad"} (${data.customer.fullName})`,
+    subject: `${subjectPrefix}${data.amountPaidCOP > 0 ? "💸 Devolver dinero" : "🚫 Pedido sin envío"} — sin envío a ${data.customer.city || "su ciudad"} (${data.customer.fullName})`,
     html: wrapEmailHtml(noCoverageAdminEmailHtml(data)),
   });
 }

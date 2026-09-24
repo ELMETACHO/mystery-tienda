@@ -11,6 +11,7 @@ import { saveManualShipmentRequest } from "./manualShipments";
 import { grantDiscountCode, markDiscountUsed } from "./discount";
 import { recordReferralSale } from "./referrals";
 import { recordCrmEntry } from "./manufacturerFinance";
+import { checkShippingCoverageAfterPayment } from "./noCoverage";
 import { COD_DEPOSIT_COP, SIZES } from "./order";
 
 // Equivalente de confirmApprovedOrder.js, pero para "Pago contraentrega":
@@ -80,10 +81,6 @@ export async function confirmApprovedCodOrder({ order, customer, transaction }) 
     // Nunca lanza.
     await recordCrmEntry({ order, customer, paymentMethod: "cod" });
 
-    // Descuenta del inventario físico — diferido con after() para que jamás
-    // demore ni afecte al cliente (idempotente, nunca lanza, solo lo ve el admin).
-    after(() => consumeStockForOrder({ order, reference: transaction.reference }));
-
     const { printImageBase64 } = await processCatalogProductPurchase(order);
 
     // Diferido con after() — ver comentario detallado en
@@ -94,6 +91,19 @@ export async function confirmApprovedCodOrder({ order, customer, transaction }) 
 
     after(async () => {
       try {
+        // Cotización del envío antes de mandar el pedido al fabricante —
+        // ver confirmApprovedOrder.js y app/lib/noCoverage.js.
+        const covered = await checkShippingCoverageAfterPayment({
+          reference: transaction.reference,
+          order,
+          customer,
+          paymentMethod: "cod",
+          saldoPendiente,
+        });
+        if (!covered) return;
+
+        await consumeStockForOrder({ order, reference: transaction.reference });
+
         const orderForEmail = printImageBase64
           ? order
           : {
