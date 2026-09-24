@@ -2,14 +2,28 @@
 
 import { useEffect, useRef, useState } from "react";
 
+// Texto del botón según el paso en que va el cliente dentro de CrearFlow
+// (publicado por CrearFlow vía el evento "crearflow:state").
+const LABELS = {
+  upload: "Comprar ahora",
+  edit: "Continuar con mi cuadro",
+  ready: "Continuar con el envío",
+};
+
 // Antes llevaba a /crear como página aparte; ahora el flujo vive embebido
-// en esta misma página (ver app/ads/page.js), así que el botón hace scroll
-// suave hasta esa sección en vez de navegar. position: fixed (no sticky)
+// en esta misma página (ver app/ads/page.js). position: fixed (no sticky)
 // anclado a inset-x-0 bottom-0 — sticky en un contenedor con overflow puede
 // "despegarse" en Safari durante el scroll, fixed se comporta igual en
 // Safari iOS y Chrome Android.
+//
+// Qué hace al tocarlo depende del paso:
+// - sin foto: scroll suave hasta el flujo embebido (para que suba la foto);
+// - con foto: lo mismo que "Continuar" (arma el cuadro) y sube hasta el
+//   flujo, donde aparece "Tu cuadro está listo";
+// - cuadro listo: lo mismo que "Continuar con el envío" (va al checkout).
 export default function StickyBuyButton({ targetId }) {
   const [isTargetVisible, setIsTargetVisible] = useState(false);
+  const [crearState, setCrearState] = useState({ stage: "upload", isBusy: false });
   const observerRef = useRef(null);
 
   // Mientras la sección del flujo embebido (CrearFlow) esté visible en
@@ -31,9 +45,29 @@ export default function StickyBuyButton({ targetId }) {
     return () => observer.disconnect();
   }, [targetId]);
 
-  const handleClick = () => {
+  useEffect(() => {
+    const onState = (e) => setCrearState(e.detail);
+    window.addEventListener("crearflow:state", onState);
+    return () => window.removeEventListener("crearflow:state", onState);
+  }, []);
+
+  const scrollToTarget = () => {
     document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  const handleClick = () => {
+    if (crearState.isBusy) return;
+    if (crearState.stage === "upload") {
+      scrollToTarget();
+      return;
+    }
+    // Con la foto ya subida, "Continuar" arma el cuadro y CrearFlow mismo
+    // lleva al cliente hasta "Tu cuadro está listo" cuando aparece. En
+    // "listo", navega directo al checkout.
+    window.dispatchEvent(new CustomEvent("crearflow:primary-action"));
+  };
+
+  const label = crearState.isBusy ? "Preparando tu cuadro..." : LABELS[crearState.stage];
 
   return (
     <div
@@ -50,10 +84,11 @@ export default function StickyBuyButton({ targetId }) {
         <button
           type="button"
           onClick={handleClick}
+          disabled={crearState.isBusy}
           tabIndex={isTargetVisible ? -1 : 0}
-          className="flex w-full items-center justify-center rounded-full bg-accent px-6 py-4 text-base font-bold text-white shadow-lg shadow-accent/30 active:bg-accent-soft"
+          className="flex w-full items-center justify-center rounded-full bg-accent px-6 py-4 text-base font-bold text-white shadow-lg shadow-accent/30 active:bg-accent-soft disabled:opacity-70"
         >
-          Comprar ahora
+          {label}
         </button>
         <p className="mt-1.5 text-center text-[11px] font-semibold text-[#33456b]">
           🚚 Envío gratis · 💵 Paga al recibir

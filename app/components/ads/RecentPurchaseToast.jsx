@@ -5,9 +5,10 @@ import { useEffect, useRef, useState } from "react";
 // Ventas REALES confirmadas antes del reset de la base de datos (Redis se
 // reinició, así que completed-orders ya no tiene ese historial en vivo).
 // Lista fija con pedidos reales ya entregados — nunca se inventan ventas
-// ficticias. Si algún día se vuelve a tener historial real en Redis, esta
-// lista es el lugar a reemplazar por una consulta en vivo.
-const REAL_SALES = [
+// ficticias. Las ventas nuevas llegan en vivo por la prop `liveSales`
+// (ver getRecentSalesForToast en app/lib/completedOrders.js) y se mezclan
+// con estas.
+const HISTORIC_SALES = [
   { name: "Angélica M.", size: "30x40 cm" },
   { name: "Gloria S.", size: "40x50 cm" },
   { name: "Oscar D.", size: "40x50 cm" },
@@ -33,22 +34,27 @@ const GAP_MAX_MS = 16000;
 // Aviso discreto en una esquina: "Fulano compró un cuadro 40x50 cm",
 // aparece 2-3s cada cierto tiempo y desaparece con una transición suave.
 // El orden se reproduce aleatorio (se re-baraja) en cada carga de página.
-export default function RecentPurchaseToast() {
+export default function RecentPurchaseToast({ liveSales = [] }) {
   const [entry, setEntry] = useState(null);
   const [visible, setVisible] = useState(false);
   const queueRef = useRef([]);
 
   useEffect(() => {
-    if (REAL_SALES.length === 0) return undefined;
+    // Histórico + en vivo, sin repetir nombres (si un cliente del
+    // histórico vuelve a comprar, gana su compra más reciente).
+    const byName = new Map(HISTORIC_SALES.map((s) => [s.name, s]));
+    for (const s of liveSales) byName.set(s.name, s);
+    const sales = [...byName.values()];
+    if (sales.length === 0) return undefined;
 
-    queueRef.current = shuffled(REAL_SALES);
+    queueRef.current = shuffled(sales);
     let cancelled = false;
     let timeoutId;
 
     const showNext = () => {
       if (cancelled) return;
       if (queueRef.current.length === 0) {
-        queueRef.current = shuffled(REAL_SALES);
+        queueRef.current = shuffled(sales);
       }
       setEntry(queueRef.current.shift());
       setVisible(true);
@@ -68,7 +74,7 @@ export default function RecentPurchaseToast() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, []);
+  }, [liveSales]);
 
   if (!entry) return null;
 
