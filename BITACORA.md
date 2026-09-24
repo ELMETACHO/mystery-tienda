@@ -151,3 +151,72 @@ real), porque su pago no pasó por el flujo normal del sitio:
   comando. Pasó al intentar guardar un PNG de 88MB sin comprimir
   (upscale de un pedido 100x140) — la solución fue convertir a JPEG de
   alta calidad antes de guardar/enviar.
+
+---
+
+## Sesión del 23-24 sept 2026 — Servientrega vetada, cancelar/regenerar guías, links localhost, perfil sRGB
+
+### 1. Servientrega vetada en la elección de transportadora (`app/lib/skydropx.js`)
+- **Antes**: se cotizaba y se tomaba la tarifa más barata (en contraentrega,
+  solo entre `COD_CARRIERS`). Servientrega salía cuando era la más barata.
+- **Problema**: Servientrega empezó a exigir protección adicional, caja y
+  valor declarado, y devolvió pedidos que no cumplían.
+- **Ahora** (`pickRate`): la más barata que NO sea Servientrega. Solo si
+  Servientrega es la ÚNICA opción se usa, y `createManualShipment` devuelve
+  `requiresExtraProtection: true` → correo `sendExtraProtectionEmail`
+  (`app/lib/email.js`, al fabricante + contacto@, con el valor comercial del
+  cuadro) + banner en la página de resultado de `/api/generate-shipment` +
+  mensaje en `/fabricante` al regenerar.
+
+### 2. Valor declarado — decisión pendiente con Skydropx
+- Pedidos pagados completos por Wompi: ya declaran el valor comercial
+  (`order.priceCOP`). Sin cambios.
+- Contraentrega: NO se cambió. En esta API, Skydropx usa el valor declarado
+  como MONTO A COBRAR al entregar (ver fix de sobrecobro del 22 sept); declarar
+  el valor comercial volvería a cobrar de más. **Pendiente**: preguntar a
+  soporte de Skydropx si existe un campo aparte para el monto COD
+  (`cod_amount` o similar). Mientras, el valor comercial va en el correo de
+  Servientrega para que Cris lo reporte a mano.
+
+### 3. Botón "generar guía" apuntando a localhost:3000 — caso aislado, ya blindado
+- Pasó solo con el pedido de Rodrigo Canchila (reconstruido a mano corriendo
+  el código desde la máquina local, donde `.env.local` tiene
+  `SITE_URL=http://localhost:3000`). Los pedidos normales corren en Vercel y
+  usan el dominio real. Cris lo resolvió pegando la ruta en el dominio real.
+- **Blindaje**: `EMAIL_SITE_URL` en `app/lib/siteUrl.js` — todos los links
+  de correos (`email.js`) caen a `https://www.mysterycuadros.com` si
+  `SITE_URL` es localhost.
+
+### 4. Cancelar / regenerar guía desde `/fabricante`
+- Flujo: Cris cancela en su panel (NO desde el correo) → Skydropx cancela y
+  reembolsa → aparece "Generar guía nueva" → nueva guía (ya sin Servientrega).
+- Arreglos: el botón "Generar guía nueva" ahora aparece apenas se cancela
+  (antes había que recargar); si Skydropx rechaza la cancelación, se muestra
+  el motivo real (`fabricante-cancel-shipment/route.js`).
+- **Pendiente de confirmar en vivo** (Cris lo prueba el 24 sept): cancelar y
+  regenerar las 3 guías Servientrega devueltas, todas en estado "created" en
+  Skydropx (nunca escaneadas → cancelables), pestaña Premium:
+  - Juan Pablo García Aponte `mystery-cod-1790031223089` — COD, 30x40, cobra
+    $45.000 (no se le devolvió anticipo).
+  - Arle Medina Pérez `mystery-cod-1789582057832` — COD, 40x50. **Se le
+    devolvió el anticipo de $20.000**, así que su `saldoPendiente` en
+    `manual-shipment:*` se subió a mano a **$89.000** (valor completo, con
+    campo `nota` explicándolo). Corrección a la sesión anterior: Arle compró
+    UNA sola vez — el "x2" de la bitácora del 19-23 sept era un error.
+  - Juan Sebastián Galindo `mystery-1789530352469` — pagado completo por
+    Wompi, no cobra nada al entregar.
+  - Verificar: transportadora nueva de cada una, reembolso de las 3 en el
+    saldo de Skydropx, y monto "Contra entrega" correcto en las 2 COD.
+
+### 5. Perfil de color sRGB en TODOS los archivos de impresión
+- Cris confirmó que el archivo con perfil sRGB (antes solo lo tenían las
+  fotos mejoradas con IA, `upscaleImage.js`) imprimía con color mucho mejor.
+- **Ahora** `embedSrgbProfile` (`app/lib/printColorProfile.js`) se aplica en
+  `sendOrderEmails` al adjunto del fabricante, para cualquier pedido (foto
+  propia, catálogo, regalo, IA fallida). JPEG: inserta el APP2 ICC sin
+  recomprimir; PNG: reescritura sin pérdida conservando densidad. Probado:
+  píxeles idénticos y densidad física intacta. Si ya trae perfil, no se toca.
+- No cubre: descarga desde `/admin/respaldos` ni los originales en Drive.
+- **Pendiente**: que Cris confirme el color en la próxima impresión.
+
+Commits: `795c493` (Servientrega/localhost/cancelar), `47ead09` (sRGB).
