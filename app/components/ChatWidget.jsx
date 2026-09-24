@@ -105,6 +105,13 @@ export default function ChatWidget() {
 
   if (HIDDEN_PREFIXES.some((p) => pathname?.startsWith(p))) return null;
 
+  // En /ads hay una barra fija de "Comprar ahora" abajo (StickyBuyButton)
+  // que le deja un hueco a la derecha a este botón — se alinea con el
+  // botón de compra en vez de taparlo o de subir a tapar el contenido.
+  const hasStickyBuyBar = pathname === "/ads";
+  const buttonPosition = hasStickyBuyBar ? "bottom-8" : "bottom-5 sm:bottom-6";
+  const panelPosition = hasStickyBuyBar ? "bottom-28" : "bottom-24";
+
   // presetText: usado por los chips de acceso rápido (preguntas frecuentes)
   // para enviar una pregunta canónica sin que el cliente tenga que
   // escribirla — mismo camino que un mensaje normal (pasa por la IA), así
@@ -247,7 +254,7 @@ export default function ChatWidget() {
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         aria-label={isOpen ? "Cerrar chat" : "Abrir chat"}
-        className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 text-white shadow-lg shadow-accent/50 transition-transform hover:scale-105 sm:bottom-6 sm:right-6"
+        className={`fixed ${buttonPosition} right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 text-white shadow-lg shadow-accent/50 transition-transform hover:scale-105 sm:right-6`}
       >
         {isOpen ? (
           <span className="text-2xl leading-none">✕</span>
@@ -257,7 +264,7 @@ export default function ChatWidget() {
       </button>
 
       {isOpen && (
-        <div className="fixed inset-x-4 bottom-24 z-50 flex max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-black/10 bg-[#8fcaf0] shadow-2xl sm:inset-x-auto sm:right-6 sm:bottom-24 sm:w-96">
+        <div className={`fixed inset-x-4 ${panelPosition} z-50 flex max-h-[70vh] flex-col overflow-hidden rounded-2xl border border-black/10 bg-[#8fcaf0] shadow-2xl sm:inset-x-auto sm:right-6 sm:w-96`}>
           <div className="flex items-center justify-between bg-white px-4 py-3">
             <span className="text-sm font-semibold text-[#1b2a4a]">Mystery Cuadros</span>
             <button

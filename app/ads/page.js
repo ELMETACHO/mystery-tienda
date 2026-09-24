@@ -2,8 +2,7 @@ import Image from "next/image";
 import { getRecentProducts } from "../lib/catalog";
 import CrearFlow from "../components/CrearFlow";
 import ProductScroller from "../components/ProductScroller";
-import CountdownBanner from "../components/ads/CountdownBanner";
-import ViewersCounter from "../components/ads/ViewersCounter";
+import OfferBadges from "../components/ads/OfferBadges";
 import StickyBuyButton from "../components/ads/StickyBuyButton";
 import RecentPurchaseToast from "../components/ads/RecentPurchaseToast";
 import FooterLegalAccordion from "../components/ads/FooterLegalAccordion";
@@ -59,7 +58,7 @@ export default async function AdsLanding() {
         </p>
       </div>
 
-      <main className="relative z-10 flex-1 pb-28 pt-11">
+      <main className="relative z-10 flex-1 pb-36 pt-11">
         {/* 2. NOMBRE DE MARCA — primer contenido debajo del header fijo. */}
         <div className="px-4 pb-4 pt-5 text-center">
           <p className="font-brand text-2xl tracking-tight text-[#1b2a4a] sm:text-3xl">
@@ -91,19 +90,14 @@ export default async function AdsLanding() {
           </div>
         </section>
 
-        {/* 4. URGENCIA — cuenta regresiva de 1 hora, por sesión (ver
-            CountdownBanner). */}
-        <section className="px-4 pb-3">
-          <CountdownBanner />
-        </section>
-
-        {/* 5. PRUEBA SOCIAL EN VIVO — número pseudo-aleatorio, no un
-            conteo real (ver ViewersCounter). */}
+        {/* 4. OFERTA REAL — envío gratis + paga al recibir (ver
+            OfferBadges). Reemplaza la cuenta regresiva y el contador de
+            visitas simulados que había antes. */}
         <section className="px-4 pb-6">
-          <ViewersCounter />
+          <OfferBadges />
         </section>
 
-        {/* 6. INFORMACIÓN DEL PRODUCTO */}
+        {/* 5. INFORMACIÓN DEL PRODUCTO */}
         <section className="px-4 pb-6 text-center">
           <h1 className="font-heading text-2xl font-extrabold leading-tight tracking-tight text-[#1b2a4a] sm:text-3xl">
             Cuadro decorativo de excelente calidad en madera y vinilo laminado.
@@ -111,20 +105,26 @@ export default async function AdsLanding() {
           <p className="mt-2 text-xl font-bold text-accent sm:text-2xl">
             Desde $55.000 COP
           </p>
+          <p className="mt-1 text-xs font-semibold text-emerald-800">
+            Envío incluido en el precio
+          </p>
         </section>
 
-        {/* 7. FLUJO DE /crear EMBEBIDO — mismo componente que usa /crear
+        {/* 6. FLUJO DE /crear EMBEBIDO — mismo componente que usa /crear
             (app/components/CrearFlow.jsx), en modo "compact": misma lógica
             de subida/recorte/tamaño/confirmación, sin la cabecera grande
             que no tiene sentido en medio de esta página. */}
         <section id="crear-embed" className="scroll-mt-12 px-4 pb-8">
-          <h2 className="font-heading mb-4 text-center text-xl font-bold tracking-tight sm:text-2xl">
+          <h2 className="font-heading text-center text-xl font-bold tracking-tight sm:text-2xl">
             Tu cuadro con cualquier imagen
           </h2>
+          <div className="mb-4 mt-1.5">
+            <OfferBadges variant="pill" />
+          </div>
           <CrearFlow compact />
         </section>
 
-        {/* 8. TESTIMONIOS — sin reseñas reales todavía, se muestran cuadros
+        {/* 7. TESTIMONIOS — sin reseñas reales todavía, se muestran cuadros
             entregados como ejemplo visual (no citas de texto inventadas). */}
         <section className="px-4 pb-8">
           <h2 className="mb-3 text-center text-sm font-semibold text-[#33456b]">
@@ -149,7 +149,7 @@ export default async function AdsLanding() {
           </div>
         </section>
 
-        {/* 9. TEXTO LARGO DEL PRODUCTO — texto exacto pedido. */}
+        {/* 8. TEXTO LARGO DEL PRODUCTO — texto exacto pedido. */}
         <section className="px-4 pb-8">
           <div className="mx-auto max-w-md rounded-2xl border border-black/5 bg-[#fffaf0] px-5 py-5 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)]">
             <p className="text-sm leading-relaxed text-[#33456b]">
@@ -166,18 +166,21 @@ export default async function AdsLanding() {
           </div>
         </section>
 
-        {/* 10. CATÁLOGO — mismo ProductScroller de "Recientes" del Home,
+        {/* 9. CATÁLOGO — mismo ProductScroller de "Recientes" del Home,
             con sus botones de compra normales. */}
         <section className="pb-8">
           <div className="mx-auto max-w-6xl px-4">
-            <h2 className="font-heading mb-4 text-center text-xl font-bold tracking-tight sm:text-2xl">
+            <h2 className="font-heading text-center text-xl font-bold tracking-tight sm:text-2xl">
               ¿Quieres comprar nuestros diseños?
             </h2>
+            <div className="mb-4 mt-1.5">
+              <OfferBadges variant="pill" />
+            </div>
             <ProductScroller items={recientes} light />
           </div>
         </section>
 
-        {/* 11. GARANTÍA / FOOTER — discreto, exigido por políticas de
+        {/* 10. GARANTÍA / FOOTER — discreto, exigido por políticas de
             anuncios de ecommerce de TikTok (contacto + garantía visibles). */}
         <section className="px-4">
           <div className="mx-auto max-w-md border-t border-black/10 pt-5 text-center">
@@ -202,8 +205,8 @@ export default async function AdsLanding() {
           distintas), no interfiere con su ocultamiento por scroll. */}
       <RecentPurchaseToast />
 
-      {/* 12. CTA FIJO — ya no navega a /crear, hace scroll suave hasta la
-          sección embebida del punto 7 dentro de esta misma página. */}
+      {/* 11. CTA FIJO — ya no navega a /crear, hace scroll suave hasta la
+          sección embebida del punto 6 dentro de esta misma página. */}
       <StickyBuyButton targetId="crear-embed" />
     </div>
   );
