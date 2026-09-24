@@ -7,6 +7,7 @@ import {
 import { createManualShipment } from "../../lib/skydropx";
 import { sendShippingNotificationEmail, sendExtraProtectionEmail } from "../../lib/email";
 import { recordManufacturerOrder } from "../../lib/manufacturerFinance";
+import { handleNoCoverage } from "../../lib/noCoverage";
 import { getFabricanteForFrameType } from "../../lib/fabricantes";
 
 // Botón "✅ Ya está listo — generar guía ahora" del correo al fabricante
@@ -158,7 +159,7 @@ function confirmPage({ ref, token, record }) {
 }
 
 function extraProtectionWarningHtml() {
-  return `<p style="margin:0 0 16px 0;padding:12px 14px;background-color:${BRAND.warningBg};border-radius:8px;font-size:14px;line-height:20px;color:${BRAND.warning};"><strong>⚠️ Esta guía salió por SERVIENTREGA</strong> (fue la única transportadora disponible). Protege el cuadro MUCHO más: protección adicional, dentro de una caja y con el valor declarado. Si no, lo devuelven.</p>`;
+  return `<p style="margin:0 0 16px 0;padding:12px 14px;background-color:${BRAND.warningBg};border-radius:8px;font-size:14px;line-height:20px;color:${BRAND.warning};"><strong>⚠️ Esta guía salió por SERVIENTREGA</strong> (fue la opción más económica). Protege el cuadro MUCHO más: protección adicional, dentro de una caja y con el valor declarado. Si no, lo devuelven.</p>`;
 }
 
 function resultPage({ ok, trackingNumber, carrierName, labelUrl, errorMessage, requiresExtraProtection }) {
@@ -195,6 +196,21 @@ function resultPage({ ok, trackingNumber, carrierName, labelUrl, errorMessage, r
   });
 }
 
+// El envío superó MAX_SHIPPING_COST_COP (ver app/lib/noCoverage.js): no hay
+// guía y el cuadro NO se despacha — se le devuelve el dinero al cliente.
+function noCoveragePage(message) {
+  return renderPage({
+    title: "Sin envío a esta ciudad — Mystery",
+    bodyHtml: `
+      <p style="margin:0 0 12px 0;font-size:16px;font-weight:bold;color:${BRAND.warning};">🚫 No se generó la guía — NO despaches este cuadro.</p>
+      <p style="margin:0 0 12px 0;font-size:14px;color:${BRAND.ink};">${escapeHtml(
+        message || "El envío a esta ciudad cuesta más que el tope permitido."
+      )}</p>
+      <p style="margin:0;font-size:13px;color:${BRAND.muted};">Al cliente ya le llegó un correo avisándole, y Mystery se encarga de devolverle el dinero.</p>
+    `,
+  });
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const ref = searchParams.get("ref");
@@ -211,6 +227,9 @@ export async function GET(request) {
 
   if (record.status === "generated" && record.trackingNumber) {
     return alreadyGeneratedPage(record);
+  }
+  if (record.status === "no_coverage") {
+    return noCoveragePage();
   }
 
   return confirmPage({ ref, token, record });
@@ -236,6 +255,9 @@ export async function POST(request) {
   // pedido.
   if (record.status === "generated" && record.trackingNumber) {
     return alreadyGeneratedPage(record);
+  }
+  if (record.status === "no_coverage") {
+    return noCoveragePage();
   }
 
   try {
@@ -301,7 +323,7 @@ export async function POST(request) {
       console.error("[generate-shipment] Falló el correo de guía generada:", emailErr);
     }
 
-    // Servientrega fue la única opción (ver pickRate en skydropx.js) —
+    // La guía salió por Servientrega (ver pickRate en skydropx.js) —
     // aviso por correo al fabricante, además del banner en la página.
     if (shipment.requiresExtraProtection) {
       try {
@@ -323,6 +345,10 @@ export async function POST(request) {
       requiresExtraProtection: shipment.requiresExtraProtection,
     });
   } catch (err) {
+    if (err.shippingTooExpensive) {
+      await handleNoCoverage({ reference: ref, record, error: err });
+      return noCoveragePage(err.message);
+    }
     console.error("[generate-shipment] Falló la creación de guía en Skydropx:", err);
     return resultPage({ ok: false, errorMessage: err.message || String(err) });
   }

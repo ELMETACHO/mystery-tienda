@@ -112,7 +112,7 @@ export async function saveManualShipmentRequest({
       customer,
       paymentMethod, // "cod" | "wompi"
       saldoPendiente: saldoPendiente ?? 0,
-      status: "pending", // "pending" | "generated"
+      status: "pending", // "pending" | "generated" | "no_coverage"
       trackingNumber: null,
       carrierName: null,
       labelUrl: null,
@@ -200,6 +200,44 @@ export async function markManualShipmentGenerated(
     return true;
   } catch (err) {
     console.error("[manualShipments] No se pudo marcar la solicitud como generada:", err);
+    return false;
+  }
+}
+
+// Marca la solicitud como "no_coverage": el envío superó el tope de costo
+// (ver MAX_SHIPPING_COST_COP en app/lib/skydropx.js), no se generó guía y
+// hay que devolverle el dinero al cliente (ver app/lib/noCoverage.js).
+// Devuelve true SOLO si esta llamada fue la primera (candado SET NX) — así,
+// si el fabricante hace click dos veces, los correos de devolución salen
+// una sola vez.
+export async function markManualShipmentNoCoverage(reference, { shippingCostCOP, carrierName }) {
+  const client = getRedisClient();
+  if (!client) return false;
+
+  const key = manualShipmentKey(reference);
+  try {
+    const first = await client.set(
+      `${key}:no-coverage-lock`,
+      "1",
+      "EX",
+      MANUAL_SHIPMENT_TTL_SECONDS,
+      "NX"
+    );
+    if (first !== "OK") return false;
+
+    const existing = await getManualShipmentRequest(reference);
+    if (!existing) return false;
+    const updated = {
+      ...existing,
+      status: "no_coverage",
+      noCoverageShippingCostCOP: shippingCostCOP ?? null,
+      noCoverageCarrierName: carrierName || null,
+      noCoverageAt: new Date().toISOString(),
+    };
+    await client.set(key, JSON.stringify(updated), "EX", MANUAL_SHIPMENT_TTL_SECONDS);
+    return true;
+  } catch (err) {
+    console.error("[manualShipments] No se pudo marcar la solicitud como sin cobertura:", err);
     return false;
   }
 }

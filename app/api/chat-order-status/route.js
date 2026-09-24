@@ -46,6 +46,16 @@ export async function POST(request) {
     });
   }
 
+  // Envío por encima del tope de costo (ver app/lib/noCoverage.js).
+  if (record.status === "no_coverage") {
+    return Response.json({
+      found: true,
+      status: "no_coverage",
+      message:
+        "Por ahora no tenemos envíos disponibles a tu ciudad, así que la devolución de tu dinero ya quedó programada — te enviamos los detalles a tu correo. Si tienes dudas, escríbenos a contacto@elmetacho.com.",
+    });
+  }
+
   return Response.json({
     found: true,
     status: "pending",

@@ -347,27 +347,34 @@ async function pollQuotationRates(quotationId, { attempts = 5, delayMs = 1500 } 
   return [];
 }
 
+// Tope DURO de costo por guía (decisión de Oscar, 24 sept 2026): ningún
+// envío puede costar más de esto, sin importar la distancia. Caso real que
+// lo motivó: guía Coordinadora a Maicao (Arle Medina, contraentrega) por
+// $64.913 — el pedido terminó dando pérdida (Servientrega cotizaba
+// $24.361 al mismo destino). Si la tarifa más barata supera el tope, NO se
+// genera ninguna guía (ver createManualShipment) y se le devuelve el
+// dinero al cliente (ver app/lib/noCoverage.js).
+export const MAX_SHIPPING_COST_COP = 26000;
+
+function ratePrice(rate) {
+  return Number(rate.total || rate.amount || rate.price || Infinity);
+}
+
 function cheapestOf(rates) {
   if (rates.length === 0) return null;
-  return rates.reduce((cheapest, rate) => {
-    const price = Number(rate.total || rate.amount || rate.price || Infinity);
-    const cheapestPrice = Number(
-      cheapest.total || cheapest.amount || cheapest.price || Infinity
-    );
-    return price < cheapestPrice ? rate : cheapest;
-  });
+  return rates.reduce((cheapest, rate) => (ratePrice(rate) < ratePrice(cheapest) ? rate : cheapest));
 }
 
 function rateCarrierName(rate) {
   return String(rate.carrier_name || rate.carrier || rate.provider_name || "").toLowerCase();
 }
 
-// Servientrega queda "vetada" (sept 2026): empezó a exigir protección
-// adicional, caja y valor declarado para los cuadros, y devolvió pedidos
-// que no cumplían — demasiada fricción. Solo se usa como ÚLTIMO recurso,
-// cuando es la única transportadora que cotizó para esa dirección; en ese
-// caso createManualShipment marca requiresExtraProtection para avisarle al
-// fabricante que debe proteger mucho más el cuadro.
+// Servientrega estuvo "vetada" del 23 al 24 sept 2026 (exigía protección
+// adicional, caja y valor declarado, y devolvió pedidos que no cumplían),
+// pero evitarla salió MUY caro en destinos lejanos (ver
+// MAX_SHIPPING_COST_COP). Volvió a competir en igualdad por precio; cuando
+// gana, createManualShipment marca requiresExtraProtection para avisarle
+// al fabricante que debe empacar el cuadro en caja y con protección extra.
 function isServientrega(rate) {
   return rateCarrierName(rate).includes("servientrega");
 }
@@ -375,18 +382,31 @@ function isServientrega(rate) {
 // Para pedidos SIN contraentrega (pago completo por Wompi) no hay
 // restricción de transportadora — cualquiera que haya cotizado sirve.
 // Para contraentrega, solo cuentan las que sabemos que soportan recaudo en
-// efectivo (COD_CARRIERS). En ambos casos se toma la más barata que NO sea
-// Servientrega, y solo si no queda ninguna se cae a Servientrega.
+// efectivo (COD_CARRIERS). En ambos casos se toma la más barata, Servientrega
+// incluida.
 function pickRate(rates, { isCod }) {
   const eligible = isCod
     ? rates.filter((rate) => COD_CARRIERS.some((name) => rateCarrierName(rate).includes(name)))
     : rates;
 
-  const preferred = cheapestOf(eligible.filter((rate) => !isServientrega(rate)));
-  if (preferred) return { rate: preferred, requiresExtraProtection: false };
+  const rate = cheapestOf(eligible);
+  return { rate, requiresExtraProtection: Boolean(rate) && isServientrega(rate) };
+}
 
-  const fallback = cheapestOf(eligible);
-  return { rate: fallback, requiresExtraProtection: Boolean(fallback) };
+function formatCOPPlain(value) {
+  return `$${Math.round(value).toLocaleString("es-CO")}`;
+}
+
+function shippingTooExpensiveError(costCOP, carrierName) {
+  const err = new Error(
+    `El envío más barato para esta dirección cuesta ${formatCOPPlain(costCOP)}${
+      carrierName ? ` (${carrierName})` : ""
+    }, más que el tope de ${formatCOPPlain(MAX_SHIPPING_COST_COP)}. No se generó ninguna guía. NO despaches este cuadro: se le devuelve el dinero al cliente.`
+  );
+  err.shippingTooExpensive = true;
+  err.shippingCostCOP = Math.round(costCOP);
+  err.carrierName = carrierName || null;
+  return err;
 }
 
 // La creación de guía en Skydropx es ASÍNCRONA: el POST a /api/v1/shipments
@@ -584,8 +604,31 @@ export async function createManualShipment({ order, customer, reference, isCod, 
     throw err;
   }
 
+  // Tope duro ANTES de crear la guía — así nunca se paga un envío caro.
+  if (ratePrice(bestRate) > MAX_SHIPPING_COST_COP) {
+    throw shippingTooExpensiveError(ratePrice(bestRate), rateCarrierName(bestRate));
+  }
+
   const shipment = await createShipment({ rate: bestRate, order, customer, reference, isCod, codAmountCOP });
-  // true solo cuando Servientrega fue la ÚNICA opción (ver pickRate) — los
+
+  // Red de seguridad: el costo final de la guía puede diferir un poco de la
+  // cotización. Si aun así se pasó del tope, se cancela de inmediato (recién
+  // creada, nunca escaneada → Skydropx la reembolsa) y se trata como fallo.
+  if (shipment.shippingCostCOP != null && shipment.shippingCostCOP > MAX_SHIPPING_COST_COP) {
+    try {
+      if (shipment.shipmentId) {
+        await cancelShipment(shipment.shipmentId, { reason: "Costo de envío por encima del tope" });
+      }
+    } catch (cancelErr) {
+      console.error(
+        `[skydropx] La guía ${shipment.trackingNumber} superó el tope y NO se pudo cancelar sola — cancelarla a mano:`,
+        cancelErr
+      );
+    }
+    throw shippingTooExpensiveError(shipment.shippingCostCOP, shipment.carrierName);
+  }
+
+  // true cuando la guía salió por Servientrega (ver pickRate) — los
   // llamadores le avisan al fabricante que debe proteger mucho más el
   // cuadro (sendExtraProtectionEmail en app/lib/email.js).
   return { ...shipment, requiresExtraProtection };

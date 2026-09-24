@@ -89,7 +89,7 @@ function OrderRow({ order, code, onUpdated }) {
       onUpdated(updated);
       setMessage(
         json.requiresExtraProtection
-          ? "✅ Guía nueva generada — ⚠️ salió por SERVIENTREGA (única opción): protege el cuadro MUCHO más, en caja y con valor declarado. Te llegó un correo con los detalles."
+          ? "✅ Guía nueva generada — ⚠️ salió por SERVIENTREGA: protege el cuadro MUCHO más, en caja y con valor declarado. Te llegó un correo con los detalles."
           : "✅ Guía nueva generada"
       );
     } catch (err) {

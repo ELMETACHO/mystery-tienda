@@ -814,10 +814,9 @@ export async function sendGuideCancelledEmail({
 }
 
 // ---------------------------------------------------------------------
-// Aviso al fabricante: la guía salió por Servientrega porque fue la ÚNICA
-// transportadora disponible para esa dirección (ver pickRate en
-// app/lib/skydropx.js — Servientrega está vetada salvo como último
-// recurso). Servientrega exige protección adicional, caja y valor
+// Aviso al fabricante: la guía salió por Servientrega porque fue la
+// transportadora más barata para esa dirección (ver pickRate en
+// app/lib/skydropx.js). Servientrega exige protección adicional, caja y valor
 // declarado; si el cuadro no va así, lo devuelve. Va al fabricante que
 // corresponde al pedido + copia al admin.
 // ---------------------------------------------------------------------
@@ -835,7 +834,7 @@ function extraProtectionEmailHtml({ order, customer, trackingNumber, commercialV
               <tr>
                 <td style="padding:12px 14px;">
                   <p class="email-text-warning" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.warning};">⚠️ Esta guía salió por SERVIENTREGA</p>
-                  <p class="email-text-ink" style="margin:0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.ink};">Fue la única transportadora disponible para esta dirección. Servientrega exige que el cuadro vaya <strong>MUY bien protegido</strong>: protección adicional (esquineros + plástico burbuja), <strong>dentro de una caja</strong>, y con el <strong>valor declarado</strong> reportado. Si no va así, lo devuelven.</p>
+                  <p class="email-text-ink" style="margin:0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.ink};">Fue la opción más económica para esta dirección. Servientrega exige que el cuadro vaya <strong>MUY bien protegido</strong>: protección adicional (esquineros + plástico burbuja), <strong>dentro de una caja</strong>, y con el <strong>valor declarado</strong> reportado. Si no va así, lo devuelven.</p>
                 </td>
               </tr>
             </table>
@@ -1279,6 +1278,102 @@ export async function sendGuideCorrectionEmail({ customer, subjectPrefix = "", t
     to: testRecipientOverride || customer.email,
     subject: `${subjectPrefix}Actualización sobre tu envío Mystery`,
     html: wrapEmailHtml(guideCorrectionEmailHtml({ customer })),
+  });
+}
+
+// ---------------------------------------------------------------------
+// Sin cobertura: el envío más barato a la dirección del cliente supera
+// MAX_SHIPPING_COST_COP (ver app/lib/skydropx.js), así que no se genera
+// guía y se le devuelve el dinero. El reembolso lo hace Oscar A MANO
+// (Wompi/Nequi) — por eso al cliente se le dice que queda "programado", sin
+// fecha exacta, y a Oscar le llega un aviso aparte con los datos para
+// hacerlo (sendNoCoverageAdminEmail).
+// ---------------------------------------------------------------------
+
+function noCoverageCustomerEmailHtml({ customer }) {
+  const place = [customer.city, customer.department].filter(Boolean).map(escapeHtml).join(", ");
+  return `
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow()}
+
+        <tr>
+          <td style="padding:32px 32px 8px 32px;">
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Hola ${escapeHtml(customer.fullName)}!</p>
+            <p class="email-text-muted" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
+              Lamentamos contarte que por ahora <strong class="email-text-ink" style="color:${BRAND.ink};">no tenemos envíos disponibles a ${place || "tu ciudad"}</strong>, así que no vamos a poder entregarte tu cuadro.
+            </p>
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
+              La devolución de tu dinero ya quedó programada: te devolvemos el valor completo que pagaste, sin ningún descuento. Si necesitamos algún dato para hacerte la devolución, te escribimos por este medio o por WhatsApp.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:8px 32px 32px 32px;">
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">Te pedimos disculpas por las molestias y gracias por confiar en Mystery. 💜</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="email-footer-bg" style="background-color:#fafafa;border-top:1px solid ${BRAND.border};padding:20px 32px;">
+            <p class="email-text-faint" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Mystery · ${ADMIN_EMAIL}</p>
+            <p class="email-text-faint" style="margin:0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">¿Dudas? Responde este correo, con gusto te ayudamos.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+export async function sendNoCoverageCustomerEmail({ customer, subjectPrefix = "", testRecipientOverride }) {
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: testRecipientOverride || customer.email,
+    subject: `${subjectPrefix}Sobre tu pedido Mystery: devolución de tu dinero`,
+    html: wrapEmailHtml(noCoverageCustomerEmailHtml({ customer })),
+  });
+}
+
+function noCoverageAdminEmailHtml({ reference, customer, paymentMethod, amountPaidCOP, shippingCostCOP, carrierName }) {
+  const row = (label, value) => `
+    <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">${label}</p>
+    <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;color:${BRAND.ink};">${value}</p>`;
+  return `
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:520px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow()}
+        <tr>
+          <td style="padding:24px 28px;">
+            <p class="email-text-warning" style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:16px;font-weight:bold;color:${BRAND.warning};">💸 Hay que devolverle el dinero a este cliente</p>
+            <p class="email-text-ink" style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.ink};">El envío más barato cuesta ${formatCOP(shippingCostCOP)}${carrierName ? ` (${escapeHtml(carrierName)})` : ""}, más que el tope. No se generó guía. Al cliente ya le llegó un correo avisándole que no enviamos a su ciudad y que la devolución está programada.</p>
+            ${row("Cliente", escapeHtml(customer.fullName))}
+            ${row("Correo / celular", `${escapeHtml(customer.email)} · ${escapeHtml(customer.phone)}`)}
+            ${row("Destino", [customer.city, customer.department].filter(Boolean).map(escapeHtml).join(", "))}
+            ${row("Referencia", escapeHtml(reference))}
+            ${row("Método de pago", paymentMethod === "cod" ? "Contraentrega (solo pagó el anticipo)" : "Pago completo por Wompi")}
+            ${row("Monto a devolver (según el sistema — verifícalo en Wompi)", `<strong>${formatCOP(amountPaidCOP)}</strong>`)}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+export async function sendNoCoverageAdminEmail({ subjectPrefix = "", testRecipientOverride, ...data }) {
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: testRecipientOverride || ADMIN_EMAIL,
+    subject: `${subjectPrefix}💸 Devolver dinero — sin envío a ${data.customer.city || "su ciudad"} (${data.customer.fullName})`,
+    html: wrapEmailHtml(noCoverageAdminEmailHtml(data)),
   });
 }
 

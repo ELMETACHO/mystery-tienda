@@ -7,6 +7,7 @@ import {
 import { getManufacturerOrder, markManufacturerOrderRegenerated } from "../../lib/manufacturerFinance";
 import { sendShippingNotificationEmail, sendExtraProtectionEmail } from "../../lib/email";
 import { getFabricantesByAccessCode } from "../../lib/fabricantes";
+import { handleNoCoverage } from "../../lib/noCoverage";
 
 // Botón "Generar guía nueva" de /fabricante — SOLO para pedidos que están
 // en estado "cancelado" (ver markManufacturerOrderCancelled). Reutiliza
@@ -68,6 +69,13 @@ export async function POST(request) {
       codAmountCOP: manualRecord.saldoPendiente,
     });
   } catch (err) {
+    if (err.shippingTooExpensive) {
+      await handleNoCoverage({ reference, record: manualRecord, error: err });
+      return Response.json(
+        { error: `${err.message} Al cliente ya le llegó un correo y Mystery le devuelve el dinero.` },
+        { status: 422 }
+      );
+    }
     console.error("[fabricante-generate-shipment] Falló la creación de guía en Skydropx:", err);
     return Response.json(
       { error: err.message || "No se pudo generar la guía en Skydropx." },
@@ -120,7 +128,7 @@ export async function POST(request) {
     console.error("[fabricante-generate-shipment] Falló el correo de guía nueva:", emailErr);
   }
 
-  // Servientrega fue la única opción (ver pickRate en skydropx.js).
+  // La guía salió por Servientrega (ver pickRate en skydropx.js).
   if (shipment.requiresExtraProtection) {
     try {
       await sendExtraProtectionEmail({
