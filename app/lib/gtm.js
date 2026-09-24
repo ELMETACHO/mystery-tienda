@@ -74,6 +74,45 @@ export function trackBeginCheckout(order) {
   });
 }
 
+// Correo/celular en el formato que exigen TikTok/Meta (Advanced
+// Matching): correo en minúsculas sin espacios, celular en E.164
+// ("+57" + 10 dígitos). El prefijo es un campo editable en /checkout, así
+// que puede llegar como "57", "+57 " o vacío — sin normalizar, TikTok lo
+// marcaba como "teléfono inválido" en el Diagnóstico del píxel.
+function buildUserData(customer) {
+  const prefixDigits = String(customer?.phonePrefix || "").replace(/\D/g, "") || "57";
+  const phoneDigits = String(customer?.phone || "").replace(/\D/g, "");
+  return {
+    email: String(customer?.email || "").trim().toLowerCase(),
+    phone: phoneDigits ? `+${prefixDigits}${phoneDigits}` : "",
+  };
+}
+
+// El cliente tocó "Pagar" (completo o anticipo contraentrega) con el
+// formulario ya lleno — primer punto del embudo donde sí hay correo y
+// celular, así que acá viaja user_data (a diferencia de begin_checkout,
+// que se dispara al cargar /checkout, antes de que el cliente escriba).
+export function trackAddPaymentInfo(order, customer, paymentType) {
+  if (!order) return;
+  pushToDataLayer({
+    event: "add_payment_info",
+    ecommerce: {
+      currency: "COP",
+      value: order.priceCOP,
+      payment_type: paymentType,
+      items: [
+        {
+          item_id: order.sizeId,
+          item_name: `Cuadro personalizado ${order.sizeLabel || order.sizeId}`,
+          price: order.priceCOP,
+          quantity: 1,
+        },
+      ],
+    },
+    user_data: buildUserData(customer),
+  });
+}
+
 export function trackPurchase(order) {
   if (!order?.payment?.reference) return;
   pushToDataLayer({
@@ -98,11 +137,6 @@ export function trackPurchase(order) {
     // ("Advanced Matching"). Solo disponible en `purchase` (acá el
     // formulario del cliente ya está lleno); en `begin_checkout` el
     // cliente puede no haberlo escrito todavía.
-    user_data: {
-      email: order.customer?.email || "",
-      phone: order.customer?.phone
-        ? `${order.customer.phonePrefix || "+57"}${order.customer.phone}`.replace(/[^\d+]/g, "")
-        : "",
-    },
+    user_data: buildUserData(order.customer),
   });
 }

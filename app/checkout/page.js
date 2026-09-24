@@ -6,7 +6,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { COD_DEPOSIT_COP, SIZES, formatCOP, loadOrder, saveOrder } from "../lib/order";
 import { lookupPostalCode } from "../lib/postalCodes";
-import { trackBeginCheckout } from "../lib/gtm";
+import { trackBeginCheckout, trackAddPaymentInfo } from "../lib/gtm";
 import FreeShippingBanner from "../components/FreeShippingBanner";
 
 const WOMPI_PUBLIC_KEY = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
@@ -448,6 +448,7 @@ function CheckoutForm() {
       referralCode: appliedCode?.type === "referral" ? appliedCode.code : null,
       giftCode: appliedCode?.type === "gift" ? appliedCode.code : null,
     };
+    trackAddPaymentInfo(fullOrder, customer, "wompi");
     await saveOrder(fullOrder);
 
     const reference = `mystery-${Date.now()}`;
@@ -624,6 +625,7 @@ function CheckoutForm() {
       referralCode: appliedCode?.type === "referral" ? appliedCode.code : null,
       giftCode: appliedCode?.type === "gift" ? appliedCode.code : null,
     };
+    trackAddPaymentInfo(fullOrder, customer, "contraentrega");
     await saveOrder(fullOrder);
 
     const reference = `mystery-cod-${Date.now()}`;
