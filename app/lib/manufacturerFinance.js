@@ -512,8 +512,11 @@ export async function markManufacturerBalancePaid(fabricanteId) {
 
   try {
     assertFabricanteId(fabricanteId);
+    // GETSET atómico: lee el saldo y lo deja en 0 en un solo paso. Con un
+    // doble clic, solo la primera petición ve el saldo real; la segunda ve
+    // 0 y no registra un segundo pago en el historial.
     const [balanceRaw, ordersRaw] = await Promise.all([
-      client.get(balanceKey(fabricanteId)),
+      client.getset(balanceKey(fabricanteId), 0),
       client.hgetall(ordersKey(fabricanteId)),
     ]);
     const pending = Object.entries(ordersRaw || {})
@@ -527,8 +530,6 @@ export async function markManufacturerBalancePaid(fabricanteId) {
         JSON.stringify({ amount, date: new Date().toISOString() })
       );
     }
-
-    await client.set(balanceKey(fabricanteId), 0);
 
     for (const o of pending) {
       const updated = { ...o, paid: true };
