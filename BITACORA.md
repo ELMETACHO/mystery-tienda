@@ -289,3 +289,58 @@ Ahora muestra overlay con spinner y pasos cada 5s; "Generar guía nueva" en
 
 Commits: `c72e16a` (tope + Servientrega), `21c10b0` (cotizar al pagar),
 `b5f46da` (doble clic), `1f1ed43` (animación), `95ea7aa` (GETSET finanzas).
+
+---
+
+## Sesión del 24-26 sept 2026 — /ads, píxel, cotización de envíos, tamaños grandes
+
+### 1. Píxel y embudo
+- Evento nuevo `add_payment_info` al tocar "Pagar" (con correo/celular E.164)
+  + tags TikTok/Meta `AddPaymentInfo` en GTM (Vista previa OK). Diagnóstico de
+  TikTok: la alerta de `content_id` solo afecta a Compra y a eventos de ANTES
+  del 22 sept — se va sola cuando salgan de la ventana (~14 días).
+- GA4 NO recibe los pasos del embudo (solo Config + Compra en GTM): el embudo
+  se mira en TikTok Events Manager → Resumen (conteo por evento).
+
+### 2. /ads
+- Quitada la urgencia simulada (CountdownBanner, ViewersCounter) → OfferBadges
+  (envío gratis + paga al recibir, anticipo $20.000 siempre visible).
+- La barra fija "Comprar ahora" ahora sigue el paso del cliente (evento
+  `crearflow:state`/`crearflow:primary-action` entre CrearFlow y
+  StickyBuyButton): con foto → "Continuar con mi cuadro"; listo →
+  "Continuar con el envío".
+- RecentPurchaseToast: histórico fijo + `completed-orders` en vivo
+  (`getRecentSalesForToast`, nombre + inicial, sin pruebas/regalos).
+- Pendiente: decidir si se quita "Tu cuadro está listo" comparando
+  AddToCart vs InitiateCheckout en TikTok (≥80% → dejarla).
+- Sin verificar: frase "Más de 1.000 cuadros entregados ★4.9" en CrearFlow.
+
+### 3. Envíos (Skydropx) — bug real y reglas nuevas
+- Bug: `pollQuotationRates` se quedaba con la PRIMERA tarifa; Coordinadora
+  ($59.343) ganó a Envía ($46.127) en el pedido de Antonio Padilla y el pedido
+  quedó "sin cobertura". Ahora espera `is_completed` (hasta 40s) y loguea
+  todas las tarifas.
+- Regla de Oscar: la más barata pero NUNCA Coordinadora salvo única opción
+  (o única dentro del tope); si Skydropx rechaza la guía, reintenta con Envía.
+- Al pagar (after(), invisible al cliente): reintenta hasta 2,5 min; solo
+  rechaza con 2 cotizaciones COMPLETAS sobre el tope; si no confirma, sigue.
+- Página del botón de Cris y /fabricante: reloj de 20s.
+- Guía de Antonio (100x140, Barranquilla) generada a mano con Envía
+  014164012942 ($45.671, COD $150.000), sin correo al cliente; correo a Cris.
+- Panel de Cris: Antonio $15.000→$30.000, Arle $15.000→$20.000 (Coordinadora
+  Maicao). Saldo Premium quedó en $110.000.
+
+### 4. Tamaños grandes (solo /crear y /ads, solo Premium)
+- 70x100 $249.000 (Cris $25.000) y 100x140 $350.000 (Cris $30.000), tope de
+  guía $60.000 (`maxShippingCOP`); el resto sigue en $26.000.
+- `CATALOG_SIZES` mantiene /estudio y /producto en 3 tamaños.
+- Costo NO registrado automáticamente: transporte de madera hasta Cris
+  (~$40.000 por pedido grande) — anotarlo como gasto manual.
+- Pendiente (factible): llevar los grandes al catálogo — /estudio ya guarda
+  original sin recortar + crop/zoom; falta script de backfill + upscale.
+
+### 5. Ads (ver ADS.md ronda 3)
+- Campaña 1: CPM normal (~$3.500), el problema es conversión clic→compra
+  (~0,6% vs ~1,9% benchmark). Octubre = prueba chica; escalar nov-dic solo si
+  CPA < ~$25.000. Con la venta del 100x140, la pérdida de la campaña bajó de
+  ~−$230.000 a ~−$132.000 (materiales de tamaños normales estimados).
