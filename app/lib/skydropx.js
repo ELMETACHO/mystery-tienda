@@ -362,13 +362,13 @@ async function pollQuotationRates(
     const rates = data.rates || data.data?.rates || [];
     pricedRates = rates.filter(isPricedRate);
     const isCompleted = (data.is_completed ?? data.data?.is_completed) === true;
-    if (isCompleted) return pricedRates;
+    if (isCompleted) return { rates: pricedRates, isCompleted: true };
 
     if (Date.now() + delayMs > deadline) {
       console.warn(
         `[skydropx] Cotización ${quotationId} sin completar tras ${maxWaitMs / 1000}s — se usan las ${pricedRates.length} tarifas que llegaron.`
       );
-      return pricedRates;
+      return { rates: pricedRates, isCompleted: false };
     }
     await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
@@ -406,17 +406,32 @@ function isServientrega(rate) {
   return rateCarrierName(rate).includes("servientrega");
 }
 
-// Para pedidos SIN contraentrega (pago completo por Wompi) no hay
-// restricción de transportadora — cualquiera que haya cotizado sirve.
-// Para contraentrega, solo cuentan las que sabemos que soportan recaudo en
-// efectivo (COD_CARRIERS). En ambos casos se toma la más barata, Servientrega
-// incluida.
+function isCoordinadora(rate) {
+  return rateCarrierName(rate).includes("coordinadora");
+}
+
+// Para pedidos SIN contraentrega (pago completo por Wompi) cualquier
+// transportadora que haya cotizado sirve; para contraentrega, solo las que
+// soportan recaudo en efectivo (COD_CARRIERS).
+//
+// Regla de Oscar (26 sept 2026): la más barata, pero NUNCA Coordinadora
+// salvo que sea la única opción — le pone problemas a Cris, y fue la de la
+// guía de $64.913 a Maicao. "Única opción" incluye el caso en que todas
+// las demás superan MAX_SHIPPING_COST_COP y Coordinadora no: antes que
+// cancelar el pedido, se usa Coordinadora.
 function pickRate(rates, { isCod }) {
   const eligible = isCod
     ? rates.filter((rate) => COD_CARRIERS.some((name) => rateCarrierName(rate).includes(name)))
     : rates;
 
-  const rate = cheapestOf(eligible);
+  let rate = cheapestOf(eligible.filter((r) => !isCoordinadora(r)));
+  const coordinadora = cheapestOf(eligible.filter(isCoordinadora));
+  if (
+    coordinadora &&
+    (!rate || (ratePrice(rate) > MAX_SHIPPING_COST_COP && ratePrice(coordinadora) <= MAX_SHIPPING_COST_COP))
+  ) {
+    rate = coordinadora;
+  }
   // Rastro en los logs de TODO lo que cotizó y lo elegido — sin esto no
   // había forma de saber después por qué se eligió una transportadora.
   console.log(
@@ -541,7 +556,13 @@ async function createShipment({ rate, order, customer, reference, isCod, codAmou
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Skydropx: error creando la guía (${res.status}): ${text}`);
+    const err = new Error(`Skydropx: error creando la guía (${res.status}): ${text}`);
+    // Skydropx rechazó el POST: seguro que NO quedó ninguna guía creada,
+    // así que createManualShipment puede reintentar con otra
+    // transportadora sin riesgo de duplicar (a diferencia de un fallo
+    // DESPUÉS del 202, cuando la guía ya existe).
+    err.shipmentNotCreated = true;
+    throw err;
   }
 
   const body = await res.json();
@@ -612,16 +633,33 @@ async function createShipment({ rate, order, customer, reference, isCod, codAmou
 // envío va a superar MAX_SHIPPING_COST_COP. Devuelve null si la
 // cotización falla o no hay tarifa elegible: en ese caso no se decide
 // nada y queda como red de seguridad el tope al generar la guía.
-export async function quoteCheapestShipping({ order, customer, isCod, codAmountCOP }) {
+//
+// isCompleted: si respondieron TODAS las transportadoras. noCoverage.js
+// solo rechaza un pedido con cotizaciones completas — una incompleta que
+// da "caro" puede ser solo que la más barata no alcanzó a responder.
+export async function quoteCheapestShipping({ order, customer, isCod, codAmountCOP, maxWaitMs }) {
   const quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
-  const rates = await pollQuotationRates(quotationId);
+  const { rates, isCompleted } = await pollQuotationRates(quotationId, maxWaitMs ? { maxWaitMs } : {});
   const { rate } = pickRate(rates, { isCod });
   if (!rate || !Number.isFinite(ratePrice(rate))) return null;
   return {
     costCOP: Math.round(ratePrice(rate)),
     carrierName: rateCarrierName(rate),
     exceedsCap: ratePrice(rate) > MAX_SHIPPING_COST_COP,
+    isCompleted,
   };
+}
+
+// Envía como segunda opción (regla de Oscar, 26 sept 2026): si Skydropx
+// rechaza crear la guía con la tarifa elegida, se reintenta con la de
+// Envía, siempre que exista, sea otra y respete el tope.
+function enviaFallbackRate(rates, chosen, { isCod }) {
+  const eligible = isCod
+    ? rates.filter((rate) => COD_CARRIERS.some((name) => rateCarrierName(rate).includes(name)))
+    : rates;
+  const envia = cheapestOf(eligible.filter((r) => /env[ií]a/.test(rateCarrierName(r))));
+  if (!envia || envia.id === chosen.id || ratePrice(envia) > MAX_SHIPPING_COST_COP) return null;
+  return envia;
 }
 
 // Orquesta cotización → elegir la mejor tarifa → crear la guía, para
@@ -637,10 +675,21 @@ export async function quoteCheapestShipping({ order, customer, isCod, codAmountC
 // registrado para reintentar (la solicitud en Redis sigue en status
 // "pending" — ver app/lib/manualShipments.js).
 export async function createManualShipment({ order, customer, reference, isCod, codAmountCOP }) {
-  const quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
-  const rates = await pollQuotationRates(quotationId);
+  let quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
+  let { rates, isCompleted } = await pollQuotationRates(quotationId);
+  let picked = pickRate(rates, { isCod });
 
-  const { rate: bestRate, requiresExtraProtection } = pickRate(rates, { isCod });
+  // Cotización incompleta que da "caro" o "sin tarifa": el cuadro ya está
+  // fabricado, así que antes de rechazar se cotiza una vez más desde cero.
+  if (!isCompleted && (!picked.rate || ratePrice(picked.rate) > MAX_SHIPPING_COST_COP)) {
+    console.warn("[skydropx] Cotización incompleta sin tarifa dentro del tope — se vuelve a cotizar.");
+    quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
+    ({ rates, isCompleted } = await pollQuotationRates(quotationId));
+    picked = pickRate(rates, { isCod });
+  }
+
+  const { rate: bestRate } = picked;
+  let { requiresExtraProtection } = picked;
   if (!bestRate) {
     // Se marca con noEligibleCarrier para distinguir "cotizó pero ninguna
     // transportadora disponible" de un error técnico — ver
@@ -661,7 +710,18 @@ export async function createManualShipment({ order, customer, reference, isCod, 
     throw shippingTooExpensiveError(ratePrice(bestRate), rateCarrierName(bestRate));
   }
 
-  const shipment = await createShipment({ rate: bestRate, order, customer, reference, isCod, codAmountCOP });
+  let shipment;
+  try {
+    shipment = await createShipment({ rate: bestRate, order, customer, reference, isCod, codAmountCOP });
+  } catch (err) {
+    const fallback = err.shipmentNotCreated ? enviaFallbackRate(rates, bestRate, { isCod }) : null;
+    if (!fallback) throw err;
+    console.warn(
+      `[skydropx] ${rateCarrierName(bestRate)} rechazó la guía (${err.message}) — se intenta con Envía.`
+    );
+    shipment = await createShipment({ rate: fallback, order, customer, reference, isCod, codAmountCOP });
+    requiresExtraProtection = false;
+  }
 
   // Red de seguridad: el costo final de la guía puede diferir un poco de la
   // cotización. Si aun así se pasó del tope, se cancela de inmediato (recién
