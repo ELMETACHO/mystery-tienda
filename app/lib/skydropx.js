@@ -233,15 +233,11 @@ function buildDestinationAddress(customer) {
   };
 }
 
-// Tamaños fuera de catálogo (pedidos especiales cotizados a mano por
-// Oscar, ej. 100x140 — no aparecen como opción de compra en /crear/
-// /checkout, SIZES se queda intacto para no ofrecerlos ahí) pero que sí
-// necesitan generar una guía real de Skydropx. Medidas de caja basadas en
-// la cotización real hecha para Barranquilla (sept 2026, ver ADS.md/
-// conversación) — ajustar aquí si se cotiza un tamaño especial distinto.
-const CUSTOM_SIZE_SPECS = {
-  "100x140": { packageCm: { length: 145, width: 105, height: 8 }, weightKg: 10 },
-};
+// Tamaños fuera de SIZES (pedidos especiales cotizados a mano por Oscar)
+// que igual necesitan generar una guía real de Skydropx — agregar acá sus
+// medidas de caja/peso. El 100x140 vivió acá hasta que pasó a venderse en
+// /crear (sept 2026, ver SIZES en order.js).
+const CUSTOM_SIZE_SPECS = {};
 
 function getSizeSpec(sizeId) {
   const size = SIZES.find((s) => s.id === sizeId) || CUSTOM_SIZE_SPECS[sizeId];
@@ -383,6 +379,12 @@ async function pollQuotationRates(
 // dinero al cliente (ver app/lib/noCoverage.js).
 export const MAX_SHIPPING_COST_COP = 26000;
 
+// Tope que aplica a un tamaño: el propio (SIZES[].maxShippingCOP, ej.
+// $60.000 para 70x100 y 100x140) o MAX_SHIPPING_COST_COP.
+export function getShippingCapCOP(sizeId) {
+  return SIZES.find((s) => s.id === sizeId)?.maxShippingCOP ?? MAX_SHIPPING_COST_COP;
+}
+
 function ratePrice(rate) {
   return Number(rate.total || rate.amount || rate.price || Infinity);
 }
@@ -419,7 +421,7 @@ function isCoordinadora(rate) {
 // guía de $64.913 a Maicao. "Única opción" incluye el caso en que todas
 // las demás superan MAX_SHIPPING_COST_COP y Coordinadora no: antes que
 // cancelar el pedido, se usa Coordinadora.
-function pickRate(rates, { isCod }) {
+function pickRate(rates, { isCod, capCOP = MAX_SHIPPING_COST_COP }) {
   const eligible = isCod
     ? rates.filter((rate) => COD_CARRIERS.some((name) => rateCarrierName(rate).includes(name)))
     : rates;
@@ -428,7 +430,7 @@ function pickRate(rates, { isCod }) {
   const coordinadora = cheapestOf(eligible.filter(isCoordinadora));
   if (
     coordinadora &&
-    (!rate || (ratePrice(rate) > MAX_SHIPPING_COST_COP && ratePrice(coordinadora) <= MAX_SHIPPING_COST_COP))
+    (!rate || (ratePrice(rate) > capCOP && ratePrice(coordinadora) <= capCOP))
   ) {
     rate = coordinadora;
   }
@@ -446,11 +448,11 @@ function formatCOPPlain(value) {
   return `$${Math.round(value).toLocaleString("es-CO")}`;
 }
 
-function shippingTooExpensiveError(costCOP, carrierName) {
+function shippingTooExpensiveError(costCOP, carrierName, capCOP = MAX_SHIPPING_COST_COP) {
   const err = new Error(
     `El envío más barato para esta dirección cuesta ${formatCOPPlain(costCOP)}${
       carrierName ? ` (${carrierName})` : ""
-    }, más que el tope de ${formatCOPPlain(MAX_SHIPPING_COST_COP)}. No se generó ninguna guía. NO despaches este cuadro: se le devuelve el dinero al cliente.`
+    }, más que el tope de ${formatCOPPlain(capCOP)}. No se generó ninguna guía. NO despaches este cuadro: se le devuelve el dinero al cliente.`
   );
   err.shippingTooExpensive = true;
   err.shippingCostCOP = Math.round(costCOP);
@@ -640,12 +642,13 @@ async function createShipment({ rate, order, customer, reference, isCod, codAmou
 export async function quoteCheapestShipping({ order, customer, isCod, codAmountCOP, maxWaitMs }) {
   const quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
   const { rates, isCompleted } = await pollQuotationRates(quotationId, maxWaitMs ? { maxWaitMs } : {});
-  const { rate } = pickRate(rates, { isCod });
+  const capCOP = getShippingCapCOP(order.sizeId);
+  const { rate } = pickRate(rates, { isCod, capCOP });
   if (!rate || !Number.isFinite(ratePrice(rate))) return null;
   return {
     costCOP: Math.round(ratePrice(rate)),
     carrierName: rateCarrierName(rate),
-    exceedsCap: ratePrice(rate) > MAX_SHIPPING_COST_COP,
+    exceedsCap: ratePrice(rate) > capCOP,
     isCompleted,
   };
 }
@@ -653,12 +656,12 @@ export async function quoteCheapestShipping({ order, customer, isCod, codAmountC
 // Envía como segunda opción (regla de Oscar, 26 sept 2026): si Skydropx
 // rechaza crear la guía con la tarifa elegida, se reintenta con la de
 // Envía, siempre que exista, sea otra y respete el tope.
-function enviaFallbackRate(rates, chosen, { isCod }) {
+function enviaFallbackRate(rates, chosen, { isCod, capCOP }) {
   const eligible = isCod
     ? rates.filter((rate) => COD_CARRIERS.some((name) => rateCarrierName(rate).includes(name)))
     : rates;
   const envia = cheapestOf(eligible.filter((r) => /env[ií]a/.test(rateCarrierName(r))));
-  if (!envia || envia.id === chosen.id || ratePrice(envia) > MAX_SHIPPING_COST_COP) return null;
+  if (!envia || envia.id === chosen.id || ratePrice(envia) > capCOP) return null;
   return envia;
 }
 
@@ -677,15 +680,16 @@ function enviaFallbackRate(rates, chosen, { isCod }) {
 export async function createManualShipment({ order, customer, reference, isCod, codAmountCOP }) {
   let quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
   let { rates, isCompleted } = await pollQuotationRates(quotationId);
-  let picked = pickRate(rates, { isCod });
+  const capCOP = getShippingCapCOP(order.sizeId);
+  let picked = pickRate(rates, { isCod, capCOP });
 
   // Cotización incompleta que da "caro" o "sin tarifa": el cuadro ya está
   // fabricado, así que antes de rechazar se cotiza una vez más desde cero.
-  if (!isCompleted && (!picked.rate || ratePrice(picked.rate) > MAX_SHIPPING_COST_COP)) {
+  if (!isCompleted && (!picked.rate || ratePrice(picked.rate) > capCOP)) {
     console.warn("[skydropx] Cotización incompleta sin tarifa dentro del tope — se vuelve a cotizar.");
     quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
     ({ rates, isCompleted } = await pollQuotationRates(quotationId));
-    picked = pickRate(rates, { isCod });
+    picked = pickRate(rates, { isCod, capCOP });
   }
 
   const { rate: bestRate } = picked;
@@ -706,15 +710,15 @@ export async function createManualShipment({ order, customer, reference, isCod, 
   }
 
   // Tope duro ANTES de crear la guía — así nunca se paga un envío caro.
-  if (ratePrice(bestRate) > MAX_SHIPPING_COST_COP) {
-    throw shippingTooExpensiveError(ratePrice(bestRate), rateCarrierName(bestRate));
+  if (ratePrice(bestRate) > capCOP) {
+    throw shippingTooExpensiveError(ratePrice(bestRate), rateCarrierName(bestRate), capCOP);
   }
 
   let shipment;
   try {
     shipment = await createShipment({ rate: bestRate, order, customer, reference, isCod, codAmountCOP });
   } catch (err) {
-    const fallback = err.shipmentNotCreated ? enviaFallbackRate(rates, bestRate, { isCod }) : null;
+    const fallback = err.shipmentNotCreated ? enviaFallbackRate(rates, bestRate, { isCod, capCOP }) : null;
     if (!fallback) throw err;
     console.warn(
       `[skydropx] ${rateCarrierName(bestRate)} rechazó la guía (${err.message}) — se intenta con Envía.`
@@ -726,7 +730,7 @@ export async function createManualShipment({ order, customer, reference, isCod, 
   // Red de seguridad: el costo final de la guía puede diferir un poco de la
   // cotización. Si aun así se pasó del tope, se cancela de inmediato (recién
   // creada, nunca escaneada → Skydropx la reembolsa) y se trata como fallo.
-  if (shipment.shippingCostCOP != null && shipment.shippingCostCOP > MAX_SHIPPING_COST_COP) {
+  if (shipment.shippingCostCOP != null && shipment.shippingCostCOP > capCOP) {
     try {
       if (shipment.shipmentId) {
         await cancelShipment(shipment.shipmentId, { reason: "Costo de envío por encima del tope" });
@@ -737,7 +741,7 @@ export async function createManualShipment({ order, customer, reference, isCod, 
         cancelErr
       );
     }
-    throw shippingTooExpensiveError(shipment.shippingCostCOP, shipment.carrierName);
+    throw shippingTooExpensiveError(shipment.shippingCostCOP, shipment.carrierName, capCOP);
   }
 
   // true cuando la guía salió por Servientrega (ver pickRate) — los

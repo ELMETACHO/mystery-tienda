@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SIZES, DEFAULT_FRAME_TYPE, getPriceCOP, formatCOP } from "../../lib/order";
+import { SIZES, CATALOG_SIZES, DEFAULT_FRAME_TYPE, getPriceCOP, formatCOP } from "../../lib/order";
 import ProductBuyButton from "./ProductBuyButton";
 import FreeShippingBanner from "../../components/FreeShippingBanner";
 import FrameTypeSelector from "../../components/FrameTypeSelector";
@@ -23,7 +23,7 @@ export default function ProductSizeSelector({ product }) {
       <FrameTypeSelector frameType={frameType} onChange={setFrameType} />
 
       <div className="flex flex-col gap-2">
-        {SIZES.map((s) => {
+        {CATALOG_SIZES.map((s) => {
           const isSelected = s.id === sizeId;
           return (
             <button

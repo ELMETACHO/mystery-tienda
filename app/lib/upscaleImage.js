@@ -38,6 +38,7 @@ const REPLICATE_MODEL = "philz1337x/crystal-upscaler";
 // de sondeo manual en el caso normal. Si de todas formas no alcanza a
 // terminar, se cae al sondeo de respaldo de abajo.
 const SYNC_WAIT_SECONDS = 55;
+const MAX_PNG_BYTES = 15 * 1024 * 1024;
 const MAX_POLL_ATTEMPTS = 20;
 const POLL_INTERVAL_MS = 3000;
 
@@ -180,6 +181,20 @@ export async function upscaleImageDataUrl(
             .png()
             .toBuffer();
           contentType = "image/png";
+
+          // Tamaños grandes (70x100, 100x140): el PNG mejorado puede pasar
+          // de 40-70MB — más que el límite de adjuntos de Resend (40MB) y
+          // que lo que Redis acepta en un solo valor (ver respaldo en
+          // paidBackup.js; ya pasó con un PNG de 88MB). Por encima de
+          // MAX_PNG_BYTES se guarda como JPEG de alta calidad (4:4:4, sin
+          // submuestreo de color), con la misma densidad y perfil sRGB.
+          if (outBuffer.length > MAX_PNG_BYTES) {
+            outBuffer = await sharp(outBuffer)
+              .withMetadata({ density: densityDpi, icc: "srgb" })
+              .jpeg({ quality: 92, chromaSubsampling: "4:4:4", mozjpeg: true })
+              .toBuffer();
+            contentType = "image/jpeg";
+          }
         }
       } catch (err) {
         console.error(

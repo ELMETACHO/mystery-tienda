@@ -16,7 +16,7 @@ import {
   getDownscaledImage,
   pdfFirstPageToImage,
 } from "../crear/cropImage";
-import { SIZES, DEFAULT_FRAME_TYPE, getPriceCOP, formatCOP, saveOrder } from "../lib/order";
+import { SIZES, DEFAULT_FRAME_TYPE, getPriceCOP, formatCOP, saveOrder, isPremiumOnlySize } from "../lib/order";
 import { trackViewContent, trackAddToCart } from "../lib/gtm";
 import FrameTypeSelector from "./FrameTypeSelector";
 
@@ -65,12 +65,23 @@ const MOCKUP_MAX_HEIGHT_CM = 70;
 // del tamaño elegido — centrado dentro de esa zona y con el mismo alto
 // proporcional real entre tamaños. `maxZoneFill` controla cuánto del alto
 // de la zona ocupa como máximo el tamaño más grande (deja aire alrededor).
+//
+// Los tamaños grandes (70x100, 100x140) a escala real se saldrían de la
+// foto: se recortan a la zona completa de pared (100% de alto, o de ancho
+// si topa antes). Así se ven claramente más grandes que el 50x70 sin
+// achicar la escala de los tamaños normales — el marco del editor es
+// donde el cliente arrastra/hace zoom, y achicarlo empeoraría la edición
+// justo en los tamaños que más se venden.
 function getFramePlacement(mockup, sizeId, sizeRatio, maxZoneFill = 0.78) {
   const heightCm = Number(sizeId.split("x")[1]);
   const { left, top, width, height } = mockup.zone;
 
-  const heightPercent = (heightCm / MOCKUP_MAX_HEIGHT_CM) * maxZoneFill * height;
-  const widthPercent = (heightPercent * sizeRatio) / mockup.ratio;
+  let heightPercent = Math.min((heightCm / MOCKUP_MAX_HEIGHT_CM) * maxZoneFill * height, height);
+  let widthPercent = (heightPercent * sizeRatio) / mockup.ratio;
+  if (widthPercent > width) {
+    heightPercent *= width / widthPercent;
+    widthPercent = width;
+  }
 
   const zoneCenterX = left + width / 2;
   const zoneCenterY = top + height / 2;
@@ -242,10 +253,14 @@ const EmptyFramePlusIcon = () => (
 // tamaño: su altura se calcula proporcional al alto real en cm (contra el
 // mayor de los 3 tamaños), para que la diferencia se perciba a simple
 // vista de forma más reconocible que un mueble.
+// El alto máximo se toma de SIZES (hoy 140cm, el 100x140), así los
+// tamaños grandes se ven más altos sin desbordar la tarjeta.
+const SILHOUETTE_MAX_CM = Math.max(...SIZES.map((s) => Number(s.id.split("x")[1])));
+
 function ScaleSilhouette({ heightCm, currentColorClass }) {
-  const MAX_CM = 70;
-  const MAX_PX = 34;
-  const MIN_PX = 16;
+  const MAX_CM = SILHOUETTE_MAX_CM;
+  const MAX_PX = 48;
+  const MIN_PX = 14;
   const heightPx = Math.max(MIN_PX, Math.round((heightCm / MAX_CM) * MAX_PX));
 
   return (
@@ -291,6 +306,19 @@ export default function CrearFlow({ compact = false }) {
 
   const [sizeId, setSizeId] = useState(SIZES[0].id);
   const [frameType, setFrameType] = useState(DEFAULT_FRAME_TYPE);
+
+  // 70x100 y 100x140 solo existen en Premium: elegir uno de esos tamaños
+  // pasa a Premium, y pasar a otro tipo con uno de esos elegido baja al
+  // tamaño normal más grande (50x70) — nunca queda una combinación que no
+  // existe (wompi-signature la rechazaría).
+  const handleSizeChange = (nextSizeId) => {
+    setSizeId(nextSizeId);
+    if (isPremiumOnlySize(nextSizeId)) setFrameType("premium");
+  };
+  const handleFrameTypeChange = (nextFrameType) => {
+    setFrameType(nextFrameType);
+    if (nextFrameType !== "premium" && isPremiumOnlySize(sizeId)) setSizeId("50x70");
+  };
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
@@ -929,7 +957,7 @@ export default function CrearFlow({ compact = false }) {
                 y quedan visibles junto al mockup, sin scroll, para ver el
                 efecto de cada cambio de inmediato. En desktop (sm+) vuelven
                 a apilarse como antes, sin cambios de comportamiento. */}
-            <FrameTypeSelector frameType={frameType} onChange={setFrameType} />
+            <FrameTypeSelector frameType={frameType} onChange={handleFrameTypeChange} />
 
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-1 sm:gap-6">
               <div>
@@ -985,20 +1013,24 @@ export default function CrearFlow({ compact = false }) {
                       <button
                         key={size.id}
                         type="button"
-                        onClick={() => setSizeId(size.id)}
-                        className={`flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition-colors sm:px-4 sm:py-3 ${
+                        onClick={() => handleSizeChange(size.id)}
+                        className={`flex w-full items-center gap-2 rounded-xl border px-3 py-3 text-left transition-colors sm:gap-3 sm:px-4 sm:py-3 ${
                           isSelected
                             ? "border-accent bg-accent/15 shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
                             : "border-black/10 bg-[#fffaf0] hover:border-black/20"
                         }`}
                       >
-                        <span className="flex items-center gap-2 sm:gap-3">
-                          <ScaleSilhouette
-                            heightCm={heightCm}
-                            currentColorClass={isSelected ? "text-accent" : "text-[#5b6b8c]"}
-                          />
-                          <span className="flex items-center gap-1.5">
-                            <span className={`text-xs sm:text-sm ${isSelected ? "text-[#1b2a4a] font-medium" : "text-[#33456b]"}`}>
+                        <ScaleSilhouette
+                          heightCm={heightCm}
+                          currentColorClass={isSelected ? "text-accent" : "text-[#5b6b8c]"}
+                        />
+                        {/* En móvil la columna de tamaños es angosta (~165px):
+                            el precio va DEBAJO del tamaño — al lado se
+                            cortaba a partir de 360px con precios de 6 cifras
+                            ($149.000, $350.000). Desde sm, al lado como antes. */}
+                        <span className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                          <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                            <span className={`whitespace-nowrap text-xs sm:text-sm ${isSelected ? "text-[#1b2a4a] font-medium" : "text-[#33456b]"}`}>
                               {size.label}
                             </span>
                             {size.id === "40x50" && (
@@ -1006,14 +1038,22 @@ export default function CrearFlow({ compact = false }) {
                                 Más elegido
                               </span>
                             )}
+                            {/* Con Tradicional elegido, avisa que tocarlo
+                                pasa a Premium (ver handleSizeChange) — el
+                                precio mostrado ya es el Premium. */}
+                            {size.premiumOnly && frameType !== "premium" && (
+                              <span className="whitespace-nowrap text-[9px] font-medium text-[#5b6b8c] sm:text-[10px]">
+                                Solo Premium
+                              </span>
+                            )}
                           </span>
-                        </span>
-                        <span
-                          className={`text-sm font-bold sm:text-lg ${
-                            isSelected ? "text-accent" : "text-[#33456b]"
-                          }`}
-                        >
-                          {formatCOP(getPriceCOP(size.id, frameType))}
+                          <span
+                            className={`shrink-0 whitespace-nowrap text-sm font-bold sm:text-lg ${
+                              isSelected ? "text-accent" : "text-[#33456b]"
+                            }`}
+                          >
+                            {formatCOP(getPriceCOP(size.id, frameType))}
+                          </span>
                         </span>
                       </button>
                     );
