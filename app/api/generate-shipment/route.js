@@ -11,6 +11,7 @@ import { sendShippingNotificationEmail, sendExtraProtectionEmail } from "../../l
 import { recordManufacturerOrder } from "../../lib/manufacturerFinance";
 import { handleNoCoverage } from "../../lib/noCoverage";
 import { getFabricanteForFrameType } from "../../lib/fabricantes";
+// La cotización de envío espera a que TODAS las transportadoras respondan// (hasta 40s, ver pollQuotationRates en app/lib/skydropx.js) — en rutas// donde corre en segundo plano con after(), también cuenta este límite.export const maxDuration = 60;
 
 // Botón "✅ Ya está listo — generar guía ahora" del correo al fabricante
 // (ver app/lib/email.js) — dispara la creación REAL de la guía de
@@ -142,27 +143,38 @@ function deadlineWarningHtml() {
 }
 
 // Pantalla de "estoy generando la guía" (pedido de Cris, sept 2026): la
-// cotización + creación en Skydropx tarda 10-30s y, sin nada en pantalla,
-// parecía que el botón no había hecho nada. Al enviar el formulario se
-// desactiva el botón (evita el doble clic) y se muestra un overlay con
-// spinner y pasos que van cambiando mientras el servidor responde; la
-// página de resultado reemplaza todo esto sola cuando llega.
+// cotización + creación en Skydropx tarda y, sin nada en pantalla, parecía
+// que el botón no había hecho nada. Al enviar el formulario se desactiva
+// el botón (evita el doble clic) y se muestra un overlay con un reloj de
+// cuenta regresiva (GENERATING_COUNTDOWN_SECONDS) y pasos que van
+// cambiando; la página de resultado reemplaza todo esto sola cuando llega.
+// Desde el 26 sept se espera a que TODAS las transportadoras coticen (ver
+// pollQuotationRates en skydropx.js), por eso tarda un poco más que antes.
+const GENERATING_COUNTDOWN_SECONDS = 20;
+const RING_RADIUS = 42;
+const RING_LENGTH = (2 * Math.PI * RING_RADIUS).toFixed(1);
+
 function generatingOverlayHtml() {
   return `
       <style>
-        @keyframes mysterySpin { to { transform: rotate(360deg); } }
         @keyframes mysteryFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
         #generating-overlay { display:none; position:fixed; inset:0; z-index:50; background:rgba(242,239,249,0.97); align-items:center; justify-content:center; padding:24px; }
         #generating-overlay.visible { display:flex; }
-        #generating-spinner { width:56px; height:56px; border-radius:50%; border:5px solid #e9d5ff; border-top-color:${BRAND.solid}; animation:mysterySpin 0.9s linear infinite; margin:0 auto 20px auto; }
+        #generating-ring-progress { transition: stroke-dashoffset 1s linear; }
         #generating-step { animation:mysteryFade 0.4s ease; }
       </style>
       <div id="generating-overlay" role="status" aria-live="polite">
         <div style="max-width:360px;text-align:center;font-family:${FONT_STACK};">
-          <div id="generating-spinner"></div>
+          <div style="position:relative;width:104px;height:104px;margin:0 auto 20px auto;">
+            <svg width="104" height="104" viewBox="0 0 104 104" style="transform:rotate(-90deg);">
+              <circle cx="52" cy="52" r="${RING_RADIUS}" fill="none" stroke="#e9d5ff" stroke-width="8"></circle>
+              <circle id="generating-ring-progress" cx="52" cy="52" r="${RING_RADIUS}" fill="none" stroke="${BRAND.solid}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${RING_LENGTH}" stroke-dashoffset="0"></circle>
+            </svg>
+            <span id="generating-seconds" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:bold;color:${BRAND.ink};">${GENERATING_COUNTDOWN_SECONDS}</span>
+          </div>
           <p style="margin:0 0 8px 0;font-size:18px;font-weight:bold;color:${BRAND.ink};">Estoy generando la guía…</p>
-          <p id="generating-step" style="margin:0 0 16px 0;font-size:15px;color:${BRAND.solid};font-weight:bold;">Cotizando transportadoras</p>
-          <p style="margin:0;font-size:13px;line-height:19px;color:${BRAND.muted};">Puede tardar hasta 30 segundos.<br>No cierres ni recargues esta página.</p>
+          <p id="generating-step" style="margin:0 0 16px 0;font-size:15px;color:${BRAND.solid};font-weight:bold;">Cotizando todas las transportadoras</p>
+          <p style="margin:0;font-size:13px;line-height:19px;color:${BRAND.muted};">Espero a que respondan todas para elegir la más económica.<br>No cierres ni recargues esta página.</p>
         </div>
       </div>
       <script>
@@ -171,22 +183,33 @@ function generatingOverlayHtml() {
           if (button.disabled) return false;
           button.disabled = true;
           document.getElementById("generating-overlay").className = "visible";
+          var total = ${GENERATING_COUNTDOWN_SECONDS};
           var steps = [
-            "Cotizando transportadoras",
-            "Eligiendo la opción más económica",
+            "Cotizando todas las transportadoras",
+            "Esperando que respondan todas",
+            "Eligiendo la más económica",
             "Creando la guía en la transportadora",
             "Esperando el número de guía",
-            "Ya casi está listo",
           ];
-          var i = 0;
+          var elapsed = 0;
           var stepEl = document.getElementById("generating-step");
+          var secondsEl = document.getElementById("generating-seconds");
+          var ringEl = document.getElementById("generating-ring-progress");
           setInterval(function () {
-            if (i < steps.length - 1) i++;
-            stepEl.textContent = steps[i];
-            stepEl.style.animation = "none";
-            void stepEl.offsetWidth;
-            stepEl.style.animation = "";
-          }, 5000);
+            elapsed++;
+            var left = Math.max(total - elapsed, 0);
+            secondsEl.textContent = left;
+            ringEl.style.strokeDashoffset = (${RING_LENGTH} * (1 - left / total)).toFixed(1);
+            var text = left === 0
+              ? "Un momento más, ya casi…"
+              : steps[Math.min(Math.floor(elapsed / (total / steps.length)), steps.length - 1)];
+            if (stepEl.textContent !== text) {
+              stepEl.textContent = text;
+              stepEl.style.animation = "none";
+              void stepEl.offsetWidth;
+              stepEl.style.animation = "";
+            }
+          }, 1000);
           return true;
         }
         // Si Cris vuelve con el botón "atrás" del navegador, la página

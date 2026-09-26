@@ -324,12 +324,35 @@ async function createQuotation({ order, customer, isCod, codAmountCOP }) {
   return quotationId;
 }
 
-// Las cotizaciones de Skydropx se procesan de forma asíncrona (arrancan en
-// estado "pending" y las tarifas van llegando) — se consulta un par de
-// veces con una pequeña espera entre intentos, en vez de asumir que están
-// listas de inmediato.
-async function pollQuotationRates(quotationId, { attempts = 5, delayMs = 1500 } = {}) {
-  for (let i = 0; i < attempts; i++) {
+// Las cotizaciones de Skydropx se procesan de forma asíncrona: cada
+// transportadora responde por su cuenta y la cotización trae
+// `is_completed: true` recién cuando TODAS respondieron.
+//
+// BUG REAL corregido (26 sept 2026, pedido de Antonio Padilla, 100x140):
+// antes se dejaba de esperar apenas llegaba la PRIMERA tarifa con precio.
+// Coordinadora respondió primero ($59.343), Envía llegó después ($46.127),
+// y el sistema eligió Coordinadora como "la más barata", superó el tope y
+// marcó el pedido como sin cobertura — con correo de "no enviamos a tu
+// ciudad" al cliente incluido. Ahora se espera a `is_completed` (hasta
+// maxWaitMs); si se agota el tiempo, se usa lo que haya llegado.
+//
+// maxWaitMs largo a propósito: nunca lo espera el cliente final (el botón
+// de Cris muestra una cuenta regresiva, y la cotización al pagar corre en
+// segundo plano con after()) — vale más elegir bien que responder rápido.
+const QUOTATION_MAX_WAIT_MS = 40000;
+const QUOTATION_POLL_DELAY_MS = 1500;
+
+function isPricedRate(rate) {
+  return rate.success !== false && Number.isFinite(ratePrice(rate));
+}
+
+async function pollQuotationRates(
+  quotationId,
+  { maxWaitMs = QUOTATION_MAX_WAIT_MS, delayMs = QUOTATION_POLL_DELAY_MS } = {}
+) {
+  const deadline = Date.now() + maxWaitMs;
+  let pricedRates = [];
+  for (;;) {
     const res = await skydropxFetch(`/api/v1/quotations/${quotationId}`);
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -337,14 +360,18 @@ async function pollQuotationRates(quotationId, { attempts = 5, delayMs = 1500 } 
     }
     const data = await res.json();
     const rates = data.rates || data.data?.rates || [];
-    const readyRates = rates.filter((r) => r.success !== false);
-    if (readyRates.length > 0) return readyRates;
+    pricedRates = rates.filter(isPricedRate);
+    const isCompleted = (data.is_completed ?? data.data?.is_completed) === true;
+    if (isCompleted) return pricedRates;
 
-    if (i < attempts - 1) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    if (Date.now() + delayMs > deadline) {
+      console.warn(
+        `[skydropx] Cotización ${quotationId} sin completar tras ${maxWaitMs / 1000}s — se usan las ${pricedRates.length} tarifas que llegaron.`
+      );
+      return pricedRates;
     }
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
-  return [];
 }
 
 // Tope DURO de costo por guía (decisión de Oscar, 24 sept 2026): ningún
@@ -390,6 +417,13 @@ function pickRate(rates, { isCod }) {
     : rates;
 
   const rate = cheapestOf(eligible);
+  // Rastro en los logs de TODO lo que cotizó y lo elegido — sin esto no
+  // había forma de saber después por qué se eligió una transportadora.
+  console.log(
+    `[skydropx] Tarifas: ${eligible
+      .map((r) => `${rateCarrierName(r)} $${Math.round(ratePrice(r))}`)
+      .join(", ") || "ninguna"} → elegida: ${rate ? rateCarrierName(rate) : "ninguna"}`
+  );
   return { rate, requiresExtraProtection: Boolean(rate) && isServientrega(rate) };
 }
 
