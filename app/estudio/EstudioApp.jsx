@@ -6,7 +6,7 @@ import Image from "next/image";
 import Cropper from "react-easy-crop";
 import { getCroppedImage, getCroppedImageWithBleed, getDefaultCropArea } from "../crear/cropImage";
 import { ESTUDIO_CATEGORIES } from "../lib/estudioCategories";
-import { SIZES } from "../lib/order";
+import { CATALOG_SIZES } from "../lib/order";
 import StepsIndicator from "../components/StepsIndicator";
 
 // Fijo siempre a 40x50 (ver instrucción): no hay selector de tamaño acá,
@@ -386,7 +386,7 @@ export default function EstudioApp({ mockups }) {
         throw new Error("No se pudo medir el área de recorte. Vuelve al paso anterior e intenta de nuevo.");
       }
       const printFiles = {};
-      for (const size of SIZES) {
+      for (const size of CATALOG_SIZES) {
         const pixelsForSize =
           size.ratio === DESIGN_RATIO
             ? finalCrop
@@ -444,7 +444,7 @@ export default function EstudioApp({ mockups }) {
           mimeType: originalFileMeta.type,
           folder: "original",
         },
-        ...SIZES.map((size) => ({
+        ...CATALOG_SIZES.map((size) => ({
           key: `print_${size.id}`,
           filename: printFiles[size.id].filename,
           mimeType: "image/png",
@@ -469,7 +469,7 @@ export default function EstudioApp({ mockups }) {
       // Google con esas URLs de sesión — nunca pasan por nuestro
       // servidor/Vercel.
       const printBlobEntries = await Promise.all(
-        SIZES.map(async (size) => [
+        CATALOG_SIZES.map(async (size) => [
           `print_${size.id}`,
           await dataUrlToBlob(printFiles[size.id].dataUrl),
         ])

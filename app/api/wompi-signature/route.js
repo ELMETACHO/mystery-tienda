@@ -40,6 +40,12 @@ async function resolveAmountInCents({
   // frameType puede faltar en pedidos viejos ya en vuelo antes de este
   // cambio — se asume Premium (el único tipo que existía hasta ahora).
   const resolvedFrameType = frameType || DEFAULT_FRAME_TYPE;
+  // 70x100 y 100x140 solo existen en Premium (CrearFlow nunca arma otra
+  // combinación) — un Tradicional acá caería al precio Premium pero iría a
+  // la cola/comisión de Tradicional.
+  if (size.premiumOnly && resolvedFrameType !== "premium") {
+    throw new Error(`El tamaño ${sizeId} solo existe en Premium`);
+  }
   const basePriceCOP = getPriceCOP(sizeId, resolvedFrameType);
 
   let percent = 0;

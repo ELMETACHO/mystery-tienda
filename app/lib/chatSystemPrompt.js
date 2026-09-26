@@ -18,7 +18,10 @@ function pricingTable() {
       const price = PRICES[frameId]?.[size.id];
       return price ? `${frame.label}: $${price.toLocaleString("es-CO")} COP` : null;
     }).filter(Boolean);
-    return `- ${size.label}: ${rows.join(" / ")}`;
+    const note = size.customOnly
+      ? " (solo Premium y solo con foto propia del cliente — NO disponible para los diseños del catálogo)"
+      : "";
+    return `- ${size.label}: ${rows.join(" / ")}${note}`;
   }).join("\n");
 }
 

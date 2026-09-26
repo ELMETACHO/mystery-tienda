@@ -100,9 +100,11 @@ export async function recordManufacturerOrder({
     return;
   }
 
-  // La comisión es fija por tipo de cuadro (Premium=$15.000, Tradicional=$0),
-  // no por tamaño — ver getFabricanteCommissionCOP en app/lib/order.js.
-  const monto = getFabricanteCommissionCOP(order.frameType);
+  // La comisión es fija por tipo de cuadro (Premium=$15.000,
+  // Tradicional=$10.000), salvo los tamaños grandes, que tienen la suya
+  // (70x100=$25.000, 100x140=$30.000) — ver getFabricanteCommissionCOP en
+  // app/lib/order.js.
+  const monto = getFabricanteCommissionCOP(order.frameType, order.sizeId);
   const fecha = new Date().toISOString();
 
   const record = {
