@@ -32,37 +32,69 @@ function reliableThumb(url) {
 
 // Mismo aviso de "estoy generando la guía" que la página del botón del
 // correo (ver generatingOverlayHtml en app/api/generate-shipment/route.js):
-// generar la guía tarda 10-30s y Cris prefería ver que sí está pasando algo.
+// reloj de cuenta regresiva + pasos. Desde el 26 sept se espera a que
+// TODAS las transportadoras coticen (ver pollQuotationRates en
+// skydropx.js) para elegir la más económica, así que tarda un poco más.
+const GENERATING_COUNTDOWN_SECONDS = 20;
 const GENERATING_STEPS = [
-  "Cotizando transportadoras",
-  "Eligiendo la opción más económica",
+  "Cotizando todas las transportadoras",
+  "Esperando que respondan todas",
+  "Eligiendo la más económica",
   "Creando la guía en la transportadora",
   "Esperando el número de guía",
-  "Ya casi está listo",
 ];
+const RING_RADIUS = 15;
+const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
 function GeneratingNotice() {
-  const [step, setStep] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
-    const id = setInterval(
-      () => setStep((s) => Math.min(s + 1, GENERATING_STEPS.length - 1)),
-      5000
-    );
+    const id = setInterval(() => setElapsed((s) => s + 1), 1000);
     return () => clearInterval(id);
   }, []);
+  const left = Math.max(GENERATING_COUNTDOWN_SECONDS - elapsed, 0);
+  const stepText =
+    left === 0
+      ? "Un momento más, ya casi…"
+      : GENERATING_STEPS[
+          Math.min(
+            Math.floor(elapsed / (GENERATING_COUNTDOWN_SECONDS / GENERATING_STEPS.length)),
+            GENERATING_STEPS.length - 1
+          )
+        ];
   return (
     <div
       role="status"
       aria-live="polite"
       className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent/10 px-3 py-3"
     >
-      <span className="h-7 w-7 shrink-0 animate-spin rounded-full border-[3px] border-accent/25 border-t-accent" />
+      <div className="relative h-10 w-10 shrink-0">
+        <svg viewBox="0 0 36 36" className="h-10 w-10 -rotate-90">
+          <circle cx="18" cy="18" r={RING_RADIUS} fill="none" strokeWidth="3.5" className="stroke-accent/25" />
+          <circle
+            cx="18"
+            cy="18"
+            r={RING_RADIUS}
+            fill="none"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            className="stroke-accent transition-[stroke-dashoffset] duration-1000 ease-linear"
+            strokeDasharray={RING_LENGTH}
+            strokeDashoffset={RING_LENGTH * (1 - left / GENERATING_COUNTDOWN_SECONDS)}
+          />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-[#1b2a4a]">
+          {left}
+        </span>
+      </div>
       <div className="flex flex-col">
         <span className="text-sm font-semibold text-[#1b2a4a]">Estoy generando la guía…</span>
-        <span key={step} className="animate-pulse text-xs font-medium text-accent">
-          {GENERATING_STEPS[step]}
+        <span key={stepText} className="animate-pulse text-xs font-medium text-accent">
+          {stepText}
         </span>
-        <span className="text-[11px] text-[#5b6b8c]">Puede tardar hasta 30 segundos. No cierres esta página.</span>
+        <span className="text-[11px] text-[#5b6b8c]">
+          Espero a que respondan todas para elegir la más económica. No cierres esta página.
+        </span>
       </div>
     </div>
   );

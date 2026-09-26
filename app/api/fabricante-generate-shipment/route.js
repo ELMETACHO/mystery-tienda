@@ -10,6 +10,7 @@ import { getManufacturerOrder, markManufacturerOrderRegenerated } from "../../li
 import { sendShippingNotificationEmail, sendExtraProtectionEmail } from "../../lib/email";
 import { getFabricantesByAccessCode } from "../../lib/fabricantes";
 import { handleNoCoverage } from "../../lib/noCoverage";
+// La cotización de envío espera a que TODAS las transportadoras respondan// (hasta 40s, ver pollQuotationRates en app/lib/skydropx.js) — en rutas// donde corre en segundo plano con after(), también cuenta este límite.export const maxDuration = 60;
 
 // Botón "Generar guía nueva" de /fabricante — SOLO para pedidos que están
 // en estado "cancelado" (ver markManufacturerOrderCancelled). Reutiliza
