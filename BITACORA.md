@@ -347,6 +347,35 @@ Commits: `c72e16a` (tope + Servientrega), `21c10b0` (cotizar al pagar),
 
 ---
 
+## Sesión del 5 oct 2026 — empujón SEO (Search Console, datos estructurados, landings, rendimiento, Merchant Center)
+
+PRs #3, #4, #5, #7, #8, #9 (+ este). Todo SEO; nada de checkout, pagos, lógica de precios ni /ads.
+
+### 1. Search Console (sc-domain:mysterycuadros.com, datos desde el 3 sept)
+- Muy pocos datos: 112 impresiones y 4 clics en ~31 días (pos. media 15,7). 76 impresiones desde Colombia.
+- Lo que ya asoma: /categoria/musica (42 impr., pos 7,3: "cuadros musicales personalizados", "cuadros de musica"), /categoria/anime (18, pos 56), producto Light y Ryuk/Death Note (14, pos 5,4), abstracto (13, pos 7,2), películas y series (12, pos 4,4 con 0 clics).
+- Títulos/H1/meta por categoría en `app/lib/categorySeo.js` (no en `estudioCategories.js`, que usa /estudio).
+
+### 2. Datos estructurados (`app/lib/structuredData.js`)
+- BreadcrumbList (+ migas visibles, `components/Breadcrumbs.jsx`), CollectionPage/ItemList en categorías y landings, FAQPage solo con FAQ visibles, WebSite en Home.
+- Product: sku = id del catálogo (= id del feed), `offers.price` = variante por defecto (40x50 Premium) para que coincida con la página y el feed. Sin aggregateRating (no hay reseñas por diseño).
+- Pendiente del dueño: el `MerchantReturnPolicy` dice "devolución gratis 7 días", la política real solo cubre defectos/daños — decidir y alinear.
+
+### 3. Landings `/cuadros/[slug]` (`app/lib/landingPages.js`)
+- 7 páginas: personalizados-con-fotos, regalo-de-navidad-personalizado, regalo-navidad-mama-papa, regalo-navidad-pareja, regalo-aniversario, para-sala, de-mascotas. ISR 1 h. En Home ("Ideas para regalar y decorar"), footer y sitemap.
+- **Fecha límite de Navidad: SOLO en `app/lib/christmas.js`** ("Pide hasta el 17 de diciembre para recibir antes del 24", se apaga sola después del `showUntil`). Para la próxima Navidad cambiar `message` + `showUntil`.
+- Dato del dueño (oct 2026): producción 1-2 días, máximo 5 días hasta el cliente. La FAQ del Home se alineó.
+
+### 4. Rendimiento móvil
+- Causa principal: miniaturas del catálogo = PNG originales de ~3 MB (Home ~41 MB). `/api/catalog-thumbnail/[id]?w=480` (WebP con sharp; `&f=jpg` para JPEG) → Home ~2,2 MB. Sin `w` la ruta responde igual que antes (/ads y /fabricante no cambiaron).
+- Portadas de categoría del Home: `public/images/categorias/card/<id>.webp`. **Categoría nueva → generar también su .webp** (y agregarla a `CATEGORY_CARD_IDS` en app/page.js), si no usa el original pesado.
+- No tocado (comparte código con /ads o tracking): imágenes de `RecentesDriftWall` en /crear (~3,5 MB) y scripts de GTM (TikTok/Meta/Google Ads, ~900 ms de bloqueo).
+
+### 5. Google Merchant Center
+- Feed: `https://www.mysterycuadros.com/feed/google.xml` (`app/lib/googleFeed.js`). Un ítem por diseño en 40x50 Premium ($89.000), envío CO $0, 1-2 días de preparación + 1-3 de tránsito. No se registró en Merchant Center (lo hace el dueño).
+
+---
+
 ## Sesión del 5 oct 2026 — landing /ads: velocidad, CTA, confianza, Navidad (PR #6)
 
 Detalle completo en `ADS.md` → "Landing `/ads` — mejoras de conversión".
