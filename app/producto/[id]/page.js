@@ -1,14 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCatalogProductById } from "../../lib/catalog";
+import { getCatalogProductById, getProductsByCategory } from "../../lib/catalog";
 import { ESTUDIO_CATEGORIES } from "../../lib/estudioCategories";
-import { SIZES, getPriceCOP, formatCOP } from "../../lib/order";
+import { SIZES, CATALOG_SIZES, FRAME_TYPES, getPriceCOP, formatCOP } from "../../lib/order";
 import { SITE_URL } from "../../lib/siteUrl";
 import ProductSizeSelector from "./ProductSizeSelector";
 import Breadcrumbs from "../../components/Breadcrumbs";
 import { getCategorySeo } from "../../lib/categorySeo";
 import { JsonLd, breadcrumbJsonLd } from "../../lib/structuredData";
+import { getLandingPage } from "../../lib/landingPages";
+import ProductScroller from "../../components/ProductScroller";
+import RelatedLinks from "../../components/RelatedLinks";
 
 function categoryLabel(categoryId) {
   return ESTUDIO_CATEGORIES.find((c) => c.id === categoryId)?.label || "Diseño";
@@ -64,6 +67,11 @@ export default async function ProductPage({ params }) {
   }
 
   const label = categoryLabel(product.category);
+  // Otros diseños de la misma categoría (enlaces internos producto →
+  // producto) — más nuevos primero, sin el actual.
+  const sameCategory = (await getProductsByCategory(product.category))
+    .filter((p) => p.id !== product.id)
+    .slice(0, 10);
   const productUrl = `${SITE_URL}/producto/${product.id}`;
   const categoryObj = ESTUDIO_CATEGORIES.find((c) => c.id === product.category);
   const breadcrumbs = [
@@ -175,9 +183,18 @@ export default async function ProductPage({ params }) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="w-fit rounded-full bg-accent/15 px-3 py-1 text-xs font-medium text-accent">
-            {label}
-          </span>
+          {categoryObj ? (
+            <Link
+              href={`/categoria/${categoryObj.id}`}
+              className="w-fit rounded-full bg-accent/15 px-3 py-1 text-xs font-medium text-accent hover:bg-accent/25"
+            >
+              {label}
+            </Link>
+          ) : (
+            <span className="w-fit rounded-full bg-accent/15 px-3 py-1 text-xs font-medium text-accent">
+              {label}
+            </span>
+          )}
           <h1 className="font-heading text-2xl font-bold tracking-tight">
             {productDisplayTitle(product, label)}
           </h1>
@@ -189,6 +206,65 @@ export default async function ProductPage({ params }) {
         <p className="text-center text-base font-semibold text-accent">
           Recibe de 3 a 5 días hábiles
         </p>
+
+        {/* Ficha armada con atributos reales (catálogo + SIZES/FRAME_TYPES
+            de app/lib/order.js) — da contenido único y útil a cada
+            producto, cuya descripción generada por IA es corta. */}
+        <section className="rounded-2xl border border-black/5 bg-[#fffaf0] p-5 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)]">
+          <h2 className="font-heading mb-3 text-base font-bold">Detalles del cuadro</h2>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            <dt className="text-[#5b6b8c]">Diseño</dt>
+            <dd className="text-[#1b2a4a]">{product.name || `Cuadro de ${label}`}</dd>
+            <dt className="text-[#5b6b8c]">Categoría</dt>
+            <dd className="text-[#1b2a4a]">{label}</dd>
+            <dt className="text-[#5b6b8c]">Material</dt>
+            <dd className="text-[#1b2a4a]">Vinilo impreso sobre madera</dd>
+            <dt className="text-[#5b6b8c]">Tamaños</dt>
+            <dd className="text-[#1b2a4a]">{CATALOG_SIZES.map((s) => s.label).join(" · ")}</dd>
+            <dt className="text-[#5b6b8c]">Tipos</dt>
+            <dd className="text-[#1b2a4a]">
+              {Object.values(FRAME_TYPES)
+                .map((t) => `${t.label} (${t.description.charAt(0).toLowerCase()}${t.description.slice(1)})`)
+                .join(" · ")}
+            </dd>
+            <dt className="text-[#5b6b8c]">Precio</dt>
+            <dd className="text-[#1b2a4a]">
+              Desde {formatCOP(CHEAPEST_PRICE_COP)} hasta{" "}
+              {formatCOP(Math.max(...CATALOG_SIZES.map((s) => getPriceCOP(s.id, "premium"))))}
+            </dd>
+            <dt className="text-[#5b6b8c]">Envío</dt>
+            <dd className="text-[#1b2a4a]">Gratis a toda Colombia</dd>
+            <dt className="text-[#5b6b8c]">Pago</dt>
+            <dd className="text-[#1b2a4a]">Wompi (tarjeta, PSE, Nequi, Daviplata) o contraentrega</dd>
+          </dl>
+          <p className="mt-4 text-sm text-[#33456b]">
+            ¿Lo quieres con tu propia foto?{" "}
+            <Link href="/crear" className="font-semibold text-accent underline-offset-4 hover:underline">
+              Crea tu cuadro personalizado
+            </Link>
+            .
+          </p>
+        </section>
+
+        {sameCategory.length > 0 && (
+          <section className="flex flex-col gap-3">
+            <h2 className="font-heading text-base font-bold">Más cuadros de {label}</h2>
+            <ProductScroller items={sameCategory} light />
+          </section>
+        )}
+
+        <RelatedLinks
+          title="También te puede interesar"
+          links={[
+            ...(categoryObj
+              ? [{ href: `/categoria/${categoryObj.id}`, label: `Ver todos: ${getCategorySeo(categoryObj).h1}` }]
+              : []),
+            ...(categoryObj ? getCategorySeo(categoryObj).relatedLandings : ["personalizados-con-fotos"])
+              .map(getLandingPage)
+              .filter(Boolean)
+              .map((l) => ({ href: `/cuadros/${l.slug}`, label: l.navLabel })),
+          ]}
+        />
       </div>
     </div>
     </>
