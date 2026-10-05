@@ -470,7 +470,13 @@ function shippingTooExpensiveError(costCOP, carrierName, capCOP = MAX_SHIPPING_C
 // recibió el correo de envío y el fabricante vio "SIN GUÍA" con una guía
 // real ya cobrada. Por eso se consulta el shipment de nuevo (GET) hasta
 // que workflow_status deje de ser "in_progress" o se agoten los intentos.
-async function pollShipmentUntilReady(shipmentId, { attempts = 6, delayMs = 2000 } = {}) {
+// 20 intentos x 2s = ~40s (antes 6 = 12s). Caso real (5 oct 2026, pedido
+// de Kevin Sotelo): Skydropx tardó más de 12s en asignar el número, el
+// código lo tomó como fallo, Cris reintentó y se crearon TRES guías
+// cobradas. Ver además existingShipmentId/onShipmentAccepted en
+// createManualShipment, que impiden crear una segunda guía aunque esto
+// vuelva a agotarse.
+async function pollShipmentUntilReady(shipmentId, { attempts = 20, delayMs = 2000 } = {}) {
   for (let i = 0; i < attempts; i++) {
     const res = await skydropxFetch(`/api/v1/shipments/${shipmentId}`);
     if (!res.ok) {
@@ -515,7 +521,7 @@ async function pollShipmentUntilReady(shipmentId, { attempts = 6, delayMs = 2000
 // La respuesta también es formato JSON:API: el tracking_number, label_url y
 // carrier real NO están en data.attributes sino en included[] (el recurso
 // "package") — data.attributes solo tiene master_tracking_number.
-async function createShipment({ rate, order, customer, reference, isCod, codAmountCOP }) {
+async function createShipment({ rate, order, customer, reference, isCod, codAmountCOP, onAccepted }) {
   const declaredValue = getDeclaredValue(getCodAmount({ order, isCod, codAmountCOP }));
   const destinationPhone = normalizePhone(customer.phone);
 
@@ -569,6 +575,16 @@ async function createShipment({ rate, order, customer, reference, isCod, codAmou
 
   const body = await res.json();
   const shipmentId = body.data?.id;
+  // La guía YA existe en Skydropx (y se cobra) desde este punto: se avisa
+  // al llamador ANTES de esperar el número, para que lo guarde y un
+  // reintento retome esta misma guía en vez de crear otra.
+  if (shipmentId && onAccepted) {
+    try {
+      await onAccepted(shipmentId);
+    } catch (err) {
+      console.error(`[skydropx] No se pudo guardar el shipment ${shipmentId} recién aceptado:`, err);
+    }
+  }
   let attributes = body.data?.attributes || {};
   let packageResource = (body.included || []).find((r) => r.type === "package");
   let packageAttrs = packageResource?.attributes || {};
@@ -585,6 +601,10 @@ async function createShipment({ rate, order, customer, reference, isCod, codAmou
     }
   }
 
+  return buildShipmentResult({ shipmentId, attributes, packageAttrs, rate });
+}
+
+function buildShipmentResult({ shipmentId, attributes, packageAttrs, rate = {} }) {
   const trackingNumber =
     packageAttrs.tracking_number || attributes.master_tracking_number || null;
   const labelUrl = packageAttrs.label_url || null;
@@ -627,6 +647,20 @@ async function createShipment({ rate, order, customer, reference, isCod, codAmou
     // /admin/reporte, en vez de tener que anotarlo a mano.
     shippingCostCOP: attributes.total != null ? Math.round(Number(attributes.total)) : null,
   };
+}
+
+// Retoma una guía que Skydropx YA aceptó (ver onAccepted en
+// createShipment): espera su número sin crear nada nuevo. Devuelve null si
+// esa guía murió (cancelada o con error) — ahí sí corresponde crear otra.
+// Si sigue en proceso, devuelve el resultado sin trackingNumber.
+async function resumeShipment(shipmentId) {
+  const polled = await pollShipmentUntilReady(shipmentId);
+  if (!polled) {
+    console.warn(`[skydropx] El shipment ${shipmentId} sigue en proceso — no se crea otra guía.`);
+    return { shipmentId, trackingNumber: null };
+  }
+  if (["cancelled", "canceled", "error"].includes(polled.attributes.workflow_status)) return null;
+  return buildShipmentResult({ shipmentId, attributes: polled.attributes, packageAttrs: polled.packageAttrs });
 }
 
 // Solo COTIZA (no crea guía, no cobra nada) y devuelve la tarifa que
@@ -677,7 +711,30 @@ function enviaFallbackRate(rates, chosen, { isCod, capCOP }) {
 // confirmación: cualquier error se captura en ese endpoint, donde queda
 // registrado para reintentar (la solicitud en Redis sigue en status
 // "pending" — ver app/lib/manualShipments.js).
-export async function createManualShipment({ order, customer, reference, isCod, codAmountCOP }) {
+//
+// existingShipmentId: guía que un intento anterior ya creó para este
+// pedido (guardada vía onShipmentAccepted) — si sigue viva, se retoma esa
+// en vez de crear otra. onShipmentAccepted(shipmentId): se llama apenas
+// Skydropx acepta una guía nueva, antes de esperar su número.
+export async function createManualShipment({
+  order,
+  customer,
+  reference,
+  isCod,
+  codAmountCOP,
+  existingShipmentId,
+  onShipmentAccepted,
+}) {
+  if (existingShipmentId) {
+    const resumed = await resumeShipment(existingShipmentId);
+    if (resumed) {
+      return {
+        ...resumed,
+        requiresExtraProtection: /servientrega/i.test(resumed.carrierName || ""),
+      };
+    }
+  }
+
   let quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
   let { rates, isCompleted } = await pollQuotationRates(quotationId);
   const capCOP = getShippingCapCOP(order.sizeId);
@@ -716,14 +773,30 @@ export async function createManualShipment({ order, customer, reference, isCod, 
 
   let shipment;
   try {
-    shipment = await createShipment({ rate: bestRate, order, customer, reference, isCod, codAmountCOP });
+    shipment = await createShipment({
+      rate: bestRate,
+      order,
+      customer,
+      reference,
+      isCod,
+      codAmountCOP,
+      onAccepted: onShipmentAccepted,
+    });
   } catch (err) {
     const fallback = err.shipmentNotCreated ? enviaFallbackRate(rates, bestRate, { isCod, capCOP }) : null;
     if (!fallback) throw err;
     console.warn(
       `[skydropx] ${rateCarrierName(bestRate)} rechazó la guía (${err.message}) — se intenta con Envía.`
     );
-    shipment = await createShipment({ rate: fallback, order, customer, reference, isCod, codAmountCOP });
+    shipment = await createShipment({
+      rate: fallback,
+      order,
+      customer,
+      reference,
+      isCod,
+      codAmountCOP,
+      onAccepted: onShipmentAccepted,
+    });
     requiresExtraProtection = false;
   }
 
