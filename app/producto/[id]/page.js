@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCatalogProductById } from "../../lib/catalog";
 import { ESTUDIO_CATEGORIES } from "../../lib/estudioCategories";
-import { SIZES, getPriceCOP } from "../../lib/order";
+import { SIZES, getPriceCOP, formatCOP } from "../../lib/order";
 import { SITE_URL } from "../../lib/siteUrl";
 import ProductSizeSelector from "./ProductSizeSelector";
 
@@ -34,8 +34,11 @@ export async function generateMetadata({ params }) {
   if (!product) return {};
 
   const label = categoryLabel(product.category);
-  const title = `${productDisplayTitle(product, label)} — Desde ${CHEAPEST_PRICE_COP.toLocaleString("es-CO")} COP | Mystery Cuadros`;
-  const description = `${productDisplayDescription(product, label)} Envío gratis a toda Colombia.`;
+  // Nombre del diseño primero (es lo que se busca, ej. "death note
+  // cuadro"), precio "desde" como gancho de CTR y marca al final — si
+  // Google trunca, se pierde la marca, no el nombre.
+  const title = `${productDisplayTitle(product, label)} | Desde ${formatCOP(CHEAPEST_PRICE_COP)} · Mystery Cuadros`;
+  const description = `${productDisplayDescription(product, label)} Vinilo sobre madera en 30x40, 40x50 o 50x70 cm, desde ${formatCOP(CHEAPEST_PRICE_COP)}. Envío gratis a toda Colombia.`;
 
   return {
     title,
@@ -150,8 +153,9 @@ export default async function ProductPage({ params }) {
             {label}
           </span>
           <h1 className="font-heading text-2xl font-bold tracking-tight">
-            {product.name ? `Cuadro personalizado — ${product.name}` : "Cuadro personalizado"}
+            {productDisplayTitle(product, label)}
           </h1>
+          <p className="text-sm text-[#33456b]">{productDisplayDescription(product, label)}</p>
         </div>
 
         <ProductSizeSelector product={product} />

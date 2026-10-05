@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getProductsByCategory } from "../../lib/catalog";
 import { ESTUDIO_CATEGORIES } from "../../lib/estudioCategories";
 import { SITE_URL } from "../../lib/siteUrl";
+import { getCategorySeo } from "../../lib/categorySeo";
 import ProductScroller from "../../components/ProductScroller";
 
 // Esta página lee el catálogo real (Redis) en cada visita — nunca debe
@@ -15,12 +16,12 @@ export async function generateMetadata({ params }) {
   const category = ESTUDIO_CATEGORIES.find((c) => c.id === slug);
   if (!category) return {};
 
-  const title = `Cuadros de ${category.label} Personalizados | Mystery Cuadros`;
+  const { title, metaDescription } = getCategorySeo(category);
   return {
     title,
-    description: category.description,
+    description: metaDescription,
     alternates: { canonical: `${SITE_URL}/categoria/${category.id}` },
-    openGraph: { title, description: category.description },
+    openGraph: { title, description: metaDescription, url: `${SITE_URL}/categoria/${category.id}` },
   };
 }
 
@@ -33,6 +34,7 @@ export default async function CategoriaPage({ params }) {
   }
 
   const products = await getProductsByCategory(slug);
+  const seo = getCategorySeo(category);
 
   return (
     <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
@@ -49,9 +51,9 @@ export default async function CategoriaPage({ params }) {
           ← Volver al catálogo
         </Link>
 
-        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">{category.label}</h1>
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">{seo.h1}</h1>
 
-        <p className="text-sm text-[#33456b] sm:text-base">{category.description}</p>
+        <p className="text-sm text-[#33456b] sm:text-base">{seo.intro || category.description}</p>
 
         <p className="text-sm text-[#33456b] sm:text-base">
           Cuadros decorativos de excelente calidad. Recibe de 3 a 5 días hábiles. Envíos a toda
