@@ -21,12 +21,12 @@ function getTimeline(order) {
       label: isCod ? "Anticipo confirmado" : "Pago confirmado",
       detail: isCod ? "Ya recibimos tu anticipo" : "Ya recibimos tu pago",
     },
-    { label: "En producción", detail: "3-5 días hábiles" },
+    { label: "En producción", detail: "Lo hacemos en 1-2 días" },
     {
       label: "En camino a tu casa",
       detail: isCod
         ? "Pagas el saldo al recibir tu cuadro"
-        : "Según tiempo de envío",
+        : "Llega en máximo 5 días (sin domingos)",
     },
   ];
 }
