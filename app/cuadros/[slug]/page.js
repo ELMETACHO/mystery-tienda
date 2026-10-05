@@ -120,7 +120,7 @@ export default async function LandingPage({ params }) {
           {products.length > 0 && (
             <section className="flex flex-col gap-3">
               <h2 className="font-heading text-lg font-bold sm:text-xl">{page.examplesHeading}</h2>
-              <ProductScroller items={products} light />
+              <ProductScroller items={products} light thumbWidth={480} />
             </section>
           )}
 

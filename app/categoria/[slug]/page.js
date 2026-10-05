@@ -95,6 +95,8 @@ export default async function CategoriaPage({ params }) {
           items={products}
           emptyMessage={`Todavía no hay diseños en ${category.label}. Vuelve pronto.`}
           light
+          thumbWidth={480}
+          eagerCount={2}
         />
 
         {seo.body.length > 0 && (

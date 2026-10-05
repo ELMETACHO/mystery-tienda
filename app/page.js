@@ -36,10 +36,25 @@ export const metadata = {
 // /estudio para organizar los diseños en Google Drive (ver
 // app/lib/estudioCategories.js) — así una categoría nueva aparece acá sola,
 // sin necesidad de mantener una segunda lista a mano.
+const CATEGORY_CARD_IDS = new Set([
+  "abstracto",
+  "anime",
+  "deportes",
+  "iconic",
+  "musica",
+  "peliculas-series",
+  "mystery-disenos",
+]);
+
 const CATEGORIAS = ESTUDIO_CATEGORIES.map((category) => ({
   id: category.id,
   nombre: category.label,
-  src: category.coverImage,
+  // Versión liviana (WebP 432px, ~20-50 KB) generada desde coverImage —
+  // el original llega a pesar 2 MB (mystery-disenos.png). Si se agrega una
+  // categoría nueva, generar también su public/images/categorias/card/<id>.webp
+  // (ver BITACORA.md, sesión SEO oct 2026); mientras no exista, se usa el
+  // original.
+  src: CATEGORY_CARD_IDS.has(category.id) ? `/images/categorias/card/${category.id}.webp` : category.coverImage,
 }));
 
 const FAQ = [
@@ -328,7 +343,7 @@ export default async function Home() {
             <div className="mb-4">
               <h2 className="font-heading text-lg font-semibold sm:text-xl">Recientes</h2>
             </div>
-            <ProductScroller items={recientes} light />
+            <ProductScroller items={recientes} light thumbWidth={480} />
           </div>
         </section>
 
@@ -341,7 +356,7 @@ export default async function Home() {
             <div className="mb-4 flex items-end justify-between">
               <h2 className="font-heading text-lg font-semibold sm:text-xl">Más vendidos</h2>
             </div>
-            <ProductScroller items={masVendidos} light />
+            <ProductScroller items={masVendidos} light thumbWidth={480} />
           </div>
         </section>
 

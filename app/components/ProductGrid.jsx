@@ -17,7 +17,17 @@ export function categoryLabel(categoryId) {
 // (Redis, vía /estudio). La imagen es el link de miniatura pública de
 // Drive, y "Comprar ahora" lleva a la página de detalle/checkout de ESE
 // producto puntual (/producto/[id]), no al editor genérico.
-export function ProductCard({ item, className = "", light = false, ...rest }) {
+// thumbWidth (opcional, oct 2026): pide a /api/catalog-thumbnail una copia
+// redimensionada (WebP) en vez del PNG original de ~3 MB. Sin el prop se
+// usa el original de siempre (así quedan /ads y cualquier otro uso que no
+// lo pase).
+export function catalogThumbnailSrc(fileId, width) {
+  return width ? `/api/catalog-thumbnail/${fileId}?w=${width}` : `/api/catalog-thumbnail/${fileId}`;
+}
+
+// priority: solo para las primeras tarjetas visibles cuando son el LCP de
+// la página (ej. /categoria/[slug]) — por defecto lazy como siempre.
+export function ProductCard({ item, className = "", light = false, thumbWidth, priority = false, ...rest }) {
   return (
     <div
       {...rest}
@@ -32,7 +42,7 @@ export function ProductCard({ item, className = "", light = false, ...rest }) {
         className="relative block aspect-square overflow-hidden"
       >
         <Image
-          src={`/api/catalog-thumbnail/${item.mockupFileId}`}
+          src={catalogThumbnailSrc(item.mockupFileId, thumbWidth)}
           alt={
             item.name
               ? `Cuadro de ${item.name}, en vinilo sobre madera`
@@ -40,6 +50,7 @@ export function ProductCard({ item, className = "", light = false, ...rest }) {
           }
           fill
           unoptimized
+          priority={priority}
           sizes="(min-width: 640px) 25vw, 50vw"
           className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
         />
