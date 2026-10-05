@@ -9,6 +9,7 @@ import ProductScroller from "./components/ProductScroller";
 import { ESTUDIO_CATEGORIES } from "./lib/estudioCategories";
 import { JsonLd } from "./lib/structuredData";
 import { LANDING_PAGES } from "./lib/landingPages";
+import { CHRISTMAS_DEADLINE, isChristmasDeadlineActive } from "./lib/christmas";
 
 // WebSite (oct 2026): le confirma a Google el nombre del sitio que muestra
 // arriba del resultado ("Mystery Cuadros" en vez del dominio).
@@ -319,6 +320,18 @@ export default async function Home() {
             >
               Personalizar mi Cuadro Ahora
             </Link>
+
+            {/* Temporada de Navidad: enlace a la landing de regalos mientras
+                esté vigente la fecha límite de app/lib/christmas.js (se
+                apaga sola después). */}
+            {isChristmasDeadlineActive() && (
+              <Link
+                href="/cuadros/regalo-de-navidad-personalizado"
+                className="rounded-full border border-accent/30 bg-[#fffaf0] px-4 py-2 text-xs font-medium text-accent shadow-sm transition-colors hover:border-accent sm:text-sm"
+              >
+                🎄 Regalos de Navidad · {CHRISTMAS_DEADLINE.message} →
+              </Link>
+            )}
           </div>
         </section>
 
