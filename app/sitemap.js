@@ -1,6 +1,7 @@
 import { getCatalogProducts } from "./lib/catalog";
 import { ESTUDIO_CATEGORIES } from "./lib/estudioCategories";
 import { SITE_URL } from "./lib/siteUrl";
+import { LANDING_PAGES } from "./lib/landingPages";
 
 // Sin esto, Next.js prerenderiza el sitemap como estático en build time
 // (no usa cookies/headers, así que lo optimiza por defecto) y quedaría
@@ -25,6 +26,15 @@ export default async function sitemap() {
     { url: `${SITE_URL}/referidos`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
   ];
 
+  // Landings de intención de compra (app/lib/landingPages.js) — prioridad
+  // alta: son las páginas pensadas para entrar desde Google.
+  const landingRoutes = LANDING_PAGES.map((page) => ({
+    url: `${SITE_URL}/cuadros/${page.slug}`,
+    lastModified: now,
+    changeFrequency: "weekly",
+    priority: 0.8,
+  }));
+
   const categoryRoutes = ESTUDIO_CATEGORIES.map((category) => ({
     url: `${SITE_URL}/categoria/${category.id}`,
     lastModified: now,
@@ -39,5 +49,5 @@ export default async function sitemap() {
     priority: 0.6,
   }));
 
-  return [...staticRoutes, ...categoryRoutes, ...productRoutes];
+  return [...staticRoutes, ...landingRoutes, ...categoryRoutes, ...productRoutes];
 }
