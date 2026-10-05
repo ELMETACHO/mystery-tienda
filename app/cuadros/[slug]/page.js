@@ -95,7 +95,7 @@ export default async function LandingPage({ params }) {
               Crear mi cuadro con mi foto
             </Link>
             <p className="text-xs text-[#5b6b8c]">
-              Desde {formatCOP(getPriceCOP("30x40", "tradicional"))} · Envío gratis a toda Colombia · Recibe de 3 a 5 días hábiles
+              Desde {formatCOP(getPriceCOP("30x40", "tradicional"))} · Envío gratis a toda Colombia · Hecho en 1-2 días · llega en máximo 5 días (sin domingos)
             </p>
           </section>
 
@@ -169,8 +169,8 @@ export default async function LandingPage({ params }) {
             <ol className="flex list-decimal flex-col gap-2 pl-5 text-sm text-[#33456b] sm:text-base">
               <li>Sube tu foto en PNG, JPG, HEIC o PDF desde el celular o el computador.</li>
               <li>Ajústala dentro del marco (mueve y haz zoom) y elige el tamaño y el tipo de cuadro.</li>
-              <li>Paga seguro con Wompi o contraentrega.</li>
-              <li>Lo imprimimos en vinilo sobre madera y te lo enviamos a tu dirección.</li>
+              <li>Paga seguro con Wompi (tarjeta, PSE, Nequi o Daviplata) o contraentrega.</li>
+              <li>Lo imprimimos en vinilo sobre madera en 1 a 2 días y te llega en máximo 5 días (sin domingos).</li>
             </ol>
           </section>
 

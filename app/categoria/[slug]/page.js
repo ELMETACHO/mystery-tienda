@@ -87,7 +87,7 @@ export default async function CategoriaPage({ params }) {
         <p className="text-sm text-[#33456b] sm:text-base">{seo.intro || category.description}</p>
 
         <p className="text-sm text-[#33456b] sm:text-base">
-          Cuadros decorativos de excelente calidad. Recibe de 3 a 5 días hábiles. Envíos a toda
+          Cuadros decorativos de excelente calidad. Hecho en 1-2 días · llega en máximo 5 días (sin domingos). Envíos a toda
           Colombia completamente gratis.
         </p>
 

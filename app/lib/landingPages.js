@@ -24,13 +24,13 @@ const FAQ_FOTO = {
 const FAQ_PAGO = {
   pregunta: "¿Cómo puedo pagar?",
   respuesta:
-    "Pagas de forma segura con Wompi: tarjeta de crédito o débito, PSE, Nequi o Daviplata. También puedes pagar contraentrega con un anticipo de $20.000 y el resto al recibir el cuadro.",
+    "Pagas de forma segura con Wompi: tarjeta de crédito o débito, PSE, y Nequi o Daviplata (se pagan desde PSE; también con QR o llaves). También puedes pagar contraentrega con un anticipo de $20.000 y el resto al recibir el cuadro.",
 };
 
 const FAQ_ENVIO = {
   pregunta: "¿Cuánto se demora y cuánto cuesta el envío?",
   respuesta:
-    "El envío es gratis a toda Colombia. Recibes tu cuadro de 3 a 5 días hábiles después de confirmar el pedido.",
+    "El envío es gratis a toda Colombia. Lo hacemos en 1 a 2 días y te llega en máximo 5 días después de confirmar el pedido (la transportadora no entrega los domingos).",
 };
 
 const FAQ_DANO = {
@@ -134,7 +134,7 @@ export const LANDING_PAGES = [
       {
         pregunta: "¿Hasta cuándo puedo pedir para que llegue antes de Navidad?",
         respuesta:
-          "Recibes tu cuadro de 3 a 5 días hábiles después de confirmar el pedido, así que en diciembre pide con tiempo.",
+          "Lo hacemos en 1 a 2 días y te llega en máximo 5 días después de confirmar el pedido (la transportadora no entrega los domingos), así que en diciembre pide con tiempo.",
         // La página le agrega el mensaje de app/lib/christmas.js mientras
         // esté vigente (y lo quita solo cuando vence).
         christmasDeadline: true,

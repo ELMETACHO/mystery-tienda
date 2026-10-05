@@ -150,6 +150,18 @@ export default async function ProductPage({ params }) {
             maxValue: 3,
             unitCode: "DAY",
           },
+          // La transportadora no entrega los domingos (dato del dueño).
+          businessDays: {
+            "@type": "OpeningHoursSpecification",
+            dayOfWeek: [
+              "https://schema.org/Monday",
+              "https://schema.org/Tuesday",
+              "https://schema.org/Wednesday",
+              "https://schema.org/Thursday",
+              "https://schema.org/Friday",
+              "https://schema.org/Saturday",
+            ],
+          },
         },
       },
     },
@@ -212,7 +224,7 @@ export default async function ProductPage({ params }) {
         <ProductSizeSelector product={product} />
 
         <p className="text-center text-base font-semibold text-accent">
-          Recibe de 3 a 5 días hábiles
+          Hecho en 1-2 días · llega en máximo 5 días (sin domingos)
         </p>
 
         {/* Ficha armada con atributos reales (catálogo + SIZES/FRAME_TYPES
@@ -241,9 +253,9 @@ export default async function ProductPage({ params }) {
               {formatCOP(Math.max(...CATALOG_SIZES.map((s) => getPriceCOP(s.id, "premium"))))}
             </dd>
             <dt className="text-[#5b6b8c]">Envío</dt>
-            <dd className="text-[#1b2a4a]">Gratis a toda Colombia</dd>
+            <dd className="text-[#1b2a4a]">Gratis a toda Colombia · hecho en 1-2 días, llega en máximo 5 días (sin domingos)</dd>
             <dt className="text-[#5b6b8c]">Pago</dt>
-            <dd className="text-[#1b2a4a]">Wompi (tarjeta, PSE, Nequi, Daviplata) o contraentrega</dd>
+            <dd className="text-[#1b2a4a]">Wompi (tarjeta, PSE, Nequi o Daviplata vía PSE) o contraentrega</dd>
           </dl>
           <p className="mt-4 text-sm text-[#33456b]">
             ¿Lo quieres con tu propia foto?{" "}
