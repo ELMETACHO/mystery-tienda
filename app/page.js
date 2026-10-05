@@ -67,16 +67,16 @@ const FAQ = [
   {
     pregunta: "¿Cuánto tarda en llegar mi cuadro?",
     respuesta:
-      "Recibes tu cuadro de 3 a 5 días hábiles desde que se confirma el pago: la producción toma de 1 a 2 días y el resto es el envío a tu ciudad.",
+      "Lo hacemos en 1 a 2 días y te llega en máximo 5 días desde que se confirma el pago (la transportadora no entrega los domingos).",
   },
   {
     pregunta: "¿Qué métodos de pago aceptan?",
     respuesta:
-      "Pagamos de forma segura a través de Wompi: tarjetas de crédito/débito, PSE, Nequi, Daviplata y contraentrega.",
+      "Pagas de forma segura con Wompi: tarjeta de crédito o débito, PSE, y Nequi o Daviplata (se pagan desde PSE; también con QR o llaves). O contraentrega: anticipo de $20.000 y el resto al recibir.",
   },
   {
     pregunta: "¿Hacen envíos a toda Colombia?",
-    respuesta: "Sí, enviamos a todo el país.",
+    respuesta: "Sí, enviamos a todo el país y el envío es gratis.",
   },
   {
     pregunta: "¿Qué pasa si mi cuadro llega dañado?",
@@ -377,16 +377,25 @@ export default async function Home() {
         <section className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto flex max-w-6xl flex-col items-center gap-10 rounded-[2.5rem] border border-black/5 bg-[#fffaf0] px-6 py-12 text-center shadow-[0_16px_40px_-16px_rgba(30,20,60,0.25)] sm:px-12">
             <div className="flex flex-col items-center gap-2">
-              <span className="text-2xl tracking-wide text-accent" aria-hidden="true">
-                ★★★★★
-              </span>
-              <p className="text-sm text-[#33456b] sm:text-base">
-                4.9/5 con más de 1.000 pedidos
-              </p>
+              {/* Dato confirmado por el dueño (oct 2026): +1.000 cuadros
+                  entregados desde 2019, la mayoría por Instagram (la web es
+                  nueva). Sin calificación promedio: no hay fuente que la
+                  respalde (las reseñas de /resena no se promedian). */}
               <p className="text-4xl font-black tracking-tight text-accent sm:text-5xl">
                 +1.000
               </p>
-              <p className="text-sm text-[#33456b] sm:text-base">cuadros entregados</p>
+              <p className="text-sm text-[#33456b] sm:text-base">cuadros entregados desde 2019</p>
+              <p className="text-xs text-[#5b6b8c] sm:text-sm">
+                La mayoría vendidos por Instagram{" "}
+                <a
+                  href="https://www.instagram.com/bigmystery_/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-accent underline-offset-4 hover:underline"
+                >
+                  @bigmystery_
+                </a>
+              </p>
             </div>
 
             {/* testimonios viene de Redis (home:testimonials, reseñas reales

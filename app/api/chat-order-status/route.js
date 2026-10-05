@@ -59,6 +59,6 @@ export async function POST(request) {
   return Response.json({
     found: true,
     status: "pending",
-    message: `Tu pedido de ${sizeLabel} está en producción — en cuanto salga hacia la transportadora te llega el número de guía por correo. Normalmente todo el proceso toma entre 3 y 5 días hábiles.`,
+    message: `Tu pedido de ${sizeLabel} está en producción — en cuanto salga hacia la transportadora te llega el número de guía por correo. Normalmente lo hacemos en 1 a 2 días y llega en máximo 5 días (la transportadora no entrega los domingos).`,
   });
 }
