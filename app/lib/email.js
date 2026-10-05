@@ -296,7 +296,7 @@ function customerEmailHtml({
             <p class="email-text-ink" style="margin:0 0 10px 0;font-family:${FONT_STACK};font-size:12px;font-weight:bold;color:${BRAND.ink};text-transform:uppercase;letter-spacing:0.5px;">Próximos pasos</p>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               <tr><td class="email-text-ink" style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">✅&nbsp; <strong>${isCod ? "Anticipo confirmado (pagas el saldo contraentrega)" : "Pago confirmado"}</strong></td></tr>
-              <tr><td class="email-text-muted" style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">🎨&nbsp; En producción <span class="email-text-subtle" style="color:#a1a1aa;">(3-5 días hábiles)</span></td></tr>
+              <tr><td class="email-text-muted" style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">🎨&nbsp; En producción <span class="email-text-subtle" style="color:#a1a1aa;">(1-2 días · llega en máximo 5 días, sin domingos)</span></td></tr>
               <tr><td class="email-text-muted" style="padding:3px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">🚚&nbsp; Envío a tu dirección</td></tr>
             </table>
           </td>
@@ -1131,7 +1131,7 @@ function shippingNotificationEmailHtml({
 
         <tr>
           <td style="padding:20px 32px 8px 32px;">
-            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:14px;line-height:21px;color:${BRAND.muted};">Tiempo estimado de entrega: <strong class="email-text-ink" style="color:${BRAND.ink};">3 a 5 días hábiles.</strong></p>
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:14px;line-height:21px;color:${BRAND.muted};">Tiempo estimado de entrega: <strong class="email-text-ink" style="color:${BRAND.ink};">máximo 5 días desde tu pedido (la transportadora no entrega los domingos).</strong></p>
           </td>
         </tr>
 

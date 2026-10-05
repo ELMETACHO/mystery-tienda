@@ -113,14 +113,22 @@ export default async function ProductPage({ params }) {
       itemCondition: "https://schema.org/NewCondition",
       availability: "https://schema.org/InStock",
       seller: { "@type": "Organization", name: "Mystery Cuadros" },
+      // Política REAL (/politicas, app/lib/legalContent.js — aprobado por
+      // el dueño, oct 2026): producto personalizado, NO se aceptan
+      // devoluciones por cambio de opinión; solo se responde por defectos
+      // de fábrica, daños en el transporte, diseño equivocado o mala
+      // impresión (reportados en los primeros días con fotos). Por eso
+      // MerchantReturnNotPermitted, sin merchantReturnDays ni returnFees
+      // (no hay ventana de devolución voluntaria), y sin itemDefectReturn*
+      // porque la política escrita no fija plazo exacto ni quién paga el
+      // envío de un defecto — no inventar términos. merchantReturnLink
+      // apunta al texto completo.
       hasMerchantReturnPolicy: {
         "@type": "MerchantReturnPolicy",
         applicableCountry: "CO",
         returnPolicyCountry: "CO",
-        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
-        merchantReturnDays: 7,
-        returnMethod: "https://schema.org/ReturnByMail",
-        returnFees: "https://schema.org/FreeReturn",
+        returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+        merchantReturnLink: `${SITE_URL}/politicas`,
       },
       shippingDetails: {
         "@type": "OfferShippingDetails",
