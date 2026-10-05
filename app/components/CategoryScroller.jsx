@@ -60,7 +60,7 @@ export default function CategoryScroller({ categorias, light = false }) {
         ref={trackRef}
         className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-2 sm:gap-4"
       >
-        {categorias.map((cat) => (
+        {categorias.map((cat, index) => (
           <Link
             key={cat.nombre}
             href={`/categoria/${cat.id}`}
@@ -71,9 +71,12 @@ export default function CategoryScroller({ categorias, light = false }) {
           >
             <Image
               src={cat.src}
-              alt={cat.nombre}
+              alt={`Cuadros de ${cat.nombre}`}
               fill
               unoptimized
+              // Las primeras portadas se ven sin hacer scroll en el
+              // celular y son el LCP del Home: carga inmediata.
+              priority={index < 3}
               sizes="(min-width: 640px) 20vw, 40vw"
               className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
             />

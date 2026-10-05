@@ -3,7 +3,12 @@ import { notFound } from "next/navigation";
 import { getProductsByCategory } from "../../lib/catalog";
 import { ESTUDIO_CATEGORIES } from "../../lib/estudioCategories";
 import { SITE_URL } from "../../lib/siteUrl";
+import { getCategorySeo } from "../../lib/categorySeo";
 import ProductScroller from "../../components/ProductScroller";
+import Breadcrumbs from "../../components/Breadcrumbs";
+import RelatedLinks from "../../components/RelatedLinks";
+import { getLandingPage } from "../../lib/landingPages";
+import { JsonLd, breadcrumbJsonLd, collectionPageJsonLd } from "../../lib/structuredData";
 
 // Esta página lee el catálogo real (Redis) en cada visita — nunca debe
 // quedar cacheada mostrando productos viejos/borrados (mismo motivo que
@@ -15,12 +20,12 @@ export async function generateMetadata({ params }) {
   const category = ESTUDIO_CATEGORIES.find((c) => c.id === slug);
   if (!category) return {};
 
-  const title = `Cuadros de ${category.label} Personalizados | Mystery Cuadros`;
+  const { title, metaDescription } = getCategorySeo(category);
   return {
     title,
-    description: category.description,
+    description: metaDescription,
     alternates: { canonical: `${SITE_URL}/categoria/${category.id}` },
-    openGraph: { title, description: category.description },
+    openGraph: { title, description: metaDescription, url: `${SITE_URL}/categoria/${category.id}` },
   };
 }
 
@@ -33,8 +38,34 @@ export default async function CategoriaPage({ params }) {
   }
 
   const products = await getProductsByCategory(slug);
+  const seo = getCategorySeo(category);
+  const path = `/categoria/${category.id}`;
+  const relatedLinks = [
+    ...seo.relatedCategories
+      .map((id) => ESTUDIO_CATEGORIES.find((c) => c.id === id))
+      .filter(Boolean)
+      .map((c) => ({ href: `/categoria/${c.id}`, label: getCategorySeo(c).h1 })),
+    ...seo.relatedLandings
+      .map(getLandingPage)
+      .filter(Boolean)
+      .map((l) => ({ href: `/cuadros/${l.slug}`, label: l.navLabel })),
+  ];
+  const breadcrumbs = [
+    { name: "Inicio", path: "/" },
+    { name: seo.h1, path },
+  ];
 
   return (
+    <>
+    <JsonLd data={breadcrumbJsonLd(breadcrumbs)} />
+    <JsonLd
+      data={collectionPageJsonLd({
+        name: seo.h1,
+        description: seo.metaDescription,
+        path,
+        products,
+      })}
+    />
     <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
       <div
         aria-hidden="true"
@@ -49,9 +80,11 @@ export default async function CategoriaPage({ params }) {
           ← Volver al catálogo
         </Link>
 
-        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">{category.label}</h1>
+        <Breadcrumbs items={breadcrumbs} />
 
-        <p className="text-sm text-[#33456b] sm:text-base">{category.description}</p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">{seo.h1}</h1>
+
+        <p className="text-sm text-[#33456b] sm:text-base">{seo.intro || category.description}</p>
 
         <p className="text-sm text-[#33456b] sm:text-base">
           Cuadros decorativos de excelente calidad. Recibe de 3 a 5 días hábiles. Envíos a toda
@@ -62,7 +95,27 @@ export default async function CategoriaPage({ params }) {
           items={products}
           emptyMessage={`Todavía no hay diseños en ${category.label}. Vuelve pronto.`}
           light
+          thumbWidth={480}
+          eagerCount={2}
         />
+
+        {seo.body.length > 0 && (
+          <section className="rounded-2xl border border-black/5 bg-[#fffaf0] p-5 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)] sm:p-7">
+            <h2 className="font-heading mb-3 text-lg font-bold sm:text-xl">Sobre estos cuadros</h2>
+            {seo.body.map((text) => (
+              <p key={text.slice(0, 40)} className="mb-3 text-sm text-[#33456b] last:mb-0 sm:text-base">
+                {text}
+              </p>
+            ))}
+            <p className="mt-3 text-sm text-[#33456b] sm:text-base">
+              Todos se imprimen en vinilo sobre madera, en 30x40, 40x50 o 50x70 cm, en versión
+              Premium (con marco trasero de 3 cm) o Tradicional (más delgado, con soporte para
+              colgar).
+            </p>
+          </section>
+        )}
+
+        <RelatedLinks title="También te puede interesar" links={relatedLinks} />
 
         {/* CTA de personalización — mismo tratamiento que "Cuadros
             personalizados" del Home: tarjeta crema con acentos suaves de
@@ -86,5 +139,6 @@ export default async function CategoriaPage({ params }) {
         </div>
       </div>
     </div>
+    </>
   );
 }

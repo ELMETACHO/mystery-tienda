@@ -25,8 +25,37 @@ import { downloadFileBuffer } from "../../../lib/googleDrive";
 // ALGÚN producto existente) antes de pedirle nada a Drive — sin esto,
 // esta ruta sería un proxy abierto que cualquiera podría usar para
 // descargar cualquier archivo de nuestro Drive con solo adivinar un id.
+// Versiones reducidas (oct 2026, rendimiento móvil): los mockups
+// originales son PNG de ~3 MB cada uno y el Home cargaba ~40 MB de
+// miniaturas. Con `?w=480` (y opcional `&f=jpg`) se sirve una copia
+// redimensionada en WebP/JPEG (~30-80 KB). Solo anchos de esta lista, para
+// no multiplicar las variantes cacheadas. SIN `w` la respuesta es
+// exactamente la de siempre (PNG original) — así /fabricante, /ads y
+// cualquier uso existente no cambian.
+const ALLOWED_WIDTHS = new Set([320, 480, 640, 900, 1200]);
+
+async function resizeImage(buffer, width, format) {
+  // Import dinámico: sharp ya viene con Next (optimizador de imágenes). Si
+  // por algún motivo no carga en el entorno, se devuelve el original en
+  // vez de romper la imagen.
+  try {
+    const sharp = (await import("sharp")).default;
+    const pipeline = sharp(buffer).rotate().resize({ width, withoutEnlargement: true });
+    if (format === "jpg") {
+      return { body: await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer(), type: "image/jpeg" };
+    }
+    return { body: await pipeline.webp({ quality: 78 }).toBuffer(), type: "image/webp" };
+  } catch (err) {
+    console.error("[catalog-thumbnail] No se pudo redimensionar, se sirve el original:", err);
+    return null;
+  }
+}
+
 export async function GET(request, { params }) {
   const { id } = await params;
+  const searchParams = new URL(request.url).searchParams;
+  const width = Number(searchParams.get("w"));
+  const format = searchParams.get("f") === "jpg" ? "jpg" : "webp";
 
   const products = await getCatalogProducts();
   const isKnownMockup = products.some((p) => p.mockupFileId === id);
@@ -42,9 +71,19 @@ export async function GET(request, { params }) {
     return new Response("No se pudo obtener la imagen", { status: 502 });
   }
 
-  return new Response(buffer, {
+  let body = buffer;
+  let contentType = "image/png";
+  if (ALLOWED_WIDTHS.has(width)) {
+    const resized = await resizeImage(buffer, width, format);
+    if (resized) {
+      body = resized.body;
+      contentType = resized.type;
+    }
+  }
+
+  return new Response(body, {
     headers: {
-      "Content-Type": "image/png",
+      "Content-Type": contentType,
       // Inmutable: el mockup de un producto nunca cambia una vez subido
       // (subir un diseño nuevo genera un id de archivo distinto), así
       // que el navegador y el edge de Vercel pueden cachearlo para

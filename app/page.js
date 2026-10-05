@@ -7,6 +7,19 @@ import FoldText from "./components/FoldText";
 import CategoryScroller from "./components/CategoryScroller";
 import ProductScroller from "./components/ProductScroller";
 import { ESTUDIO_CATEGORIES } from "./lib/estudioCategories";
+import { JsonLd } from "./lib/structuredData";
+import { LANDING_PAGES } from "./lib/landingPages";
+
+// WebSite (oct 2026): le confirma a Google el nombre del sitio que muestra
+// arriba del resultado ("Mystery Cuadros" en vez del dominio).
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Mystery Cuadros",
+  alternateName: "Mystery",
+  url: `${SITE_URL}/`,
+  inLanguage: "es-CO",
+};
 
 // Esta página lee el catálogo real (Redis) en cada visita — nunca debe
 // quedar cacheada mostrando productos viejos/borrados.
@@ -23,10 +36,25 @@ export const metadata = {
 // /estudio para organizar los diseños en Google Drive (ver
 // app/lib/estudioCategories.js) — así una categoría nueva aparece acá sola,
 // sin necesidad de mantener una segunda lista a mano.
+const CATEGORY_CARD_IDS = new Set([
+  "abstracto",
+  "anime",
+  "deportes",
+  "iconic",
+  "musica",
+  "peliculas-series",
+  "mystery-disenos",
+]);
+
 const CATEGORIAS = ESTUDIO_CATEGORIES.map((category) => ({
   id: category.id,
   nombre: category.label,
-  src: category.coverImage,
+  // Versión liviana (WebP 432px, ~20-50 KB) generada desde coverImage —
+  // el original llega a pesar 2 MB (mystery-disenos.png). Si se agrega una
+  // categoría nueva, generar también su public/images/categorias/card/<id>.webp
+  // (ver BITACORA.md, sesión SEO oct 2026); mientras no exista, se usa el
+  // original.
+  src: CATEGORY_CARD_IDS.has(category.id) ? `/images/categorias/card/${category.id}.webp` : category.coverImage,
 }));
 
 const FAQ = [
@@ -38,7 +66,7 @@ const FAQ = [
   {
     pregunta: "¿Cuánto tarda en llegar mi cuadro?",
     respuesta:
-      "La producción toma entre 3 y 5 días hábiles desde que se confirma el pago, más el tiempo de envío según tu ciudad.",
+      "Recibes tu cuadro de 3 a 5 días hábiles desde que se confirma el pago: la producción toma de 1 a 2 días y el resto es el envío a tu ciudad.",
   },
   {
     pregunta: "¿Qué métodos de pago aceptan?",
@@ -202,6 +230,7 @@ export default async function Home() {
     <div
       className="relative flex flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]"
     >
+      <JsonLd data={websiteJsonLd} />
       {/* Fondo de cielo con nubes, fijo respecto al viewport (no se mueve
           con el scroll) — imagen propia con blur leve horneado (ver
           public/images/walls/fondo-cielo.webp), un solo tono uniforme sin
@@ -314,7 +343,7 @@ export default async function Home() {
             <div className="mb-4">
               <h2 className="font-heading text-lg font-semibold sm:text-xl">Recientes</h2>
             </div>
-            <ProductScroller items={recientes} light />
+            <ProductScroller items={recientes} light thumbWidth={480} />
           </div>
         </section>
 
@@ -327,7 +356,7 @@ export default async function Home() {
             <div className="mb-4 flex items-end justify-between">
               <h2 className="font-heading text-lg font-semibold sm:text-xl">Más vendidos</h2>
             </div>
-            <ProductScroller items={masVendidos} light />
+            <ProductScroller items={masVendidos} light thumbWidth={480} />
           </div>
         </section>
 
@@ -496,6 +525,29 @@ export default async function Home() {
           </div>
         </section>
 
+        {/* 7.8 IDEAS — enlaces internos a las landings de intención de
+            compra (app/lib/landingPages.js, oct 2026): regalos de Navidad,
+            aniversario, mascotas, sala... Ayudan a que Google las descubra
+            y le dan al visitante una puerta de entrada por ocasión. */}
+        <section id="ideas" className="px-4 pb-16 sm:px-6 sm:pb-24">
+          <div className="mx-auto max-w-6xl">
+            <h2 className="font-heading mb-4 text-lg font-semibold sm:text-xl">Ideas para regalar y decorar</h2>
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {LANDING_PAGES.map((landing) => (
+                <li key={landing.slug}>
+                  <Link
+                    href={`/cuadros/${landing.slug}`}
+                    className="flex h-full items-center justify-between gap-3 rounded-2xl border border-black/5 bg-[#fffaf0] px-5 py-4 text-sm font-medium text-[#1b2a4a] shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)] transition-colors hover:border-accent"
+                  >
+                    {landing.christmas ? `🎄 ${landing.navLabel}` : landing.navLabel}
+                    <span aria-hidden="true" className="text-accent">→</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
         {/* 8. PREGUNTAS FRECUENTES — acordeón nativo (details/summary), sin
             JS extra, mismo patrón ya usado en el resumen colapsable del
             checkout. id usado por "Centro de ayuda" del footer. */}
@@ -556,6 +608,19 @@ export default async function Home() {
               <Link href="/referidos" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
                 Programa de referidos
               </Link>
+            </div>
+
+            <div className="flex flex-col gap-2 text-sm">
+              <span className="mb-1 font-medium text-[#33456b]">Ideas</span>
+              {LANDING_PAGES.map((landing) => (
+                <Link
+                  key={landing.slug}
+                  href={`/cuadros/${landing.slug}`}
+                  className="text-[#5b6b8c] hover:text-[#1b2a4a]"
+                >
+                  {landing.navLabel}
+                </Link>
+              ))}
             </div>
 
             {SOCIAL_LINKS.length > 0 && (
