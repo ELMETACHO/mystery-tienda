@@ -245,16 +245,28 @@ export default async function Home() {
               Por tiempo limitado: Envío gratis a todo el país
             </p>
 
-            <FoldText
-              text="Mystery Cuadros"
-              splitBy="word"
-              trigger="mount"
-              fontSize="clamp(3rem, 9vw, 6rem)"
-              fontWeight={800}
-              color="#1b2a4a"
-              className="font-brand leading-tight tracking-tight whitespace-nowrap"
-              style={{ whiteSpace: "nowrap" }}
-            />
+            {/* Único <h1> de la Home (SEO): la marca animada (FoldText ya
+                incluye el texto real en un span sr-only, la animación es
+                aria-hidden) + una bajada visible que describe qué se vende.
+                Ambos son <span> dentro del mismo h1 para que el encabezado
+                principal diga "Mystery Cuadros — Cuadros personalizados
+                con tu foto..." sin cambiar el estilo del título. */}
+            <h1 className="flex flex-col items-center gap-3">
+              <FoldText
+                text="Mystery Cuadros"
+                splitBy="word"
+                trigger="mount"
+                fontSize="clamp(3rem, 9vw, 6rem)"
+                fontWeight={800}
+                color="#1b2a4a"
+                className="font-brand leading-tight tracking-tight whitespace-nowrap"
+                style={{ whiteSpace: "nowrap" }}
+              />
+              <span className="sr-only"> — </span>
+              <span className="max-w-xl text-base font-medium text-[#33456b] sm:text-lg">
+                Cuadros personalizados con tu foto, en vinilo sobre madera
+              </span>
+            </h1>
 
             <Link
               href="/crear"

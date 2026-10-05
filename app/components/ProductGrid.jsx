@@ -33,15 +33,20 @@ export function ProductCard({ item, className = "", light = false, ...rest }) {
       >
         <Image
           src={`/api/catalog-thumbnail/${item.mockupFileId}`}
-          alt={`Cuadro personalizado categoría ${categoryLabel(item.category)}, en vinilo sobre madera`}
+          alt={
+            item.name
+              ? `Cuadro de ${item.name}, en vinilo sobre madera`
+              : `Cuadro personalizado categoría ${categoryLabel(item.category)}, en vinilo sobre madera`
+          }
           fill
           unoptimized
           sizes="(min-width: 640px) 25vw, 50vw"
           className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
         />
       </Link>
-      {/* min-h reserva la altura de 2 líneas de categoryLabel (con
-          line-clamp-2 por si el nombre es largo) y mt-auto ancla
+      {/* min-h reserva la altura de 2 líneas del título (item.name — el
+          nombre real generado por IA — o categoryLabel como respaldo para
+          productos viejos sin nombre; line-clamp-2 por si es largo) y mt-auto ancla
           "Comprar ahora" siempre al fondo de la tarjeta — así todas
           quedan alineadas entre sí sin importar cuánto texto haya
           arriba. */}
@@ -51,7 +56,7 @@ export function ProductCard({ item, className = "", light = false, ...rest }) {
             light ? "text-[#1b2a4a]" : "text-zinc-200"
           }`}
         >
-          Cuadro {categoryLabel(item.category)}
+          {item.name ? `Cuadro ${item.name}` : `Cuadro ${categoryLabel(item.category)}`}
         </h3>
         <p className={`text-sm font-semibold ${light ? "text-accent" : "text-accent-soft"}`}>
           Desde {formatCOP(CHEAPEST_SIZE_PRICE_COP)}
