@@ -119,16 +119,19 @@ export default async function ProductPage({ params }) {
         },
         deliveryTime: {
           "@type": "ShippingDeliveryTime",
+          // Dato del dueño (oct 2026): producción 1-2 días y máximo 5
+          // días desde el pedido hasta el cliente en Colombia → tránsito
+          // 1-3 días para que el total nunca pase de 5.
           handlingTime: {
             "@type": "QuantitativeValue",
-            minValue: 0,
+            minValue: 1,
             maxValue: 2,
             unitCode: "DAY",
           },
           transitTime: {
             "@type": "QuantitativeValue",
-            minValue: 3,
-            maxValue: 5,
+            minValue: 1,
+            maxValue: 3,
             unitCode: "DAY",
           },
         },
