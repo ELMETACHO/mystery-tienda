@@ -71,7 +71,7 @@ export default function CategoryScroller({ categorias, light = false }) {
           >
             <Image
               src={cat.src}
-              alt={cat.nombre}
+              alt={`Cuadros de ${cat.nombre}`}
               fill
               unoptimized
               sizes="(min-width: 640px) 20vw, 40vw"

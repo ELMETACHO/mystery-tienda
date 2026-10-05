@@ -6,6 +6,8 @@ import { SITE_URL } from "../../lib/siteUrl";
 import { getCategorySeo } from "../../lib/categorySeo";
 import ProductScroller from "../../components/ProductScroller";
 import Breadcrumbs from "../../components/Breadcrumbs";
+import RelatedLinks from "../../components/RelatedLinks";
+import { getLandingPage } from "../../lib/landingPages";
 import { JsonLd, breadcrumbJsonLd, collectionPageJsonLd } from "../../lib/structuredData";
 
 // Esta página lee el catálogo real (Redis) en cada visita — nunca debe
@@ -38,6 +40,16 @@ export default async function CategoriaPage({ params }) {
   const products = await getProductsByCategory(slug);
   const seo = getCategorySeo(category);
   const path = `/categoria/${category.id}`;
+  const relatedLinks = [
+    ...seo.relatedCategories
+      .map((id) => ESTUDIO_CATEGORIES.find((c) => c.id === id))
+      .filter(Boolean)
+      .map((c) => ({ href: `/categoria/${c.id}`, label: getCategorySeo(c).h1 })),
+    ...seo.relatedLandings
+      .map(getLandingPage)
+      .filter(Boolean)
+      .map((l) => ({ href: `/cuadros/${l.slug}`, label: l.navLabel })),
+  ];
   const breadcrumbs = [
     { name: "Inicio", path: "/" },
     { name: seo.h1, path },
@@ -84,6 +96,24 @@ export default async function CategoriaPage({ params }) {
           emptyMessage={`Todavía no hay diseños en ${category.label}. Vuelve pronto.`}
           light
         />
+
+        {seo.body.length > 0 && (
+          <section className="rounded-2xl border border-black/5 bg-[#fffaf0] p-5 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)] sm:p-7">
+            <h2 className="font-heading mb-3 text-lg font-bold sm:text-xl">Sobre estos cuadros</h2>
+            {seo.body.map((text) => (
+              <p key={text.slice(0, 40)} className="mb-3 text-sm text-[#33456b] last:mb-0 sm:text-base">
+                {text}
+              </p>
+            ))}
+            <p className="mt-3 text-sm text-[#33456b] sm:text-base">
+              Todos se imprimen en vinilo sobre madera, en 30x40, 40x50 o 50x70 cm, en versión
+              Premium (con marco trasero de 3 cm) o Tradicional (más delgado, con soporte para
+              colgar).
+            </p>
+          </section>
+        )}
+
+        <RelatedLinks title="También te puede interesar" links={relatedLinks} />
 
         {/* CTA de personalización — mismo tratamiento que "Cuadros
             personalizados" del Home: tarjeta crema con acentos suaves de
