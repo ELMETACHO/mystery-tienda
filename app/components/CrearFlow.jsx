@@ -848,12 +848,12 @@ export default function CrearFlow({ compact = false }) {
                 </li>
               </ul>
 
+              {/* Dato confirmado por el dueño (oct 2026): vende desde 2019,
+                  sobre todo por Instagram — la web es nueva. Se quitó la
+                  calificación "4.9" porque no hay fuente en el sistema que
+                  la respalde (las reseñas de /resena no se promedian). */}
               <p className="text-center text-xs text-[#5b6b8c]">
-                Más de 1.000 cuadros entregados —{" "}
-                <span className="text-accent" aria-hidden="true">
-                  ⭐⭐⭐⭐⭐
-                </span>{" "}
-                4.9
+                +1.000 cuadros entregados desde 2019, la mayoría vendidos por Instagram
               </p>
             </div>
           </div>

@@ -344,3 +344,32 @@ Commits: `c72e16a` (tope + Servientrega), `21c10b0` (cotizar al pagar),
   (~0,6% vs ~1,9% benchmark). Octubre = prueba chica; escalar nov-dic solo si
   CPA < ~$25.000. Con la venta del 100x140, la pérdida de la campaña bajó de
   ~−$230.000 a ~−$132.000 (materiales de tamaños normales estimados).
+
+---
+
+## Sesión del 5 oct 2026 — landing /ads: velocidad, CTA, confianza, Navidad (PR #6)
+
+Detalle completo en `ADS.md` → "Landing `/ads` — mejoras de conversión".
+
+- **Peso de /ads**: 43,9 MB → ~1,5 MB (fotos de pared y póster en WebP,
+  catálogo de /ads con 12 miniaturas reducidas). LCP local con throttling
+  real 3,0 s → 1,9 s.
+- **Primer pantallazo**: título + precio desde + video + botón que abre la
+  galería directo (label del input de CrearFlow); barra fija oculta mientras
+  ese botón se ve; al cargar la foto baja sola al editor.
+- **Confianza/FAQ** con datos reales; WhatsApp con texto prellenado.
+- **Temporadas** en `app/ads/temporada.js` (`?temporada=navidad`, utm_campaign
+  con "navidad", env `ADS_TEMPORADA`). Fecha límite de Navidad en
+  `NAVIDAD.fechaLimite` (17 dic, se oculta sola desde el 18).
+- **dataLayer nuevo**: `ads_landing` (UTM/ttclid/fbclid/gclid),
+  `ads_cta_click`, `ads_photo_uploaded`. Falta crear variables/tags en GTM.
+- **Respuestas del dueño aplicadas** (ver ADS.md, "Datos confirmados"):
+  "+1.000 cuadros entregados desde 2019, la mayoría por Instagram" (el "4.9"
+  se quitó de CrearFlow por no tener fuente — la línea "Sin verificar" de la
+  sesión 24-26 sept queda resuelta así), "máximo 5 días (sin domingos)",
+  pagos tarjeta/PSE/Nequi/Daviplata (vía PSE)/contraentrega, envío gratis a
+  todo el país confirmado.
+- **Pendientes**: el Home todavía muestra "4.9/5 con más de 1.000 pedidos"
+  (sin fuente); el FAQ del Home y el prompt del chatbot
+  (`app/lib/chatSystemPrompt.js`) dicen "3 a 5 días hábiles" — unificar con
+  "máximo 5 días (sin domingos)" y con los medios de pago confirmados.

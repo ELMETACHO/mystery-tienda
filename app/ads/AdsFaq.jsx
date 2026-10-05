@@ -28,8 +28,9 @@ export default function AdsFaq({ avisoNavidad }) {
       q: "¿Cuánto se demora en llegar?",
       a: (
         <>
-          Fabricamos tu cuadro en 1 a 2 días y te llega en máximo 5 días hábiles desde que haces
-          el pedido.
+          Trabajamos todos los días: fabricamos tu cuadro en 1 a 2 días y te llega en máximo 5
+          días desde que haces el pedido (sin contar domingos, porque la transportadora no
+          entrega ese día).
           {avisoNavidad && <> {avisoNavidad.fraseFaq}</>}
         </>
       ),
@@ -80,8 +81,9 @@ export default function AdsFaq({ avisoNavidad }) {
       q: "¿Cómo puedo pagar?",
       a: (
         <>
-          En línea con Wompi (tarjeta o PSE), o contraentrega: anticipo de {deposit} y el resto al
-          recibir. Tus datos de pago van cifrados y nunca los almacenamos.
+          En línea con Wompi: tarjeta de crédito o débito, PSE, Nequi o Daviplata (desde PSE). O
+          contraentrega: anticipo de {deposit} y el resto en efectivo al recibir. Tus datos de pago
+          van cifrados y nunca los almacenamos.
         </>
       ),
     },

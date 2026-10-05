@@ -1,24 +1,22 @@
 import Image from "next/image";
 import Link from "next/link";
-import { categoryLabel } from "../components/ProductGrid";
+import { categoryLabel, catalogThumbnailSrc } from "../components/ProductGrid";
 import { SIZES, getPriceCOP, formatCOP } from "../lib/order";
 
 // Mismo precio de referencia que ProductCard (el tamaño+tipo más barato).
 const DESDE_COP = getPriceCOP(SIZES[0].id, "tradicional");
 
-// Fila de diseños del catálogo SOLO para /ads. Reemplaza al
-// ProductScroller del Home en esta página por peso: ProductCard usa las
-// miniaturas originales de /api/catalog-thumbnail con `unoptimized` (PNG
-// de ~3 MB cada una — Lighthouse midió 11 de ellas = 34 MB en una sola
-// carga de /ads, oct 2026), para no gastar la cuota del optimizador de
-// imágenes de Vercel en los ~200 productos del Home.
+// Fila de diseños del catálogo SOLO para /ads. Antes era el mismo
+// ProductScroller del Home con las miniaturas originales de
+// /api/catalog-thumbnail (PNG de ~3 MB cada una — Lighthouse midió 11 de
+// ellas = 34 MB en una sola carga de /ads, oct 2026).
 //
-// Acá se muestran pocos productos (los más recientes) y SÍ pasan por el
-// optimizador con `sizes` fijo de 160px: como máximo 2 variantes por
-// imagen (pantallas 2x y 3x) × ADS_CATALOG_LIMIT productos — un consumo
-// mínimo y acotado de la cuota, a cambio de bajar cada miniatura de ~3 MB
-// a ~20-40 KB. Se cargan en diferido (lazy, comportamiento por defecto de
-// next/image), solo cuando el cliente baja hasta acá.
+// Ahora: pocos productos (los más recientes) y la copia reducida en WebP
+// que sirve la propia ruta con `?w=480` (ver catalogThumbnailSrc en
+// ProductGrid.jsx) — ~30-80 KB, suficiente para 160px en pantallas 3x.
+// `unoptimized`: no pasa por el optimizador de Vercel (cuota limitada).
+// Se cargan en diferido (lazy, comportamiento por defecto de next/image),
+// solo cuando el cliente baja hasta acá.
 export const ADS_CATALOG_LIMIT = 12;
 
 export default function AdsCatalogStrip({ items }) {
@@ -36,9 +34,10 @@ export default function AdsCatalogStrip({ items }) {
           >
             <span className="relative block aspect-square overflow-hidden bg-black/5">
               <Image
-                src={`/api/catalog-thumbnail/${item.mockupFileId}`}
+                src={catalogThumbnailSrc(item.mockupFileId, 480)}
                 alt={`${name}, en vinilo sobre madera`}
                 fill
+                unoptimized
                 sizes="160px"
                 className="object-cover"
               />

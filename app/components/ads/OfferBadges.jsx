@@ -27,7 +27,7 @@ export default function OfferBadges({ variant = "card" }) {
       <div className="rounded-xl border border-emerald-600/25 bg-emerald-50 px-3 py-2.5 text-center">
         <p className="text-sm font-bold text-emerald-800">🚚 Envío gratis</p>
         <p className="mt-0.5 text-[11px] leading-snug text-emerald-900/80">
-          Hasta tu casa, en 3-5 días hábiles
+          Hasta tu casa, en máximo 5 días (sin domingos)
         </p>
       </div>
       <div className="rounded-xl border border-emerald-600/25 bg-emerald-50 px-3 py-2.5 text-center">

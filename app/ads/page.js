@@ -165,17 +165,19 @@ export default async function AdsLanding({ searchParams }) {
 
         {/* 4. CONFIANZA — solo datos verdaderos y ya publicados en el sitio:
             tiempos confirmados por el dueño (oct 2026), medios de pago del
-            checkout (Wompi: tarjeta/PSE + contraentrega), garantía de las
-            políticas y WhatsApp real de atención. */}
+            dueño (Wompi: tarjeta, PSE, Nequi y Daviplata vía PSE, +
+            contraentrega), garantía de las políticas, WhatsApp real de
+            atención y trayectoria real (+1.000 cuadros desde 2019, sobre todo
+            por Instagram — confirmado por el dueño, oct 2026). */}
         <section className="px-4 pb-7">
           <ul className="mx-auto grid max-w-md grid-cols-2 gap-2 text-[11px] leading-snug text-[#33456b]">
             <li className="rounded-xl border border-black/5 bg-[#fffaf0] px-3 py-2">
               <span className="block font-bold text-[#1b2a4a]">⚡ Hecho en 1-2 días</span>
-              Llega en máximo 5 días hábiles
+              Llega en máximo 5 días (sin domingos)
             </li>
             <li className="rounded-xl border border-black/5 bg-[#fffaf0] px-3 py-2">
               <span className="block font-bold text-[#1b2a4a]">🔒 Pago seguro</span>
-              Wompi: tarjeta o PSE
+              Con Wompi, o paga al recibir
             </li>
             <li className="rounded-xl border border-black/5 bg-[#fffaf0] px-3 py-2">
               <span className="block font-bold text-[#1b2a4a]">🛡️ Garantía</span>
@@ -188,6 +190,33 @@ export default async function AdsLanding({ searchParams }) {
               </a>
             </li>
           </ul>
+
+          {/* Medios de pago como "insignias" de texto (sin logos de
+              terceros): Nequi y Daviplata se pagan desde PSE en Wompi
+              (también QR/llaves), confirmado por el dueño. */}
+          <p className="sr-only">Medios de pago aceptados:</p>
+          <ul className="mx-auto mt-2 flex max-w-md flex-wrap items-center justify-center gap-1.5 text-[11px] font-semibold text-[#1b2a4a]">
+            {["💳 Tarjeta", "🏦 PSE", "Nequi", "Daviplata", "💵 Contraentrega"].map((medio) => (
+              <li key={medio} className="rounded-full border border-black/10 bg-white/80 px-2.5 py-1">
+                {medio}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-center text-[10px] text-[#5b6b8c]">
+            Nequi y Daviplata se pagan desde PSE.
+          </p>
+
+          <p className="mx-auto mt-3 max-w-md text-center text-xs font-semibold text-[#33456b]">
+            ⭐ +1.000 cuadros entregados desde 2019, la mayoría vendidos por{" "}
+            <a
+              href="https://www.instagram.com/bigmystery_/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2"
+            >
+              Instagram
+            </a>
+          </p>
         </section>
 
         {/* 5. FLUJO DE /crear EMBEBIDO — mismo componente que usa /crear
@@ -235,7 +264,9 @@ export default async function AdsLanding({ searchParams }) {
           <AdsFaq avisoNavidad={temporada.avisoNavidad} />
         </section>
 
-        {/* 8. TEXTO LARGO DEL PRODUCTO — texto exacto pedido. */}
+        {/* 8. TEXTO LARGO DEL PRODUCTO — texto exacto pedido (oct 2026: solo se
+            actualizó la última frase a los tiempos reales confirmados por el
+            dueño: máximo 5 días, sin domingos). */}
         <section className="px-4 pb-8">
           <div className="mx-auto max-w-md rounded-2xl border border-black/5 bg-[#fffaf0] px-5 py-5 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)]">
             <p className="text-sm leading-relaxed text-[#33456b]">
@@ -247,7 +278,7 @@ export default async function AdsLanding({ searchParams }) {
               Seguirá siendo la misma, ¡pero mejor! Puedes pagar al recibir —
               tenemos alianza con Servientrega, Envía, Interrapidísimo y más, esto
               te da la confianza de que puedes pagar tu cuadro en la puerta de tu
-              casa (anticipo de $20.000). Entrega en 3-5 días hábiles.
+              casa (anticipo de $20.000). Entrega en máximo 5 días (sin contar domingos).
             </p>
           </div>
         </section>

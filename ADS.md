@@ -477,10 +477,9 @@ tropiezo (IA, impresión, empaque) → revelación/reacción de quien lo recibe
 ### Qué cambió
 - **Peso**: fotos de pared en `.webp` de 480 px (~15-20 KB c/u); póster del
   video en `.webp` (~50 KB) con preload de prioridad alta (es el LCP);
-  catálogo de /ads limitado a 12 diseños (`AdsCatalogStrip`) con miniaturas
-  que SÍ pasan por el optimizador de Vercel con `sizes="160px"` (máx. 2
-  variantes por imagen → consumo de cuota mínimo y acotado). El Home y
-  `ProductCard` no se tocaron.
+  catálogo de /ads limitado a 12 diseños (`AdsCatalogStrip`) con la copia
+  reducida en WebP de `/api/catalog-thumbnail/{id}?w=480` (`unoptimized`, sin
+  gastar cuota del optimizador de Vercel).
 - **Primer pantallazo**: título que repite la promesa del anuncio, precio
   "desde" (calculado de `PRICES`), video más bajo y un CTA grande que abre
   la galería directamente (`<label htmlFor="file-upload">`). La barra fija se
@@ -530,3 +529,17 @@ mano: TikTok lo pone solo.
 - [Por qué en Colombia prefieren pagar al recibir — EnColombia](https://encolombia.com/economia/empresas/transporte-mercancias-emprendimiento/en-colombia-prefieren-pagar-al-recibir/)
 - [Compras navideñas en línea crecen 43% — El Tiempo (dic 2025)](https://www.eltiempo.com/economia/finanzas-personales/compras-navidenas-en-linea-crecen-43-y-el-gasto-promedio-alcanza-155-870-3518067)
 - [Customizable holiday gifts that convert — 100xelevate](https://100xelevate.com/for-ai/customizable-holiday-gifts/)
+
+### Datos confirmados por el dueño (5 oct 2026) — usar tal cual en textos
+- **Trayectoria**: +1.000 cuadros entregados **desde 2019**, la mayoría
+  vendidos por **Instagram** (la web es nueva). La calificación "★4.9" NO
+  tiene fuente en el sistema → se quitó de CrearFlow (/crear y /ads). El Home
+  (`app/page.js`, sección reseñas) todavía dice "4.9/5 con más de 1.000
+  pedidos" — pendiente quitar el número o respaldarlo con reseñas reales.
+- **Tiempos**: se trabaja todos los días; producción 1-2 días; llega en
+  **máximo 5 días, sin contar domingos** (la transportadora no entrega
+  domingos). Navidad: "Pide hasta el 17 de diciembre para recibir antes del 24".
+- **Pagos**: tarjeta, PSE, **Nequi y Daviplata (desde PSE; también QR/llaves)**
+  vía Wompi, y contraentrega (anticipo $20.000).
+- **Envío gratis a todo el país**: confirmado.
+- Empaque de regalo: no por ahora.
