@@ -7,6 +7,18 @@ import FoldText from "./components/FoldText";
 import CategoryScroller from "./components/CategoryScroller";
 import ProductScroller from "./components/ProductScroller";
 import { ESTUDIO_CATEGORIES } from "./lib/estudioCategories";
+import { JsonLd } from "./lib/structuredData";
+
+// WebSite (oct 2026): le confirma a Google el nombre del sitio que muestra
+// arriba del resultado ("Mystery Cuadros" en vez del dominio).
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Mystery Cuadros",
+  alternateName: "Mystery",
+  url: `${SITE_URL}/`,
+  inLanguage: "es-CO",
+};
 
 // Esta página lee el catálogo real (Redis) en cada visita — nunca debe
 // quedar cacheada mostrando productos viejos/borrados.
@@ -202,6 +214,7 @@ export default async function Home() {
     <div
       className="relative flex flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]"
     >
+      <JsonLd data={websiteJsonLd} />
       {/* Fondo de cielo con nubes, fijo respecto al viewport (no se mueve
           con el scroll) — imagen propia con blur leve horneado (ver
           public/images/walls/fondo-cielo.webp), un solo tono uniforme sin
