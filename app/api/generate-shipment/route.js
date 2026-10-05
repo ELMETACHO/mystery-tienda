@@ -5,13 +5,19 @@ import {
   saveScheduledEmailId,
   acquireShipmentGenerationLock,
   releaseShipmentGenerationLock,
+  savePendingShipmentId,
 } from "../../lib/manualShipments";
 import { createManualShipment } from "../../lib/skydropx";
 import { sendShippingNotificationEmail, sendExtraProtectionEmail } from "../../lib/email";
 import { recordManufacturerOrder } from "../../lib/manufacturerFinance";
 import { handleNoCoverage } from "../../lib/noCoverage";
 import { getFabricanteForFrameType } from "../../lib/fabricantes";
-// La cotización de envío espera a que TODAS las transportadoras respondan// (hasta 40s, ver pollQuotationRates en app/lib/skydropx.js) — en rutas// donde corre en segundo plano con after(), también cuenta este límite.export const maxDuration = 60;
+// La cotización espera a que TODAS las transportadoras respondan (hasta
+// 40s, ver pollQuotationRates en app/lib/skydropx.js) y luego se espera el
+// número de la guía (hasta ~40s más) — margen para que Vercel no corte a
+// mitad. (Antes de oct 2026 esta línea quedó pegada dentro de un
+// comentario por error y nunca aplicó.)
+export const maxDuration = 120;
 
 // Botón "✅ Ya está listo — generar guía ahora" del correo al fabricante
 // (ver app/lib/email.js) — dispara la creación REAL de la guía de
@@ -282,6 +288,19 @@ function resultPage({ ok, trackingNumber, carrierName, labelUrl, errorMessage, r
   });
 }
 
+// Skydropx ya aceptó la guía (existe y está pagada) pero la transportadora
+// todavía no entregó el número. NO es un fallo: el reintento retoma esta
+// misma guía (pendingShipmentId) en vez de crear otra.
+function guideStillProcessingPage() {
+  return renderPage({
+    title: "Guía en proceso — Mystery",
+    bodyHtml: `
+      <p style="margin:0 0 12px 0;font-size:16px;font-weight:bold;color:${BRAND.ink};">⏳ La guía YA se creó, pero la transportadora todavía no entrega el número.</p>
+      <p style="margin:0 0 12px 0;font-size:14px;line-height:20px;color:${BRAND.ink};">Espera 1 o 2 minutos, vuelve a abrir el link del correo y toca el botón otra vez: el sistema retoma <strong>esta misma guía</strong>, no crea ni cobra otra.</p>
+    `,
+  });
+}
+
 function inProgressPage() {
   return renderPage({
     title: "Generando guía — Mystery",
@@ -393,9 +412,14 @@ export async function POST(request) {
       // skydropx.js: antes se declaraba/cobraba el precio TOTAL otra vez
       // contraentrega, encima del anticipo ya pagado.
       codAmountCOP: record.saldoPendiente,
+      // Guía de un intento anterior que Skydropx ya aceptó: se retoma esa
+      // en vez de crear (y pagar) otra.
+      existingShipmentId: fresh?.pendingShipmentId || null,
+      onShipmentAccepted: (shipmentId) => savePendingShipmentId(ref, shipmentId),
     });
 
     if (!shipment.trackingNumber) {
+      if (shipment.shipmentId) return guideStillProcessingPage();
       throw new Error("Skydropx no devolvió un número de guía tras reintentar.");
     }
 

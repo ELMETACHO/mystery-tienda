@@ -182,6 +182,8 @@ export async function markManualShipmentGenerated(
       labelUrl: labelUrl || null,
       trackingUrl: trackingUrl || null,
       generatedAt: new Date().toISOString(),
+      // La guía en espera ya quedó resuelta (ver savePendingShipmentId).
+      pendingShipmentId: null,
       // Cualquier correo "va en camino" programado para una guía ANTERIOR
       // ya no aplica a esta guía nueva — se limpia acá y
       // saveScheduledEmailId() lo vuelve a llenar después de programar el
@@ -202,6 +204,25 @@ export async function markManualShipmentGenerated(
     console.error("[manualShipments] No se pudo marcar la solicitud como generada:", err);
     return false;
   }
+}
+
+// Guarda el shipment que Skydropx ACABA de aceptar para este pedido, antes
+// de tener su número de guía (ver onShipmentAccepted en
+// createManualShipment, app/lib/skydropx.js). Un reintento lo retoma en
+// vez de crear otra guía — caso real (5 oct 2026, Kevin Sotelo): sin esto,
+// cada reintento de Cris creó y pagó una guía nueva (3 en total). Lanza si
+// Redis falla: el llamador (skydropx.js) lo captura y solo lo loguea.
+export async function savePendingShipmentId(reference, shipmentId) {
+  const client = getRedisClient();
+  if (!client) return false;
+  const existing = await getManualShipmentRequest(reference);
+  if (!existing) return false;
+  await client.set(
+    manualShipmentKey(reference),
+    JSON.stringify({ ...existing, pendingShipmentId: shipmentId, pendingShipmentAt: new Date().toISOString() }),
+    "KEEPTTL"
+  );
+  return true;
 }
 
 // Candado contra el DOBLE CLIC al generar guía. El chequeo de idempotencia

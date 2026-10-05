@@ -5,12 +5,18 @@ import {
   saveScheduledEmailId,
   acquireShipmentGenerationLock,
   releaseShipmentGenerationLock,
+  savePendingShipmentId,
 } from "../../lib/manualShipments";
 import { getManufacturerOrder, markManufacturerOrderRegenerated } from "../../lib/manufacturerFinance";
 import { sendShippingNotificationEmail, sendExtraProtectionEmail } from "../../lib/email";
 import { getFabricantesByAccessCode } from "../../lib/fabricantes";
 import { handleNoCoverage } from "../../lib/noCoverage";
-// La cotización de envío espera a que TODAS las transportadoras respondan// (hasta 40s, ver pollQuotationRates en app/lib/skydropx.js) — en rutas// donde corre en segundo plano con after(), también cuenta este límite.export const maxDuration = 60;
+// La cotización espera a que TODAS las transportadoras respondan (hasta
+// 40s, ver pollQuotationRates en app/lib/skydropx.js) y luego se espera el
+// número de la guía (hasta ~40s más) — margen para que Vercel no corte a
+// mitad. (Antes de oct 2026 esta línea quedó pegada dentro de un
+// comentario por error y nunca aplicó.)
+export const maxDuration = 120;
 
 // Botón "Generar guía nueva" de /fabricante — SOLO para pedidos que están
 // en estado "cancelado" (ver markManufacturerOrderCancelled). Reutiliza
@@ -96,6 +102,10 @@ async function generateLocked({ fabricante, reference, manualRecord }) {
       // Ver skydropx.js (getCodAmount): declara/cobra el SALDO pendiente,
       // no el precio total otra vez.
       codAmountCOP: manualRecord.saldoPendiente,
+      // Ver app/api/generate-shipment/route.js: retoma la guía que un
+      // intento anterior ya creó en vez de crear (y pagar) otra.
+      existingShipmentId: (await getManualShipmentRequest(reference))?.pendingShipmentId || null,
+      onShipmentAccepted: (shipmentId) => savePendingShipmentId(reference, shipmentId),
     });
   } catch (err) {
     if (err.shippingTooExpensive) {
@@ -114,7 +124,11 @@ async function generateLocked({ fabricante, reference, manualRecord }) {
 
   if (!shipment.trackingNumber) {
     return Response.json(
-      { error: "Skydropx no devolvió un número de guía tras reintentar." },
+      {
+        error: shipment.shipmentId
+          ? "La guía YA se creó, pero la transportadora todavía no entrega el número. Espera 1 o 2 minutos y toca \"Generar guía nueva\" otra vez: se retoma esta misma guía, no se crea ni se cobra otra."
+          : "Skydropx no devolvió un número de guía tras reintentar.",
+      },
       { status: 502 }
     );
   }
