@@ -70,6 +70,16 @@ const organizationJsonLd = {
   url: SITE_URL,
   logo: `${SITE_URL}/images/Logo/logo-navbar.png`,
   description: DESCRIPTION,
+  // Mismo WhatsApp de atención que el chatbot y el link "Contacto" del
+  // footer. Sin `sameAs` todavía: no hay perfiles sociales oficiales
+  // verificados (agregarlos acá cuando existan).
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "customer service",
+    telephone: "+57-320-264-6716",
+    areaServed: "CO",
+    availableLanguage: "es",
+  },
 };
 
 export default function RootLayout({ children }) {

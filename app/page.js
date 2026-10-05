@@ -171,6 +171,24 @@ const TESTIMONIOS_EJEMPLO = [
 // ejemplo — con menos de esto, la sección se vería pobre.
 const MIN_REAL_TESTIMONIALS = 4;
 
+// WhatsApp del negocio ("CUADROS MYSTERY") — el mismo número que ya usan el
+// chatbot (app/components/ChatWidget.jsx, app/lib/chatSystemPrompt.js), el
+// panel de referidos y el origen de las guías de Skydropx. Destino real del
+// link "Contacto" del footer.
+const WHATSAPP_URL = "https://wa.me/573202646716";
+
+// Redes sociales del footer. Sin perfiles oficiales verificados todavía
+// (ver "Link real de Instagram" en CLAUDE.md → Pendiente), así que van
+// vacías y el bloque "Síguenos" no se muestra: un link a "#" no lleva a
+// ningún lado y es un enlace roto para usuarios y buscadores. Para
+// activarlas basta con poner la URL real del perfil en `href` — el bloque
+// aparece solo, con las redes que tengan URL.
+const SOCIAL_LINKS = [
+  { red: "Instagram", href: "" },
+  { red: "Facebook", href: "" },
+  { red: "TikTok", href: "" },
+].filter((social) => social.href);
+
 export default async function Home() {
   const [recientes, masVendidos, testimoniosReales] = await Promise.all([
     getRecentProducts(200),
@@ -227,7 +245,7 @@ export default async function Home() {
             </a>
           </nav>
           <Link
-            href="#vender"
+            href="/referidos"
             className="hidden shrink-0 whitespace-nowrap text-xs text-[#1b2a4a]/60 hover:text-[#1b2a4a] sm:block"
           >
             Gana dinero vendiendo cuadros
@@ -453,7 +471,7 @@ export default async function Home() {
 
         {/* 7.5 GANA DINERO VENDIENDO CUADROS — apartado pequeño pero visible
             que refuerza el link discreto que ya existe en la navbar/footer
-            (mismo ancla #vender, placeholder sin funcionalidad todavía). */}
+            (los tres apuntan a /referidos, el programa de embajadores). */}
         <section className="px-4 pb-10 sm:px-6 sm:pb-16">
           <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 rounded-2xl border border-[#f6d989]/60 bg-[#fdf1cf] px-6 py-8 text-center shadow-sm sm:flex-row sm:justify-between sm:gap-6 sm:px-10">
             <p className="text-sm font-medium text-[#1b2a4a] sm:text-base">
@@ -470,8 +488,8 @@ export default async function Home() {
 
         {/* 8. PREGUNTAS FRECUENTES — acordeón nativo (details/summary), sin
             JS extra, mismo patrón ya usado en el resumen colapsable del
-            checkout. */}
-        <section className="px-4 pb-16 sm:px-6 sm:pb-24">
+            checkout. id usado por "Centro de ayuda" del footer. */}
+        <section id="preguntas-frecuentes" className="scroll-mt-20 px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-3xl">
             <h2 className="font-heading mb-6 text-center text-2xl font-bold tracking-tight sm:text-3xl">
               Preguntas frecuentes
@@ -512,38 +530,51 @@ export default async function Home() {
               <Link href="/politicas" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
                 Devoluciones
               </Link>
-              <Link href="#" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
+              {/* Sin página /ayuda propia todavía: el centro de ayuda real
+                  hoy son las preguntas frecuentes de esta misma página. */}
+              <a href="#preguntas-frecuentes" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
                 Centro de ayuda
-              </Link>
-              <Link href="#" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
+              </a>
+              <a
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#5b6b8c] hover:text-[#1b2a4a]"
+              >
                 Contacto
-              </Link>
+              </a>
               <Link href="/referidos" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
                 Programa de referidos
               </Link>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <span className="mb-1 text-sm font-medium text-[#33456b]">Síguenos</span>
-              <div className="flex gap-3">
-                {["Instagram", "Facebook", "TikTok"].map((red) => (
-                  <Link
-                    key={red}
-                    href="#"
-                    aria-label={red}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-xs text-[#5b6b8c] transition-colors hover:border-accent hover:text-[#1b2a4a]"
-                  >
-                    {red[0]}
-                  </Link>
-                ))}
+            {SOCIAL_LINKS.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <span className="mb-1 text-sm font-medium text-[#33456b]">Síguenos</span>
+                <div className="flex gap-3">
+                  {SOCIAL_LINKS.map(({ red, href }) => (
+                    <a
+                      key={red}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={red}
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-xs text-[#5b6b8c] transition-colors hover:border-accent hover:text-[#1b2a4a]"
+                    >
+                      {red[0]}
+                    </a>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
         <div id="vender" className="mx-auto mt-10 max-w-6xl border-t border-black/5 pt-6">
+          {/* Mismo destino que el banner "Gana dinero vendiendo cuadros" de
+              la Home: el programa de referidos/embajadores. */}
           <Link
-            href="#"
+            href="/referidos"
             className="text-xs text-[#5b6b8c] underline-offset-4 hover:text-[#1b2a4a] hover:underline"
           >
             Gana dinero vendiendo cuadros
