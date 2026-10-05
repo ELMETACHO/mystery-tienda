@@ -16,9 +16,17 @@ import FooterLegalAccordion from "../components/ads/FooterLegalAccordion";
 // de la página del anuncio.
 export const dynamic = "force-dynamic";
 
+// noindex (SEO): landing de pauta pagada (TikTok) que repite el contenido
+// del Home y de /crear (mismo CrearFlow, mismo ProductScroller) — en
+// buscadores competiría con esas páginas como contenido duplicado y además
+// sus textos de oferta están pensados para el anuncio, no para búsqueda
+// orgánica. follow: true para que los links a productos sigan sumando.
+// No está en app/sitemap.js a propósito. noindex NO afecta a los anuncios:
+// TikTok/Meta/Google Ads mandan tráfico a la URL igual.
 export const metadata = {
   title: "Mystery — Tu foto favorita, en un cuadro real",
   description: "Sube tu foto y recíbela en cuadro de vinilo sobre madera en tu casa.",
+  robots: { index: false, follow: true },
 };
 
 // viewport-fit=cover habilita env(safe-area-inset-bottom) para que el botón
