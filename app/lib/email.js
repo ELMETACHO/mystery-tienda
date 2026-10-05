@@ -19,9 +19,9 @@ function adminRecipientsForFrameType(frameType) {
   return [ADMIN_EMAIL, fabricante?.email].filter(Boolean);
 }
 
-// Sin cuenta de Instagram real configurada todavía — mismo placeholder que
-// se usa en el resto del sitio (Home, /checkout/confirmacion).
-const INSTAGRAM_URL = "#";
+// Instagram oficial de Mystery (confirmado por el dueño, oct 2026) — mismo
+// perfil que el resto del sitio (footer de la Home, /checkout/confirmacion).
+const INSTAGRAM_URL = "https://www.instagram.com/bigmystery_/";
 
 // Paleta de marca para HTML de correo: los clientes de correo (sobre todo
 // Outlook de escritorio) no soportan CSS moderno (custom properties, flex,

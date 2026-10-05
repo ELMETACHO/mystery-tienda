@@ -10,9 +10,9 @@ import { trackPurchase } from "../../lib/gtm";
 // y no genérico.
 const CONFETTI_COLORS = ["#a855f7", "#c084fc", "#ffffff", "#f5d576"];
 
-// Sin cuenta de Instagram real configurada en el proyecto todavía —
-// placeholder hasta que se defina el usuario/link oficial de Mystery.
-const INSTAGRAM_URL = "#";
+// Instagram oficial de Mystery (confirmado por el dueño, oct 2026) — mismo
+// perfil que el footer de la Home y el sameAs de app/layout.js.
+const INSTAGRAM_URL = "https://www.instagram.com/bigmystery_/";
 
 function getTimeline(order) {
   const isCod = order?.metodo_pago === "contraentrega";
@@ -436,8 +436,8 @@ export default function ConfirmacionPage() {
           </Link>
           <Link
             href={INSTAGRAM_URL}
-            target={INSTAGRAM_URL !== "#" ? "_blank" : undefined}
-            rel={INSTAGRAM_URL !== "#" ? "noopener noreferrer" : undefined}
+            target="_blank"
+            rel="noopener noreferrer"
             className="w-full max-w-xs rounded-full border border-black/10 px-6 py-3 text-sm text-[#33456b] transition-colors hover:border-black/20 sm:w-auto"
           >
             📸 Síguenos en Instagram

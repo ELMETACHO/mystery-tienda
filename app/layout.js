@@ -70,9 +70,15 @@ const organizationJsonLd = {
   url: SITE_URL,
   logo: `${SITE_URL}/images/Logo/logo-navbar.png`,
   description: DESCRIPTION,
+  // Perfiles sociales oficiales (confirmados por el dueño, oct 2026) —
+  // mismas URLs que SOCIAL_LINKS del footer de la Home.
+  sameAs: [
+    "https://www.instagram.com/bigmystery_/",
+    "https://www.facebook.com/profile.php?id=61581688500822",
+    "https://www.tiktok.com/@bigmystery_",
+  ],
   // Mismo WhatsApp de atención que el chatbot y el link "Contacto" del
-  // footer. Sin `sameAs` todavía: no hay perfiles sociales oficiales
-  // verificados (agregarlos acá cuando existan).
+  // footer.
   contactPoint: {
     "@type": "ContactPoint",
     contactType: "customer service",

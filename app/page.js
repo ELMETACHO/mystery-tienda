@@ -177,16 +177,14 @@ const MIN_REAL_TESTIMONIALS = 4;
 // link "Contacto" del footer.
 const WHATSAPP_URL = "https://wa.me/573202646716";
 
-// Redes sociales del footer. Sin perfiles oficiales verificados todavía
-// (ver "Link real de Instagram" en CLAUDE.md → Pendiente), así que van
-// vacías y el bloque "Síguenos" no se muestra: un link a "#" no lleva a
-// ningún lado y es un enlace roto para usuarios y buscadores. Para
-// activarlas basta con poner la URL real del perfil en `href` — el bloque
-// aparece solo, con las redes que tengan URL.
+// Redes sociales oficiales de Mystery (confirmadas por el dueño, oct 2026)
+// — mismas URLs que el `sameAs` del JSON-LD Organization en app/layout.js.
+// El bloque "Síguenos" solo se muestra con las redes que tengan URL: nunca
+// volver a un href="#" (enlace roto para usuarios y buscadores).
 const SOCIAL_LINKS = [
-  { red: "Instagram", href: "" },
-  { red: "Facebook", href: "" },
-  { red: "TikTok", href: "" },
+  { red: "Instagram", href: "https://www.instagram.com/bigmystery_/" },
+  { red: "Facebook", href: "https://www.facebook.com/profile.php?id=61581688500822" },
+  { red: "TikTok", href: "https://www.tiktok.com/@bigmystery_" },
 ].filter((social) => social.href);
 
 export default async function Home() {
