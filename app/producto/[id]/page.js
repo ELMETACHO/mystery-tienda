@@ -53,7 +53,9 @@ export async function generateMetadata({ params }) {
     openGraph: {
       title,
       description,
-      images: [{ url: `${SITE_URL}/api/catalog-thumbnail/${product.mockupFileId}` }],
+      // JPEG de 1200px: WhatsApp/Facebook no muestran vistas previas de
+      // imágenes muy pesadas (el PNG original pesa ~3 MB).
+      images: [{ url: `${SITE_URL}/api/catalog-thumbnail/${product.mockupFileId}?w=1200&f=jpg` }],
     },
   };
 }
@@ -172,7 +174,7 @@ export default async function ProductPage({ params }) {
           style={{ aspectRatio: 1080 / 1350 }}
         >
           <Image
-            src={`/api/catalog-thumbnail/${product.mockupFileId}`}
+            src={`/api/catalog-thumbnail/${product.mockupFileId}?w=900`}
             alt={product.name ? `Cuadro de ${product.name}, en vinilo sobre madera` : `Cuadro personalizado categoría ${label}, en vinilo sobre madera`}
             fill
             unoptimized
@@ -249,7 +251,7 @@ export default async function ProductPage({ params }) {
         {sameCategory.length > 0 && (
           <section className="flex flex-col gap-3">
             <h2 className="font-heading text-base font-bold">Más cuadros de {label}</h2>
-            <ProductScroller items={sameCategory} light />
+            <ProductScroller items={sameCategory} light thumbWidth={480} />
           </section>
         )}
 
