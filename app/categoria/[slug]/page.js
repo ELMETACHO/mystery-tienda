@@ -5,6 +5,8 @@ import { ESTUDIO_CATEGORIES } from "../../lib/estudioCategories";
 import { SITE_URL } from "../../lib/siteUrl";
 import { getCategorySeo } from "../../lib/categorySeo";
 import ProductScroller from "../../components/ProductScroller";
+import Breadcrumbs from "../../components/Breadcrumbs";
+import { JsonLd, breadcrumbJsonLd, collectionPageJsonLd } from "../../lib/structuredData";
 
 // Esta página lee el catálogo real (Redis) en cada visita — nunca debe
 // quedar cacheada mostrando productos viejos/borrados (mismo motivo que
@@ -35,8 +37,23 @@ export default async function CategoriaPage({ params }) {
 
   const products = await getProductsByCategory(slug);
   const seo = getCategorySeo(category);
+  const path = `/categoria/${category.id}`;
+  const breadcrumbs = [
+    { name: "Inicio", path: "/" },
+    { name: seo.h1, path },
+  ];
 
   return (
+    <>
+    <JsonLd data={breadcrumbJsonLd(breadcrumbs)} />
+    <JsonLd
+      data={collectionPageJsonLd({
+        name: seo.h1,
+        description: seo.metaDescription,
+        path,
+        products,
+      })}
+    />
     <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
       <div
         aria-hidden="true"
@@ -50,6 +67,8 @@ export default async function CategoriaPage({ params }) {
         >
           ← Volver al catálogo
         </Link>
+
+        <Breadcrumbs items={breadcrumbs} />
 
         <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">{seo.h1}</h1>
 
@@ -88,5 +107,6 @@ export default async function CategoriaPage({ params }) {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -6,6 +6,9 @@ import { ESTUDIO_CATEGORIES } from "../../lib/estudioCategories";
 import { SIZES, getPriceCOP, formatCOP } from "../../lib/order";
 import { SITE_URL } from "../../lib/siteUrl";
 import ProductSizeSelector from "./ProductSizeSelector";
+import Breadcrumbs from "../../components/Breadcrumbs";
+import { getCategorySeo } from "../../lib/categorySeo";
+import { JsonLd, breadcrumbJsonLd } from "../../lib/structuredData";
 
 function categoryLabel(categoryId) {
   return ESTUDIO_CATEGORIES.find((c) => c.id === categoryId)?.label || "Diseño";
@@ -61,23 +64,43 @@ export default async function ProductPage({ params }) {
   }
 
   const label = categoryLabel(product.category);
+  const productUrl = `${SITE_URL}/producto/${product.id}`;
+  const categoryObj = ESTUDIO_CATEGORIES.find((c) => c.id === product.category);
+  const breadcrumbs = [
+    { name: "Inicio", path: "/" },
+    ...(categoryObj
+      ? [{ name: getCategorySeo(categoryObj).h1, path: `/categoria/${categoryObj.id}` }]
+      : []),
+    { name: productDisplayTitle(product, label), path: `/producto/${product.id}` },
+  ];
+  // Sin aggregateRating/review a propósito: no hay reseñas reales por
+  // diseño (ver app/lib/structuredData.js). sku = id del catálogo, el
+  // mismo que usa el feed de Google Merchant (app/feed/google.xml) para
+  // que Merchant Center pueda cruzar ambos.
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
+    "@id": `${productUrl}#product`,
     name: productDisplayTitle(product, label),
     description: productDisplayDescription(product, label),
     image: [`${SITE_URL}/api/catalog-thumbnail/${product.mockupFileId}`],
+    url: productUrl,
+    sku: product.id,
     category: label,
+    material: "Vinilo sobre madera",
     brand: { "@type": "Brand", name: "Mystery Cuadros" },
     offers: {
       "@type": "Offer",
-      url: `${SITE_URL}/producto/${product.id}`,
+      url: productUrl,
       priceCurrency: "COP",
       price: String(CHEAPEST_PRICE_COP),
+      itemCondition: "https://schema.org/NewCondition",
       availability: "https://schema.org/InStock",
+      seller: { "@type": "Organization", name: "Mystery Cuadros" },
       hasMerchantReturnPolicy: {
         "@type": "MerchantReturnPolicy",
         applicableCountry: "CO",
+        returnPolicyCountry: "CO",
         returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
         merchantReturnDays: 7,
         returnMethod: "https://schema.org/ReturnByMail",
@@ -96,16 +119,19 @@ export default async function ProductPage({ params }) {
         },
         deliveryTime: {
           "@type": "ShippingDeliveryTime",
+          // Dato del dueño (oct 2026): producción 1-2 días y máximo 5
+          // días desde el pedido hasta el cliente en Colombia → tránsito
+          // 1-3 días para que el total nunca pase de 5.
           handlingTime: {
             "@type": "QuantitativeValue",
-            minValue: 0,
+            minValue: 1,
             maxValue: 2,
             unitCode: "DAY",
           },
           transitTime: {
             "@type": "QuantitativeValue",
-            minValue: 3,
-            maxValue: 5,
+            minValue: 1,
+            maxValue: 3,
             unitCode: "DAY",
           },
         },
@@ -115,10 +141,8 @@ export default async function ProductPage({ params }) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
-      />
+      <JsonLd data={productJsonLd} />
+      <JsonLd data={breadcrumbJsonLd(breadcrumbs)} />
     <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
       <div
         aria-hidden="true"
@@ -132,6 +156,8 @@ export default async function ProductPage({ params }) {
         >
           ← Volver al catálogo
         </Link>
+
+        <Breadcrumbs items={breadcrumbs} />
 
         <div
           className="relative w-full overflow-hidden rounded-2xl border border-black/10 shadow-[0_20px_50px_-16px_rgba(30,20,60,0.35)]"
