@@ -67,12 +67,24 @@ export default function RecentPurchaseToast({ liveSales = [] }) {
       }, SHOW_MS);
     };
 
-    const initialDelay = 3000 + Math.random() * 2000;
-    timeoutId = setTimeout(showNext, initialDelay);
+    // El primer aviso espera a que el cliente empiece a bajar (oct 2026):
+    // en el primer pantallazo quedaba encima del CTA principal de /ads.
+    const startCycle = () => {
+      if (cancelled || timeoutId) return;
+      window.removeEventListener("scroll", onScroll);
+      const initialDelay = 1500 + Math.random() * 1500;
+      timeoutId = setTimeout(showNext, initialDelay);
+    };
+    const onScroll = () => {
+      if (window.scrollY > 200) startCycle();
+    };
+    if (window.scrollY > 200) startCycle();
+    else window.addEventListener("scroll", onScroll, { passive: true });
 
     return () => {
       cancelled = true;
       clearTimeout(timeoutId);
+      window.removeEventListener("scroll", onScroll);
     };
   }, [liveSales]);
 
