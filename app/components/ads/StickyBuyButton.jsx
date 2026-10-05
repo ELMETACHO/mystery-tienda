@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { pushToDataLayer } from "../../lib/gtm";
 
 // Texto del botón según el paso en que va el cliente dentro de CrearFlow
 // (publicado por CrearFlow vía el evento "crearflow:state").
 const LABELS = {
-  upload: "Comprar ahora",
+  upload: "📷 Subir mi foto",
   edit: "Continuar con mi cuadro",
   ready: "Continuar con el envío",
 };
@@ -17,33 +18,58 @@ const LABELS = {
 // Safari iOS y Chrome Android.
 //
 // Qué hace al tocarlo depende del paso:
-// - sin foto: scroll suave hasta el flujo embebido (para que suba la foto);
+// - sin foto (oct 2026): es un <label> del input de archivo de CrearFlow —
+//   abre directo la galería del celular (antes solo bajaba hasta la caja
+//   de carga y el cliente tenía que tocar otra vez). Cuando la foto carga,
+//   app/ads/AdsFlowBridge.jsx lo baja hasta el editor;
 // - con foto: lo mismo que "Continuar" (arma el cuadro) y sube hasta el
 //   flujo, donde aparece "Tu cuadro está listo";
 // - cuadro listo: lo mismo que "Continuar con el envío" (va al checkout).
-export default function StickyBuyButton({ targetId }) {
-  const [isTargetVisible, setIsTargetVisible] = useState(false);
+const BUTTON_CLASS =
+  "flex w-full cursor-pointer items-center justify-center rounded-full bg-accent px-6 py-4 text-base font-bold text-white shadow-lg shadow-accent/30 active:bg-accent-soft";
+
+export default function StickyBuyButton({ targetId, alsoHideWhenVisibleIds = [] }) {
+  // Arranca oculta: el IntersectionObserver confirma en el primer frame si
+  // hay que mostrarla (evita el "parpadeo" de la barra encima del CTA del
+  // primer pantallazo al cargar).
+  const [isTargetVisible, setIsTargetVisible] = useState(true);
   const [crearState, setCrearState] = useState({ stage: "upload", isBusy: false });
   const observerRef = useRef(null);
+  const hideIdsKey = alsoHideWhenVisibleIds.join(",");
 
   // Mientras la sección del flujo embebido (CrearFlow) esté visible en
   // pantalla, sin importar en qué paso esté el usuario, este botón se
   // oculta — sus propios botones ("Continuar", etc.) ya cumplen ese rol
   // ahí y ambos a la vez se estorban visualmente. No toca nada de
   // CrearFlow: solo observa el contenedor de la sección desde afuera.
+  // alsoHideWhenVisibleIds (oct 2026): mismo criterio para el CTA del
+  // primer pantallazo de /ads — dos botones morados iguales a la vez
+  // confunden.
   useEffect(() => {
-    const target = document.getElementById(targetId);
-    if (!target) return undefined;
+    const ids = [targetId, ...(hideIdsKey ? hideIdsKey.split(",") : [])];
+    const targets = ids.map((id) => document.getElementById(id)).filter(Boolean);
+    if (targets.length === 0) {
+      // Sin nada que observar, la barra siempre visible.
+      const raf = requestAnimationFrame(() => setIsTargetVisible(false));
+      return () => cancelAnimationFrame(raf);
+    }
 
+    const visible = new Set();
     const observer = new IntersectionObserver(
-      ([entry]) => setIsTargetVisible(entry.isIntersecting),
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target);
+          else visible.delete(entry.target);
+        }
+        setIsTargetVisible(visible.size > 0);
+      },
       { threshold: 0 }
     );
-    observer.observe(target);
+    targets.forEach((t) => observer.observe(t));
     observerRef.current = observer;
 
     return () => observer.disconnect();
-  }, [targetId]);
+  }, [targetId, hideIdsKey]);
 
   useEffect(() => {
     const onState = (e) => setCrearState(e.detail);
@@ -57,6 +83,7 @@ export default function StickyBuyButton({ targetId }) {
 
   const handleClick = () => {
     if (crearState.isBusy) return;
+    pushToDataLayer({ event: "ads_cta_click", cta_location: "sticky", cta_stage: crearState.stage });
     if (crearState.stage === "upload") {
       scrollToTarget();
       return;
@@ -81,15 +108,26 @@ export default function StickyBuyButton({ targetId }) {
           (ChatWidget lo alinea a esta barra en /ads) — sin esto, el chat
           tapaba el borde del botón de compra. */}
       <div className="pr-[4.5rem]">
-        <button
-          type="button"
-          onClick={handleClick}
-          disabled={crearState.isBusy}
-          tabIndex={isTargetVisible ? -1 : 0}
-          className="flex w-full items-center justify-center rounded-full bg-accent px-6 py-4 text-base font-bold text-white shadow-lg shadow-accent/30 active:bg-accent-soft disabled:opacity-70"
-        >
-          {label}
-        </button>
+        {crearState.stage === "upload" && !crearState.isBusy ? (
+          <label
+            htmlFor="file-upload"
+            onClick={() => pushToDataLayer({ event: "ads_cta_click", cta_location: "sticky", cta_stage: "upload" })}
+            tabIndex={isTargetVisible ? -1 : 0}
+            className={BUTTON_CLASS}
+          >
+            {label}
+          </label>
+        ) : (
+          <button
+            type="button"
+            onClick={handleClick}
+            disabled={crearState.isBusy}
+            tabIndex={isTargetVisible ? -1 : 0}
+            className={`${BUTTON_CLASS} disabled:opacity-70`}
+          >
+            {label}
+          </button>
+        )}
         <p className="mt-1.5 text-center text-[11px] font-semibold text-[#33456b]">
           🚚 Envío gratis · 💵 Paga al recibir
         </p>

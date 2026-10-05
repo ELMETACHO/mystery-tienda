@@ -1,12 +1,19 @@
 import Image from "next/image";
+import { preload } from "react-dom";
 import { getRecentProducts } from "../lib/catalog";
 import { getRecentSalesForToast } from "../lib/completedOrders";
+import { PRICES, formatCOP } from "../lib/order";
 import CrearFlow from "../components/CrearFlow";
-import ProductScroller from "../components/ProductScroller";
 import OfferBadges from "../components/ads/OfferBadges";
 import StickyBuyButton from "../components/ads/StickyBuyButton";
 import RecentPurchaseToast from "../components/ads/RecentPurchaseToast";
 import FooterLegalAccordion from "../components/ads/FooterLegalAccordion";
+import { resolverTemporada } from "./temporada";
+import AdsHeroCta from "./AdsHeroCta";
+import AdsFlowBridge from "./AdsFlowBridge";
+import AdsFaq from "./AdsFaq";
+import AdsCatalogStrip, { ADS_CATALOG_LIMIT } from "./AdsCatalogStrip";
+import { WHATSAPP_URL } from "./contacto";
 
 // Landing exclusiva para tráfico pagado de TikTok — un solo scroll, sin
 // navbar/footer completo, sin nada que distraiga del CTA. No comparte
@@ -17,7 +24,7 @@ import FooterLegalAccordion from "../components/ads/FooterLegalAccordion";
 export const dynamic = "force-dynamic";
 
 // noindex (SEO): landing de pauta pagada (TikTok) que repite el contenido
-// del Home y de /crear (mismo CrearFlow, mismo ProductScroller) — en
+// del Home y de /crear (mismo CrearFlow, mismos diseños del catálogo) — en
 // buscadores competiría con esas páginas como contenido duplicado y además
 // sus textos de oferta están pensados para el anuncio, no para búsqueda
 // orgánica. follow: true para que los links a productos sigan sumando.
@@ -37,15 +44,35 @@ export const viewport = {
   viewportFit: "cover",
 };
 
+// .webp de 480px de ancho (oct 2026) generados desde los PNG originales
+// (PARED*.png, 1328x1760, ~2.7 MB cada uno → ~15-20 KB): se muestran a
+// ~144px de ancho, así que el PNG completo era peso puro. Los PNG
+// originales quedan en public/ como fuente por si hay que regenerarlos.
 const EJEMPLOS = [
-  { src: "/images/page-ads/PARED1.png", alt: "Cuadro Mystery entregado, colgado en la pared de un cliente" },
-  { src: "/images/page-ads/PARED2.png", alt: "Cuadro Mystery entregado, colgado en la pared de un cliente" },
-  { src: "/images/page-ads/PARED3.png", alt: "Cuadro Mystery entregado, colgado en la pared de un cliente" },
+  { src: "/images/page-ads/PARED1.webp", alt: "Cuadro Mystery entregado, colgado en la pared de un cliente" },
+  { src: "/images/page-ads/PARED2.webp", alt: "Cuadro Mystery entregado, colgado en la pared de un cliente" },
+  { src: "/images/page-ads/PARED3.webp", alt: "Cuadro Mystery entregado, colgado en la pared de un cliente" },
 ];
 
-export default async function AdsLanding() {
+// Póster del video del hero = elemento LCP de la página (Lighthouse, oct
+// 2026). Versión .webp (~50 KB vs. ~124 KB del .jpg) + preload con
+// prioridad alta para que se pinte antes que cualquier otra imagen.
+const HERO_POSTER = "/images/page-ads/hero-poster.webp";
+
+// Precio "desde" calculado de app/lib/order.js (no a mano): el más barato
+// de todos los tamaños/tipos — hoy 30x40 Tradicional.
+const DESDE_COP = Math.min(
+  ...Object.values(PRICES).flatMap((porTamano) => Object.values(porTamano))
+);
+
+export default async function AdsLanding({ searchParams }) {
+  preload(HERO_POSTER, { as: "image", fetchPriority: "high" });
+
+  const params = (await searchParams) || {};
+  const temporada = resolverTemporada(params);
+
   const [recientes, ventasRecientes] = await Promise.all([
-    getRecentProducts(200),
+    getRecentProducts(ADS_CATALOG_LIMIT),
     getRecentSalesForToast(),
   ]);
 
@@ -59,76 +86,117 @@ export default async function AdsLanding() {
         style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
       />
 
+      {/* Atribución (UTM/ttclid → dataLayer) + puente con CrearFlow (baja
+          al editor cuando la foto se sube desde el CTA de arriba o la
+          barra fija). Invisible. */}
+      <AdsFlowBridge targetId="crear-embed" temporada={temporada.id} />
+
       {/* 1. HEADER FIJO — position:fixed (no sticky, mismo criterio que el
           botón inferior: sticky puede "despegarse" en Safari durante el
-          scroll). Solo esta franja, nada más. Se deja negra/roja a
-          propósito: es la cinta de urgencia del anuncio, no forma parte
-          del "tema" de la página. */}
+          scroll). Solo esta franja, nada más. Se deja negra a propósito:
+          es la cinta del anuncio, no forma parte del "tema" de la página.
+          El texto cambia por temporada (ver temporada.js). */}
       <div className="fixed inset-x-0 top-0 z-50 bg-black px-4 py-2.5 text-center">
-        <p className="text-xs font-semibold text-red-500 sm:text-sm">
-          🚚 Envío gratis a todo el país - Paga al recibir
-        </p>
+        <p className="text-xs font-semibold text-red-500 sm:text-sm">{temporada.barra}</p>
       </div>
 
       <main className="relative z-10 flex-1 pb-36 pt-11">
-        {/* 2. NOMBRE DE MARCA — primer contenido debajo del header fijo. */}
-        <div className="px-4 pb-4 pt-5 text-center">
-          <p className="font-brand text-2xl tracking-tight text-[#1b2a4a] sm:text-3xl">
-            Mystery Cuadros
+        {/* 2. PRIMER PANTALLAZO (oct 2026) — todo lo que decide si el
+            visitante de TikTok se queda tiene que caber en ~650px de alto
+            (navegador interno de TikTok, celular promedio): qué es
+            (título que repite la promesa del anuncio), cuánto cuesta, una
+            muestra visual y UN botón principal en la zona del pulgar.
+            Antes el título y el precio quedaban debajo del video, fuera de
+            la primera pantalla. */}
+        <section className="px-4 pb-5 pt-4 text-center">
+          <p className="font-brand text-lg tracking-tight text-[#1b2a4a]">Mystery Cuadros</p>
+          <h1 className="font-heading mx-auto mt-1 max-w-md text-[1.6rem] font-extrabold leading-[1.15] tracking-tight text-[#1b2a4a] sm:text-3xl">
+            {temporada.titulo}
+          </h1>
+          <p className="mx-auto mt-1.5 max-w-sm text-sm text-[#33456b]">{temporada.subtitulo}</p>
+          <p className="mt-1 text-lg font-bold text-accent">
+            Desde {formatCOP(DESDE_COP)}{" "}
+            <span className="text-xs font-semibold text-emerald-800">· envío incluido</span>
           </p>
-        </div>
 
-        {/* 3. IMAGEN/GIF GRANDE — video en vez de GIF: el archivo original
-            (generado en Freepik) pesaba 95MB, inviable para una landing
-            optimizada para velocidad. Convertido a MP4 (h264, ~0.9MB) con
-            la misma animación. autoPlay + muted + loop + playsInline es la
-            combinación que arranca sola y en bucle continuo sin gesto del
-            usuario tanto en Safari iOS como en Chrome Android. poster evita
-            el flash en blanco mientras carga. */}
-        <section className="px-4 pb-5">
-          <div className="relative mx-auto aspect-[4/5] w-full max-w-xs overflow-hidden rounded-2xl border border-black/10 shadow-lg shadow-accent/20 sm:max-w-sm">
+          {/* Video en vez de GIF: el archivo original (Freepik) pesaba
+              95MB; convertido a MP4 (h264, ~0.9MB) con la misma animación.
+              autoPlay + muted + loop + playsInline arranca solo en Safari
+              iOS y Chrome Android. El alto se limita con svh para que el
+              CTA de abajo siga dentro de la primera pantalla incluso en
+              celulares bajitos. */}
+          <div
+            className="relative mx-auto mt-3 aspect-[4/5] w-64 max-w-full overflow-hidden rounded-2xl border border-black/10 shadow-lg shadow-accent/20"
+            style={{ width: "min(16rem, 30svh, 100%)" }}
+          >
             <video
               autoPlay
               muted
               loop
               playsInline
               preload="auto"
-              poster="/images/page-ads/hero-poster.jpg"
+              poster={HERO_POSTER}
               className="h-full w-full object-cover"
               aria-label="Cuadro personalizado Mystery, animación de muestra"
             >
               <source src="/images/page-ads/hero-loop.mp4" type="video/mp4" />
             </video>
           </div>
+
+          <div id="ads-hero-cta" className="mx-auto mt-4 max-w-sm">
+            <AdsHeroCta label={temporada.cta} targetId="crear-embed" />
+            <p className="mt-2 text-xs font-semibold text-[#33456b]">
+              👀 Ves cómo queda antes de pagar · 💵 Paga al recibir
+            </p>
+            {temporada.avisoNavidad && (
+              <p className="mt-2 rounded-xl border border-red-700/20 bg-red-50 px-3 py-2 text-xs font-bold text-red-800">
+                {temporada.avisoNavidad.aviso}
+              </p>
+            )}
+          </div>
         </section>
 
-        {/* 4. OFERTA REAL — envío gratis + paga al recibir (ver
+        {/* 3. OFERTA REAL — envío gratis + paga al recibir (ver
             OfferBadges). Reemplaza la cuenta regresiva y el contador de
             visitas simulados que había antes. */}
-        <section className="px-4 pb-6">
+        <section className="px-4 pb-4">
           <OfferBadges />
         </section>
 
-        {/* 5. INFORMACIÓN DEL PRODUCTO */}
-        <section className="px-4 pb-6 text-center">
-          <h1 className="font-heading text-2xl font-extrabold leading-tight tracking-tight text-[#1b2a4a] sm:text-3xl">
-            Cuadro decorativo de excelente calidad en madera y vinilo laminado.
-          </h1>
-          <p className="mt-2 text-xl font-bold text-accent sm:text-2xl">
-            Desde $55.000 COP
-          </p>
-          <p className="mt-1 text-xs font-semibold text-emerald-800">
-            Envío incluido en el precio
-          </p>
+        {/* 4. CONFIANZA — solo datos verdaderos y ya publicados en el sitio:
+            tiempos confirmados por el dueño (oct 2026), medios de pago del
+            checkout (Wompi: tarjeta/PSE + contraentrega), garantía de las
+            políticas y WhatsApp real de atención. */}
+        <section className="px-4 pb-7">
+          <ul className="mx-auto grid max-w-md grid-cols-2 gap-2 text-[11px] leading-snug text-[#33456b]">
+            <li className="rounded-xl border border-black/5 bg-[#fffaf0] px-3 py-2">
+              <span className="block font-bold text-[#1b2a4a]">⚡ Hecho en 1-2 días</span>
+              Llega en máximo 5 días hábiles
+            </li>
+            <li className="rounded-xl border border-black/5 bg-[#fffaf0] px-3 py-2">
+              <span className="block font-bold text-[#1b2a4a]">🔒 Pago seguro</span>
+              Wompi: tarjeta o PSE
+            </li>
+            <li className="rounded-xl border border-black/5 bg-[#fffaf0] px-3 py-2">
+              <span className="block font-bold text-[#1b2a4a]">🛡️ Garantía</span>
+              Ante daños de fábrica o transporte
+            </li>
+            <li className="rounded-xl border border-black/5 bg-[#fffaf0] px-3 py-2">
+              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="block">
+                <span className="block font-bold text-[#1b2a4a]">💬 WhatsApp</span>
+                <span className="underline underline-offset-2">Te respondemos ahí</span>
+              </a>
+            </li>
+          </ul>
         </section>
 
-        {/* 6. FLUJO DE /crear EMBEBIDO — mismo componente que usa /crear
+        {/* 5. FLUJO DE /crear EMBEBIDO — mismo componente que usa /crear
             (app/components/CrearFlow.jsx), en modo "compact": misma lógica
             de subida/recorte/tamaño/confirmación, sin la cabecera grande
             que no tiene sentido en medio de esta página. */}
         <section id="crear-embed" className="scroll-mt-12 px-4 pb-8">
           <h2 className="font-heading text-center text-xl font-bold tracking-tight sm:text-2xl">
-            Tu cuadro con cualquier imagen
+            {temporada.tituloFlujo}
           </h2>
           <div className="mb-4 mt-1.5">
             <OfferBadges variant="pill" />
@@ -136,7 +204,7 @@ export default async function AdsLanding() {
           <CrearFlow compact />
         </section>
 
-        {/* 7. TESTIMONIOS — sin reseñas reales todavía, se muestran cuadros
+        {/* 6. TESTIMONIOS — sin reseñas reales todavía, se muestran cuadros
             entregados como ejemplo visual (no citas de texto inventadas). */}
         <section className="px-4 pb-8">
           <h2 className="mb-3 text-center text-sm font-semibold text-[#33456b]">
@@ -161,6 +229,12 @@ export default async function AdsLanding() {
           </div>
         </section>
 
+        {/* 7. PREGUNTAS FRECUENTES + WhatsApp — objeciones típicas antes de
+            comprar (ver AdsFaq). */}
+        <section className="px-4 pb-8">
+          <AdsFaq avisoNavidad={temporada.avisoNavidad} />
+        </section>
+
         {/* 8. TEXTO LARGO DEL PRODUCTO — texto exacto pedido. */}
         <section className="px-4 pb-8">
           <div className="mx-auto max-w-md rounded-2xl border border-black/5 bg-[#fffaf0] px-5 py-5 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)]">
@@ -178,19 +252,21 @@ export default async function AdsLanding() {
           </div>
         </section>
 
-        {/* 9. CATÁLOGO — mismo ProductScroller de "Recientes" del Home,
-            con sus botones de compra normales. */}
-        <section className="pb-8">
-          <div className="mx-auto max-w-6xl px-4">
-            <h2 className="font-heading text-center text-xl font-bold tracking-tight sm:text-2xl">
-              ¿Quieres comprar nuestros diseños?
-            </h2>
-            <div className="mb-4 mt-1.5">
-              <OfferBadges variant="pill" />
+        {/* 9. CATÁLOGO — diseños más recientes, con miniaturas livianas
+            (ver AdsCatalogStrip: antes este bloque descargaba ~34 MB). */}
+        {recientes.length > 0 && (
+          <section className="pb-8">
+            <div className="mx-auto max-w-6xl px-4">
+              <h2 className="font-heading text-center text-xl font-bold tracking-tight sm:text-2xl">
+                ¿Quieres comprar nuestros diseños?
+              </h2>
+              <div className="mb-4 mt-1.5">
+                <OfferBadges variant="pill" />
+              </div>
+              <AdsCatalogStrip items={recientes} />
             </div>
-            <ProductScroller items={recientes} light />
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* 10. GARANTÍA / FOOTER — discreto, exigido por políticas de
             anuncios de ecommerce de TikTok (contacto + garantía visibles). */}
@@ -201,6 +277,15 @@ export default async function AdsLanding() {
               está asegurado. Escríbenos a:{" "}
               <a href="mailto:pedidos@mysterycuadros.com" className="underline underline-offset-2">
                 pedidos@mysterycuadros.com
+              </a>{" "}
+              o por{" "}
+              <a
+                href={WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2"
+              >
+                WhatsApp (+57 320 264 6716)
               </a>
             </p>
             <p className="mt-3 text-[11px] text-[#8a94ac]">
@@ -217,9 +302,9 @@ export default async function AdsLanding() {
           distintas), no interfiere con su ocultamiento por scroll. */}
       <RecentPurchaseToast liveSales={ventasRecientes} />
 
-      {/* 11. CTA FIJO — ya no navega a /crear, hace scroll suave hasta la
-          sección embebida del punto 6 dentro de esta misma página. */}
-      <StickyBuyButton targetId="crear-embed" />
+      {/* 11. CTA FIJO — sin foto, abre directo la galería (mismo input de
+          CrearFlow); con foto, ejecuta el siguiente paso del flujo. */}
+      <StickyBuyButton targetId="crear-embed" alsoHideWhenVisibleIds={["ads-hero-cta"]} />
     </div>
   );
 }

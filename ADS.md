@@ -457,3 +457,76 @@ tropiezo (IA, impresión, empaque) → revelación/reacción de quien lo recibe
 - [GREFG Y LA NARRATIVA ÉPICA EN YOUTUBE — Lord Draugr](https://www.youtube.com/watch?v=dsjTrNesgKE)
 - [TikTok Ad Creative Best Practices 2026 — Stackmatix](https://www.stackmatix.com/blog/tiktok-ad-creative-best-practices-2026)
 - [11 TikTok video ideas for merchants — Practical Ecommerce](https://www.practicalecommerce.com/11-tiktok-video-ideas-for-merchants)
+
+---
+
+## Landing `/ads` — mejoras de conversión (5 oct 2026, PR `ads/mejoras-conversion`)
+
+### Auditoría (antes)
+- Lighthouse móvil (local, 3 corridas contra producción): Performance 52–67,
+  LCP 4,0–8,7 s, TBT 800–1.000 ms, **peso total 43,9 MB**.
+- El peso venía de imágenes sin optimizar: 11 miniaturas del catálogo
+  (`/api/catalog-thumbnail`, PNG ~3 MB c/u, mostradas a 160 px) = 34 MB, y las
+  3 fotos "Así se ven en la pared" (PNG 2,7 MB c/u) = 8 MB. Para tráfico de
+  TikTok en 4G/planes de datos en Colombia esto es lo más caro de todo.
+- Título, precio y CTA quedaban debajo del video (fuera del primer pantallazo).
+- La barra fija "Comprar ahora" solo bajaba hasta la caja de carga: el cliente
+  tenía que tocar otra vez para abrir la galería.
+- Sin captura de UTM/click IDs (solo el píxel de TikTok guardaba `ttclid`).
+
+### Qué cambió
+- **Peso**: fotos de pared en `.webp` de 480 px (~15-20 KB c/u); póster del
+  video en `.webp` (~50 KB) con preload de prioridad alta (es el LCP);
+  catálogo de /ads limitado a 12 diseños (`AdsCatalogStrip`) con miniaturas
+  que SÍ pasan por el optimizador de Vercel con `sizes="160px"` (máx. 2
+  variantes por imagen → consumo de cuota mínimo y acotado). El Home y
+  `ProductCard` no se tocaron.
+- **Primer pantallazo**: título que repite la promesa del anuncio, precio
+  "desde" (calculado de `PRICES`), video más bajo y un CTA grande que abre
+  la galería directamente (`<label htmlFor="file-upload">`). La barra fija se
+  oculta mientras ese CTA está a la vista y, sin foto, también abre la galería.
+  Al cargar la foto desde arriba/la barra, la página baja sola al editor.
+- **Confianza (solo datos reales)**: tiempos del dueño (producción 1-2 días,
+  máximo 5 días hábiles), Wompi tarjeta/PSE, garantía, WhatsApp real; FAQ con
+  objeciones (contraentrega, tiempos, precios por tamaño leídos de
+  `order.js`, calidad de foto, pagos, daños) + botón de WhatsApp.
+- **Aviso de compra reciente**: espera a que el cliente haga scroll (antes
+  tapaba el CTA principal en el primer pantallazo).
+- **Temporadas** (`app/ads/temporada.js`): textos "regular" y "navidad".
+  Elegir con `?temporada=navidad` en la URL del anuncio, o automático si
+  `utm_campaign` contiene "navidad", o `ADS_TEMPORADA=navidad` en Vercel
+  (+ Redeploy), o `TEMPORADA_POR_DEFECTO`. Fecha límite real en
+  `NAVIDAD.fechaLimite` ("Pide hasta el 17 de diciembre para recibir antes
+  del 24"): sale siempre en temporada navidad y, en temporada regular, desde
+  `NAVIDAD.mostrarDesde` (1 nov); se oculta sola desde el 18 dic.
+- **Medición** (dataLayer, para GTM): `ads_landing` (con `ads_attribution`:
+  utm_*, ttclid, fbclid, gclid, primer toque; también en localStorage
+  `mystery:ads-atribucion`, 30 días), `ads_cta_click` (`cta_location`
+  hero/sticky) y `ads_photo_uploaded` (foto subida = paso intermedio entre
+  ViewContent y AddToCart). **Pendiente en GTM**: crear variables de capa de
+  datos para `ads_attribution.*` y, si se quiere, un tag TikTok/Meta para
+  `ads_photo_uploaded` (evento personalizado). Nada de esto cambia los
+  eventos que ya existían (view_item, add_to_cart, begin_checkout,
+  add_payment_info, purchase).
+
+### URL recomendada para los anuncios de TikTok
+`https://www.mysterycuadros.com/ads?utm_source=tiktok&utm_medium=cpc&utm_campaign=__CAMPAIGN_NAME__&utm_id=__CAMPAIGN_ID__&utm_content=__AID_NAME__&utm_term=__CID_NAME__`
+(+ `&temporada=navidad` en los anuncios navideños). No agregar `ttclid` a
+mano: TikTok lo pone solo.
+
+### Fuentes (ronda 4)
+- [TikTok Ads Landing Page: Best Practices 2026 — TikAdTools](https://tikadtools.com/blog/tiktok-ads-landing-page/)
+- [How to Run a TikTok Campaign That Actually Converts (2026) — AdManage](https://admanage.ai/blog/how-to-run-successful-tiktok-campaign)
+- [TikTok Standard Events and Parameters](https://ads.tiktok.com/resources/help/article/standard-events-parameters?lang=en)
+- [Send TikTok Click ID (ttclid) — TikTok API for Business](https://business-api.tiktok.com/portal/docs/send-tiktok-click-id-ttclid/v1.3)
+- [About Event Deduplication — TikTok](https://ads.tiktok.com/help/article/event-deduplication?lang=en)
+- [About UTM Parameters / macros — TikTok](https://ads.tiktok.com/help/article/track-offsite-web-events-with-utm-parameters)
+- [TikTok in-app browser issues — NullMark](https://nullmark.tech/fix/tiktok-not-loading)
+- [Sticky CTA: 33 A/B tests — Online Dialogue](https://www.onlinedialogue.nl/en/blogs/sticky-cta-guaranteed-conversion-uplift/)
+- [Cart abandonment reasons — Baymard](https://baymard.com/lists/cart-abandonment-rate)
+- [Delivery date vs shipping speed — Baymard](https://baymard.com/research-articles/shipping-speed-vs-delivery-date)
+- [Meta: landing page views](https://www.facebook.com/business/help/361750134220832)
+- [Informe de cierre e-commerce Colombia 2025 — CCCE](https://ccce.org.co/wp-content/uploads/2017/06/V2-1-PUBLICO-INFORME-DE-CIERRRE-2025.pdf)
+- [Por qué en Colombia prefieren pagar al recibir — EnColombia](https://encolombia.com/economia/empresas/transporte-mercancias-emprendimiento/en-colombia-prefieren-pagar-al-recibir/)
+- [Compras navideñas en línea crecen 43% — El Tiempo (dic 2025)](https://www.eltiempo.com/economia/finanzas-personales/compras-navidenas-en-linea-crecen-43-y-el-gasto-promedio-alcanza-155-870-3518067)
+- [Customizable holiday gifts that convert — 100xelevate](https://100xelevate.com/for-ai/customizable-holiday-gifts/)
