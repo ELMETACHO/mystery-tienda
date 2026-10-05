@@ -10,6 +10,7 @@ import Breadcrumbs from "../../components/Breadcrumbs";
 import { getCategorySeo } from "../../lib/categorySeo";
 import { JsonLd, breadcrumbJsonLd } from "../../lib/structuredData";
 import { getLandingPage } from "../../lib/landingPages";
+import { FEED_DEFAULT_PRICE_COP } from "../../lib/googleFeed";
 import ProductScroller from "../../components/ProductScroller";
 import RelatedLinks from "../../components/RelatedLinks";
 
@@ -103,7 +104,12 @@ export default async function ProductPage({ params }) {
       "@type": "Offer",
       url: productUrl,
       priceCurrency: "COP",
-      price: String(CHEAPEST_PRICE_COP),
+      // Precio de la variante que la página muestra por defecto (40x50
+      // Premium) — el mismo del feed de Merchant Center
+      // (app/lib/googleFeed.js). Google marca "precio no coincide" si el
+      // JSON-LD, la página y el feed dicen cosas distintas; el "Desde"
+      // del título sigue usando el más barato.
+      price: String(FEED_DEFAULT_PRICE_COP),
       itemCondition: "https://schema.org/NewCondition",
       availability: "https://schema.org/InStock",
       seller: { "@type": "Organization", name: "Mystery Cuadros" },
