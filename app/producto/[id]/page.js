@@ -14,6 +14,7 @@ import { FEED_DEFAULT_PRICE_COP } from "../../lib/googleFeed";
 import ProductScroller from "../../components/ProductScroller";
 import RelatedLinks from "../../components/RelatedLinks";
 import DeliveryEstimate from "../../components/DeliveryEstimate";
+import WallVisualizerButton from "../../components/WallVisualizerButton";
 
 function categoryLabel(categoryId) {
   return ESTUDIO_CATEGORIES.find((c) => c.id === categoryId)?.label || "Diseño";
@@ -35,6 +36,10 @@ function productDisplayDescription(product, label) {
 }
 
 const CHEAPEST_PRICE_COP = getPriceCOP(SIZES[0].id, "tradicional");
+
+// Dónde está el diseño dentro del mockup 1080x1350 que genera /estudio:
+// centrado, 58% del ancho, proporción 4:5 → 626x783 px desde (227, 284).
+const MOCKUP_DESIGN_CROP = { left: 0.21, top: 0.21, width: 0.58, height: 0.58 };
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
@@ -210,6 +215,19 @@ export default async function ProductPage({ params }) {
             priority
           />
         </div>
+
+        {/* "Así se ve en tu pared": reutiliza la misma miniatura ?w=900 que
+            ya cargó la página (sin descarga nueva) y recorta el diseño del
+            centro del mockup — /estudio siempre lo pone centrado al 58% del
+            ancho en 4:5 (DESIGN_WIDTH_RATIO en EstudioApp.jsx). */}
+        <WallVisualizerButton
+          imageSrc={`/api/catalog-thumbnail/${product.mockupFileId}?w=900`}
+          crop={MOCKUP_DESIGN_CROP}
+          imageRatio={40 / 50}
+          sizes={CATALOG_SIZES.map((s) => ({ id: s.id, label: s.label }))}
+          initialSizeId="40x50"
+          className="-mt-3 self-center"
+        />
 
         <div className="flex flex-col gap-2">
           {categoryObj ? (
