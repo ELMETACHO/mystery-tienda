@@ -402,3 +402,48 @@ Detalle completo en `ADS.md` → "Landing `/ads` — mejoras de conversión".
   (sin fuente); el FAQ del Home y el prompt del chatbot
   (`app/lib/chatSystemPrompt.js`) dicen "3 a 5 días hábiles" — unificar con
   "máximo 5 días (sin domingos)" y con los medios de pago confirmados.
+---
+
+## Sesión del 5-6 oct 2026 — funciones de venta (fecha de entrega, /pedido, visualizador en pared)
+
+Requisitos del dueño aplicados: nada de automatizar WhatsApp ni mandar
+compradores a WhatsApp (solo alternativa visible); /checkout y /crear sin
+ninguna demora nueva (todo calculado en el navegador o cargado al tocar).
+
+### 1. Fecha estimada de entrega (PR #23, fusionado)
+- `app/lib/deliveryEstimate.js` + `components/DeliveryEstimate.jsx`:
+  "Llega entre el … y el …" = 2.º a 5.º día hábil desde hoy (Bogotá),
+  días hábiles = lunes a sábado sin festivos. En /producto, /crear, /ads y
+  /checkout. Se calcula en el navegador (las páginas con ISR quedarían con
+  fecha vieja). Solo texto.
+- Festivos: `app/lib/colombiaHolidays.js` (2026-2027 escritos a mano, Ley
+  51 de 1983 + Ley 2578 de 2026 — Virgen de Chiquinquirá, 9 jul → lunes).
+  **Para 2028 en adelante se calculan solos**, pero si el Congreso cambia
+  festivos hay que actualizar la lista y la función.
+- `npm test` ya existe (node:test, arnés idéntico al del PR #17).
+
+### 2. /pedido — estado del pedido (PR #24, fusionado)
+- Número de pedido + celular (últimos 4 o completo) → recibido / en
+  producción / despachado + guía y link de rastreo. Lee
+  `manual-shipment:{ref}` (30 días). noindex.
+- Límite 10/10 min por IP + 5 fallos por referencia por hora; respuesta
+  idéntica si la referencia no existe o el celular no coincide; nunca
+  devuelve nombre/dirección/correo/teléfono ni el PDF de la guía.
+- Enlazado desde footer de la Home, chatbot, confirmación, correo de
+  confirmación (ahora trae el número de pedido) y correo "va en camino".
+- **Arreglo de seguridad**: el chatbot (`/api/chat-order-status`) devolvía
+  la guía del último pedido de cualquiera con escribir 1 dígito
+  (búsqueda por "contiene"). Ahora exige el celular completo.
+
+### 3. Visualizador "Así se ve en tu pared" (este PR)
+- `components/WallVisualizer.jsx` (escena CSS/SVG a escala real: pared
+  3,20 m, sofá 2,10 m, persona 1,70 m, centro del cuadro a 150 cm o 20 cm
+  sobre el sofá) + `WallVisualizerButton.jsx` (lo descarga solo al tocar,
+  ~2,8 KB gzip). En "Tu cuadro está listo" (/crear y /ads, 5 tamaños) y en
+  /producto (3 tamaños del catálogo, recortando el diseño del centro del
+  mockup — /estudio siempre lo pone al 58% del ancho en 4:5; si eso cambia
+  en EstudioApp.jsx, actualizar `MOCKUP_DESIGN_CROP` en producto/[id]).
+
+### Pendientes / PRs abiertos de esta sesión
+- Reseñas con foto + moderación y tarjeta regalo / "Es un regalo": PRs
+  aparte, abiertos para revisión del dueño (ver sus descripciones).
