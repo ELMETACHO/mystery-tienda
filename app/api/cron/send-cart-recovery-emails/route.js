@@ -46,15 +46,12 @@ export async function GET(request) {
     const createdAt = new Date(pending.createdAt || 0).getTime();
     if (!createdAt || now - createdAt < 5 * 60 * 1000) continue;
     try {
-      // eslint-disable-next-line no-await-in-loop
       if (await getCompletedOrderByReference(pending.reference)) continue;
-      // eslint-disable-next-line no-await-in-loop
       const txs = await fetchWompiTransactionsByReference(pending.reference);
       const approved = txs.find((t) => t.status === "APPROVED");
       if (!approved) continue;
 
       const confirmFn = pending.paymentMethod === "cod" ? confirmApprovedCodOrder : confirmApprovedOrder;
-      // eslint-disable-next-line no-await-in-loop
       const result = await confirmFn({ order: pending.order, customer: pending.customer, transaction: approved });
       reconciled.add(pending.reference);
       console.error(
@@ -79,7 +76,6 @@ export async function GET(request) {
     // se limpió (nunca se borra, expira solo por TTL, ver
     // pendingOrders.js). Se omite para no mandar un correo confuso a
     // alguien que ya recibió su cuadro en camino.
-    // eslint-disable-next-line no-await-in-loop
     const completed = await getCompletedOrderByReference(pending.reference);
     if (completed) continue;
 

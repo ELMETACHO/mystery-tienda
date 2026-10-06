@@ -22,6 +22,7 @@ export default function ReferidosAdminApp() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial (fetch) al montar; el setState es intencional
     loadReferrals();
   }, []);
 
