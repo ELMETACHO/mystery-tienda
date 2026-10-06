@@ -80,7 +80,12 @@ export default async function LandingPage({ params }) {
           className="fixed inset-0 z-0 bg-cover bg-center"
           style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
         />
-        <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-14">
+        {/* Mobile-first: columna de max-w-3xl como siempre (celular y
+            tablet). Desde lg se abre a max-w-6xl (mismo ancho que el Home):
+            las secciones de texto y "precios | cómo se hace" van en 2
+            columnas y los diseños del catálogo en grilla. Los wrappers usan
+            flex-col gap-6, así que en celular nada cambia. */}
+        <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-14 lg:max-w-6xl">
           <Breadcrumbs items={breadcrumbs} />
 
           {/* HERO: texto + (si la landing la define, ej. Navidad) una foto
@@ -142,6 +147,7 @@ export default async function LandingPage({ params }) {
             </section>
           )}
 
+          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:[&>section:last-child:nth-child(odd)]:col-span-2">
           {page.sections.map((section) => (
             <section key={section.heading} className={CARD}>
               <h2 className={`${headingFont(section.heading)} mb-3 text-lg font-bold sm:text-xl`}>{section.heading}</h2>
@@ -159,14 +165,16 @@ export default async function LandingPage({ params }) {
               )}
             </section>
           ))}
+          </div>
 
           {products.length > 0 && (
             <section className="flex flex-col gap-3">
               <h2 className={`${headingFont(page.examplesHeading)} text-lg font-bold sm:text-xl`}>{page.examplesHeading}</h2>
-              <ProductScroller items={products} light thumbWidth={480} />
+              <ProductScroller items={products} light thumbWidth={480} desktopGrid={6} />
             </section>
           )}
 
+          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
           {/* Precios reales desde app/lib/order.js (PRICES) — nunca
               escritos a mano en el contenido. */}
           <section className={CARD}>
@@ -216,6 +224,7 @@ export default async function LandingPage({ params }) {
               <li>Lo imprimimos en vinilo sobre madera en 1 a 2 días y te llega en máximo 5 días (sin domingos).</li>
             </ol>
           </section>
+          </div>
 
           <section>
             <h2 className="font-display mb-3 text-lg sm:text-xl">Preguntas frecuentes</h2>

@@ -201,8 +201,13 @@ export default async function ProductPage({ params }) {
       {/* Cabecera compacta en móvil (oct 2026): menos padding arriba y
           "volver" + migas de pan en una sola fila (la miga del producto se
           corta con "…", el nombre completo está en el h1) → la foto sube
-          ~90px. pb-24 en móvil deja sitio a la barra fija de abajo. */}
-      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pb-24 pt-4 sm:px-6 sm:py-16">
+          ~90px. pb-24 en móvil deja sitio a la barra fija de abajo.
+          Escritorio (oct 2026): desde md el contenedor se abre a max-w-6xl
+          (mismo ancho que el Home) y la parte de arriba pasa a 2 columnas:
+          galería + "Así se ve en tu pared" a la izquierda (sticky) y
+          título/precio/CTA/detalles a la derecha. Los wrappers nuevos son
+          flex-col gap-6, así que en celular orden y espaciado no cambian. */}
+      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pb-24 pt-4 sm:px-6 sm:py-16 md:max-w-6xl">
         <div className="-mb-2 flex items-center gap-3 sm:mb-0 sm:flex-col sm:items-start sm:gap-6">
           <Link
             href="/"
@@ -215,9 +220,14 @@ export default async function ProductPage({ params }) {
           </div>
         </div>
 
+        <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:items-start md:gap-8 lg:gap-12">
+        <div className="flex flex-col gap-6 md:sticky md:top-8">
         {/* Galería con miniaturas (diseño + fotos reales de acabado) — ver
             app/lib/productGallery.js para agregar fotos. */}
-        <ProductGallery images={galleryImages} sizes="(min-width: 640px) 448px, 100vw" />
+        <ProductGallery
+          images={galleryImages}
+          sizes="(min-width: 1152px) 528px, (min-width: 768px) 46vw, (min-width: 640px) 448px, 100vw"
+        />
 
         {/* "Así se ve en tu pared": reutiliza la misma miniatura ?w=900 que
             ya cargó la página (sin descarga nueva) y recorta el diseño del
@@ -231,7 +241,9 @@ export default async function ProductPage({ params }) {
           initialSizeId="40x50"
           className="-mt-3 self-center"
         />
+        </div>
 
+        <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           {categoryObj ? (
             <Link
@@ -247,7 +259,7 @@ export default async function ProductPage({ params }) {
           )}
           {/* Nombre del producto siempre en Geist (regla tipográfica, ver
               app/globals.css): los nombres suelen pasar de 4 palabras. */}
-          <h1 className="text-balance text-2xl font-bold tracking-tight">
+          <h1 className="text-balance text-2xl font-bold tracking-tight md:text-3xl">
             {productDisplayTitle(product, label)}
           </h1>
           <p className="text-sm text-[#33456b]">{productDisplayDescription(product, label)}</p>
@@ -301,11 +313,13 @@ export default async function ProductPage({ params }) {
             .
           </p>
         </section>
+        </div>
+        </div>
 
         {sameCategory.length > 0 && (
           <section className="flex flex-col gap-3">
-            <h2 className={`${headingFont(`Más cuadros de ${label}`)} text-base font-bold`}>Más cuadros de {label}</h2>
-            <ProductScroller items={sameCategory} light thumbWidth={480} />
+            <h2 className={`${headingFont(`Más cuadros de ${label}`)} text-base font-bold md:text-lg`}>Más cuadros de {label}</h2>
+            <ProductScroller items={sameCategory} light thumbWidth={480} desktopGrid={5} />
           </section>
         )}
 
