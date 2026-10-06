@@ -4,6 +4,7 @@ import { generateManualShipmentToken } from "./manualShipmentToken";
 import { FABRICANTES, getFabricanteForFrameType } from "./fabricantes";
 import { EMAIL_SITE_URL as SITE_URL } from "./siteUrl";
 import { embedSrgbProfile } from "./printColorProfile";
+import { normalizeGiftMessage, normalizePersonName } from "./giftFeatures";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -575,6 +576,7 @@ function adminEmailHtml({
         ${trackingRow}
 
         ${giftOrderNote}
+        ${giftOptionNote(order)}
 
         ${aiUpscaleNote}
 
@@ -620,6 +622,33 @@ function adminEmailHtml({
   </tr>
 </table>
   `;
+}
+
+// "Es un regalo" (order.giftOption, ver app/lib/giftFeatures.js, apagado
+// por defecto): instrucciones para el fabricante — imprimir el mensaje y
+// NO meter precio/factura en el paquete. El mensaje viene del navegador:
+// se normaliza y escapa acá otra vez.
+function giftOptionNote(order) {
+  if (!order?.giftOption?.enabled) return "";
+  const message = normalizeGiftMessage(order.giftOption.message);
+  return `
+      <tr>
+        <td style="padding:0 20px 16px 20px;">
+          <table class="email-banner-lilac-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.lilac};border-radius:6px;border:2px solid ${BRAND.solid};">
+            <tr>
+              <td style="padding:12px 14px;">
+                <p class="email-text-brand" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${BRAND.text};">🎁 ES UN REGALO — NO incluir precio, factura ni remisión con valores dentro del paquete.</p>
+                ${
+                  message
+                    ? `<p class="email-text-ink" style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.ink};">Imprimir este mensaje en una tarjeta e incluirlo:</p>
+                <p class="email-text-ink" style="margin:0;font-family:Georgia,serif;font-size:15px;line-height:22px;color:${BRAND.ink};white-space:pre-line;border-left:3px solid ${BRAND.solid};padding-left:10px;">${escapeHtml(message)}</p>`
+                    : `<p class="email-text-ink" style="margin:0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.ink};">Sin mensaje impreso.</p>`
+                }
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>`;
 }
 
 export async function sendOrderEmails({
@@ -1637,5 +1666,70 @@ export async function sendPaymentIntegrityAlertEmail({
   <ul style="margin:0 0 16px 18px;padding:0;">${problemsHtml}</ul>
   <table role="presentation" cellpadding="0" cellspacing="0" border="0">${rows}</table>
 </div>`),
+  });
+}
+
+// Tarjeta regalo pagada (app/lib/giftCards.js): el código va al correo de
+// quien la compró (él decide cómo entregarla) + aviso al admin. Datos
+// del comprador escapados.
+function giftCardEmailHtml({ purchase, code }) {
+  const recipient = normalizePersonName(purchase.recipientName);
+  const from = normalizePersonName(purchase.buyerName);
+  const message = normalizeGiftMessage(purchase.message);
+  const redeemUrl = `${SITE_URL}/crear`;
+  return `
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow()}
+        <tr>
+          <td style="padding:32px 32px 8px 32px;">
+            <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">🎁 Tarjeta regalo Mystery${recipient ? ` para ${escapeHtml(recipient)}` : ""}</p>
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">Vale por <strong>un cuadro 40x50</strong> con la foto que quiera, envío gratis a toda Colombia${from ? `. De parte de ${escapeHtml(from)}` : ""}.</p>
+          </td>
+        </tr>
+        ${
+          message
+            ? `<tr><td style="padding:16px 32px 0 32px;"><p class="email-text-ink" style="margin:0;font-family:Georgia,serif;font-size:16px;line-height:24px;color:${BRAND.ink};white-space:pre-line;border-left:3px solid ${BRAND.solid};padding-left:12px;">${escapeHtml(message)}</p></td></tr>`
+            : ""
+        }
+        <tr>
+          <td style="padding:24px 32px 8px 32px;" align="center">
+            <p class="email-text-faint" style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Código</p>
+            <p class="email-text-ink" style="margin:0;font-family:'Courier New',Courier,monospace;font-size:24px;font-weight:bold;color:${BRAND.ink};letter-spacing:1px;">${escapeHtml(code)}</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 32px 8px 32px;">
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:14px;line-height:21px;color:${BRAND.muted};">Cómo usarla: entra a <a class="email-text-brand" href="${redeemUrl}" style="color:${BRAND.text};font-weight:bold;">mysterycuadros.com/crear</a>, sube la foto, elige <strong>40x50</strong> y en el pago escribe el código en "Código de descuento". Un solo uso.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 32px 32px 32px;">
+            <p class="email-text-faint" style="margin:0;font-family:${FONT_STACK};font-size:12px;line-height:18px;color:${BRAND.faint};">Puedes reenviar este correo o imprimirlo para regalarlo. Referencia de compra: ${escapeHtml(purchase.reference)}</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+export async function sendGiftCardEmails({ purchase, code }) {
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: purchase.buyerEmail,
+    subject: "🎁 Tu tarjeta regalo Mystery",
+    html: wrapEmailHtml(giftCardEmailHtml({ purchase, code })),
+  });
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: ADMIN_EMAIL,
+    subject: `Tarjeta regalo vendida — ${formatCOP(Math.round(purchase.amountInCents / 100))}`,
+    html: wrapEmailHtml(
+      `<p style="font-family:${FONT_STACK};">Se vendió una tarjeta regalo (40x50). Código ${escapeHtml(code)} · referencia ${escapeHtml(purchase.reference)} · comprador ${escapeHtml(purchase.buyerEmail)}. Se canjea como código de regalo (1 uso) en /checkout.</p>`
+    ),
   });
 }
