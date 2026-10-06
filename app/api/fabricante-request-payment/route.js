@@ -1,6 +1,7 @@
 import { getManufacturerPendingOrders } from "../../lib/manufacturerFinance";
 import { sendFabricantePaymentRequestEmail } from "../../lib/email";
 import { getFabricantesByAccessCode } from "../../lib/fabricantes";
+import { isBlockedByFailedAttempts, registerFailedAttempt, rateLimitResponse } from "../../lib/rateLimit";
 
 // Botón "Cobrar saldo" de /fabricante — mismo código de acceso que
 // /api/fabricante-status. Nunca manda correo si no hay saldo pendiente
@@ -20,11 +21,15 @@ import { getFabricantesByAccessCode } from "../../lib/fabricantes";
 // fabricanteId acá solo identifica DE QUIÉN es el saldo (para incluirlo
 // en el cuerpo del correo), nunca decide el destinatario.
 export async function POST(request) {
+  const { blocked, retryAfter } = await isBlockedByFailedAttempts(request, "fabricante-code", { limit: 10 });
+  if (blocked) return rateLimitResponse(retryAfter);
+
   const { code, fabricanteId } = await request.json().catch(() => ({}));
 
   const fabricantes = getFabricantesByAccessCode(code);
   const fabricante = fabricantes.find((f) => f.id === fabricanteId) || fabricantes[0];
   if (!fabricante) {
+    await registerFailedAttempt(request, "fabricante-code");
     return Response.json({ error: "Código incorrecto" }, { status: 401 });
   }
 

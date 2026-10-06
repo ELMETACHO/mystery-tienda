@@ -10,7 +10,12 @@ export const ESTUDIO_COOKIE_NAME = "estudio_session";
 
 export function isValidEstudioPassword(password) {
   const expected = process.env.ESTUDIO_PASSWORD;
-  return Boolean(expected) && typeof password === "string" && password === expected;
+  if (!expected || typeof password !== "string") return false;
+  // Comparación en tiempo constante (evita filtrar la clave por timing);
+  // se comparan hashes para que ambos buffers midan lo mismo.
+  const a = crypto.createHash("sha256").update(password).digest();
+  const b = crypto.createHash("sha256").update(expected).digest();
+  return crypto.timingSafeEqual(a, b);
 }
 
 export function getEstudioSessionToken() {

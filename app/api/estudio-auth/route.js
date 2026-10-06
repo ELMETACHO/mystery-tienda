@@ -4,8 +4,12 @@ import {
   getEstudioSessionToken,
   isValidEstudioPassword,
 } from "../../lib/estudioAuth";
+import { isBlockedByFailedAttempts, registerFailedAttempt, rateLimitResponse } from "../../lib/rateLimit";
 
 export async function POST(request) {
+  const { blocked, retryAfter } = await isBlockedByFailedAttempts(request, "estudio-auth", { limit: 10 });
+  if (blocked) return rateLimitResponse(retryAfter);
+
   const { password } = await request.json().catch(() => ({}));
 
   if (!process.env.ESTUDIO_PASSWORD) {
@@ -16,6 +20,7 @@ export async function POST(request) {
   }
 
   if (!isValidEstudioPassword(password)) {
+    await registerFailedAttempt(request, "estudio-auth");
     return NextResponse.json({ error: "Contraseña incorrecta" }, { status: 401 });
   }
 
