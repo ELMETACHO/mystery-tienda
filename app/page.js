@@ -364,6 +364,7 @@ export default async function Home() {
               width={600}
               height={795}
               priority
+              fetchPriority="high"
               unoptimized
               sizes="(min-width: 640px) 300px, 240px"
               className="aspect-[600/795] w-[240px] rounded-2xl object-cover shadow-[0_18px_40px_-18px_rgba(30,20,60,0.45)] sm:w-[300px]"
@@ -379,7 +380,10 @@ export default async function Home() {
         <section className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <h2 className="font-display mb-4 text-lg font-semibold sm:text-xl">Elige tu estilo</h2>
-            <CategoryScroller categorias={CATEGORIAS} light />
+            {/* eagerCount 0: desde que el hero tiene foto (oct 2026) estas
+                portadas quedan debajo del pliegue en el celular; precargarlas
+                le quitaba ancho de banda a la foto del hero (el LCP). */}
+            <CategoryScroller categorias={CATEGORIAS} light eagerCount={0} />
           </div>
         </section>
 
