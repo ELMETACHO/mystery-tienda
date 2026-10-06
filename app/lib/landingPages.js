@@ -144,6 +144,21 @@ export const LANDING_PAGES = [
       FAQ_PAGO,
       FAQ_DANO,
     ],
+    // Foto real de un cuadro colgado (WebP 720×720, ~22KB) para el hero —
+    // la página la carga con priority y tamaño fijo (sin CLS).
+    heroImage: {
+      src: "/images/hero/navidad-cuadro-pared.webp",
+      width: 720,
+      height: 720,
+      alt: "Cuadro personalizado en vinilo sobre madera colgado en la pared, listo para regalar en Navidad",
+    },
+    // Tarjetas "¿Para quién es?" → enlazan landings que ya existen.
+    forWhom: [
+      { slug: "regalo-navidad-mama-papa", emoji: "👨‍👩‍👧", title: "Mamá y papá", text: "La foto familiar que nunca imprimen" },
+      { slug: "regalo-navidad-pareja", emoji: "💑", title: "Tu pareja", text: "Su foto favorita de los dos" },
+      { slug: "de-mascotas", emoji: "🐶", title: "Amantes de mascotas", text: "Su perro o gato en la pared" },
+      { slug: "personalizados-con-fotos", emoji: "🎁", title: "Amigos y familia", text: "Cualquier foto con historia" },
+    ],
     related: ["regalo-navidad-mama-papa", "regalo-navidad-pareja", "personalizados-con-fotos", "de-mascotas"],
     relatedCategories: ["deportes", "musica", "peliculas-series"],
   },
