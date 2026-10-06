@@ -13,6 +13,7 @@ import { getLandingPage } from "../../lib/landingPages";
 import { FEED_DEFAULT_PRICE_COP } from "../../lib/googleFeed";
 import ProductScroller from "../../components/ProductScroller";
 import RelatedLinks from "../../components/RelatedLinks";
+import DeliveryEstimate from "../../components/DeliveryEstimate";
 
 function categoryLabel(categoryId) {
   return ESTUDIO_CATEGORIES.find((c) => c.id === categoryId)?.label || "Diseño";
@@ -231,9 +232,9 @@ export default async function ProductPage({ params }) {
 
         <ProductSizeSelector product={product} />
 
-        <p className="text-center text-base font-semibold text-accent">
-          Hecho en 1-2 días · llega en máximo 5 días (sin domingos)
-        </p>
+        {/* Fecha estimada calculada en el navegador con la fecha de hoy
+            (Bogotá), saltando domingos y festivos — ver DeliveryEstimate. */}
+        <DeliveryEstimate />
 
         {/* Ficha armada con atributos reales (catálogo + SIZES/FRAME_TYPES
             de app/lib/order.js) — da contenido único y útil a cada

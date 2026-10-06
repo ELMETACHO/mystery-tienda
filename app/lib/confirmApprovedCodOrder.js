@@ -13,6 +13,8 @@ import { recordReferralSale } from "./referrals";
 import { recordCrmEntry } from "./manufacturerFinance";
 import { checkShippingCoverageAfterPayment } from "./noCoverage";
 import { COD_DEPOSIT_COP, SIZES } from "./order";
+import { checkCodPaymentIntegrity } from "./paymentIntegrity";
+import { flagSuspiciousPayment } from "./flaggedPayments";
 
 // Equivalente de confirmApprovedOrder.js, pero para "Pago contraentrega":
 // el cliente pagó solo el anticipo fijo (COD_DEPOSIT_COP) por Wompi, y el
@@ -35,6 +37,14 @@ export async function confirmApprovedCodOrder({ order, customer, transaction }) 
 
   const anticipoPagado = COD_DEPOSIT_COP;
   const saldoPendiente = order.priceCOP - COD_DEPOSIT_COP;
+
+  // Anticipo y priceCOP deben corresponder al pedido (ver
+  // paymentIntegrity.js). Si no, no se fabrica: se respalda y se avisa.
+  const integrity = checkCodPaymentIntegrity({ order, transaction });
+  if (!integrity.ok) {
+    flagSuspiciousPayment({ order, customer, transaction, paymentMethod: "cod", integrity });
+    return { alreadyProcessed: false, flagged: true, isReturningCustomer: false, anticipoPagado, saldoPendiente };
+  }
 
   try {
     // Respaldo permanente (1 año) del pedido pagado, con su imagen — se hace
