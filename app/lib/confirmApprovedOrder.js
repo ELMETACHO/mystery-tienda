@@ -36,10 +36,10 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
   }
 
   // El monto cobrado debe corresponder al pedido (ver paymentIntegrity.js).
-  // Si no, no se fabrica: se respalda y se avisa al admin.
+  // Si no, no se fabrica: se respalda y se avisa al admin (en segundo plano).
   const integrity = checkFullPaymentIntegrity({ order, transaction });
   if (!integrity.ok) {
-    await flagSuspiciousPayment({ order, customer, transaction, paymentMethod: "wompi", integrity });
+    flagSuspiciousPayment({ order, customer, transaction, paymentMethod: "wompi", integrity });
     return { alreadyProcessed: false, isReturningCustomer: false, flagged: true };
   }
 

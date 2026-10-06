@@ -42,7 +42,7 @@ export async function confirmApprovedCodOrder({ order, customer, transaction }) 
   // paymentIntegrity.js). Si no, no se fabrica: se respalda y se avisa.
   const integrity = checkCodPaymentIntegrity({ order, transaction });
   if (!integrity.ok) {
-    await flagSuspiciousPayment({ order, customer, transaction, paymentMethod: "cod", integrity });
+    flagSuspiciousPayment({ order, customer, transaction, paymentMethod: "cod", integrity });
     return { alreadyProcessed: false, flagged: true, isReturningCustomer: false, anticipoPagado, saldoPendiente };
   }
 
