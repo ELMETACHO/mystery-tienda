@@ -1557,3 +1557,53 @@ export async function sendLowStockEmail(items) {
     html: wrapEmailHtml(html),
   });
 }
+
+// ---------------------------------------------------------------------
+// Alerta interna: pago aprobado que NO corresponde al pedido (monto menor
+// al mínimo posible, anticipo usado como pago completo, priceCOP
+// manipulado, etc. — ver paymentIntegrity.js). Solo va a ADMIN_EMAIL; el
+// pedido NO se mandó al fabricante. Todo dato del cliente se escapa.
+// ---------------------------------------------------------------------
+export async function sendPaymentIntegrityAlertEmail({
+  reference,
+  transactionId,
+  paymentMethod,
+  problems,
+  order,
+  customer,
+  paidCOP,
+  minimumCOP,
+}) {
+  const rows = [
+    ["Referencia", reference],
+    ["Transacción Wompi", transactionId],
+    ["Método", paymentMethod],
+    ["Pagado (Wompi)", paidCOP != null ? formatCOP(paidCOP) : "-"],
+    ["Mínimo esperado", minimumCOP != null ? formatCOP(minimumCOP) : "-"],
+    ["Tamaño / marco", `${order?.sizeId || "-"} / ${order?.frameType || "-"}`],
+    ["priceCOP declarado", order?.priceCOP != null ? String(order.priceCOP) : "-"],
+    ["Cliente", `${customer?.fullName || "-"} · ${customer?.email || "-"} · ${customer?.phone || "-"}`],
+    ["Ciudad", customer?.city || "-"],
+  ]
+    .map(
+      ([label, value]) =>
+        `<tr><td style="padding:4px 12px 4px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.muted};">${escapeHtml(label)}</td><td style="padding:4px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.ink};">${escapeHtml(value)}</td></tr>`
+    )
+    .join("");
+  const problemsHtml = (problems || [])
+    .map((p) => `<li style="font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">${escapeHtml(p)}</li>`)
+    .join("");
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: ADMIN_EMAIL,
+    subject: `⚠️ Pago no coincide con el pedido — revisar antes de fabricar (${reference})`,
+    html: wrapEmailHtml(`
+<div style="padding:24px;font-family:${FONT_STACK};">
+  <p style="font-size:18px;font-weight:bold;color:${BRAND.ink};margin:0 0 8px 0;">Pago aprobado que no coincide con el pedido</p>
+  <p style="font-size:14px;color:${BRAND.muted};margin:0 0 16px 0;">El pedido NO se envió al fabricante ni se generó guía. Revisa en Wompi y en /admin (respaldos) antes de procesarlo a mano o devolver el dinero.</p>
+  <ul style="margin:0 0 16px 18px;padding:0;">${problemsHtml}</ul>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0">${rows}</table>
+</div>`),
+  });
+}

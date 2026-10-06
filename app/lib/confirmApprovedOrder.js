@@ -13,6 +13,8 @@ import { grantDiscountCode, markDiscountUsed } from "./discount";
 import { recordReferralSale } from "./referrals";
 import { recordCrmEntry } from "./manufacturerFinance";
 import { checkShippingCoverageAfterPayment } from "./noCoverage";
+import { checkFullPaymentIntegrity } from "./paymentIntegrity";
+import { flagSuspiciousPayment } from "./flaggedPayments";
 
 // Lógica de confirmación de un pago YA VERIFICADO como APPROVED contra
 // Wompi — compartida entre /api/confirm-order (cuando el cliente
@@ -31,6 +33,14 @@ export async function confirmApprovedOrder({ order, customer, transaction }) {
   const claimed = await claimTransaction(transaction.id);
   if (!claimed) {
     return { alreadyProcessed: true, isReturningCustomer: false };
+  }
+
+  // El monto cobrado debe corresponder al pedido (ver paymentIntegrity.js).
+  // Si no, no se fabrica: se respalda y se avisa al admin (en segundo plano).
+  const integrity = checkFullPaymentIntegrity({ order, transaction });
+  if (!integrity.ok) {
+    flagSuspiciousPayment({ order, customer, transaction, paymentMethod: "wompi", integrity });
+    return { alreadyProcessed: false, isReturningCustomer: false, flagged: true };
   }
 
   try {
