@@ -43,6 +43,9 @@ export default function ProductGallery({ images, sizes }) {
           sizes={sizes}
           className="object-cover"
           priority={index === 0}
+          // La foto principal es el LCP del producto: sin fetchPriority
+          // Next 16 la pedía con prioridad normal/baja.
+          fetchPriority={index === 0 ? "high" : undefined}
         />
         {current.caption && (
           <p className="absolute inset-x-3 bottom-3 rounded-full bg-black/55 px-3 py-1.5 text-center text-[11px] font-medium text-white backdrop-blur-sm">
