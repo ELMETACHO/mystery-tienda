@@ -7,6 +7,7 @@ import { getCategorySeo } from "../../lib/categorySeo";
 import ProductScroller from "../../components/ProductScroller";
 import Breadcrumbs from "../../components/Breadcrumbs";
 import RelatedLinks from "../../components/RelatedLinks";
+import { headingFont } from "../../lib/typography";
 import { getLandingPage } from "../../lib/landingPages";
 import { JsonLd, breadcrumbJsonLd, collectionPageJsonLd } from "../../lib/structuredData";
 
@@ -66,7 +67,7 @@ export default async function CategoriaPage({ params }) {
         products,
       })}
     />
-    <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
+    <div className="tienda relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
       <div
         aria-hidden="true"
         className="fixed inset-0 z-0 bg-cover bg-center"
@@ -82,7 +83,7 @@ export default async function CategoriaPage({ params }) {
 
         <Breadcrumbs items={breadcrumbs} />
 
-        <h1 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">{seo.h1}</h1>
+        <h1 className={`${headingFont(seo.h1)} text-2xl font-bold tracking-tight sm:text-3xl`}>{seo.h1}</h1>
 
         <p className="text-sm text-[#33456b] sm:text-base">{seo.intro || category.description}</p>
 
@@ -101,7 +102,7 @@ export default async function CategoriaPage({ params }) {
 
         {seo.body.length > 0 && (
           <section className="rounded-2xl border border-black/5 bg-[#fffaf0] p-5 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)] sm:p-7">
-            <h2 className="font-heading mb-3 text-lg font-bold sm:text-xl">Sobre estos cuadros</h2>
+            <h2 className="font-display mb-3 text-lg sm:text-xl">Sobre estos cuadros</h2>
             {seo.body.map((text) => (
               <p key={text.slice(0, 40)} className="mb-3 text-sm text-[#33456b] last:mb-0 sm:text-base">
                 {text}
@@ -127,7 +128,7 @@ export default async function CategoriaPage({ params }) {
               "radial-gradient(circle at 25% 15%, rgba(168,85,247,0.12), transparent 55%), radial-gradient(circle at 85% 85%, rgba(244,164,200,0.18), transparent 55%), #fffaf0",
           }}
         >
-          <h2 className="font-heading max-w-xl text-2xl font-extrabold tracking-tight text-[#1b2a4a] sm:text-3xl">
+          <h2 className="max-w-xl text-balance text-2xl font-bold tracking-tight text-[#1b2a4a] sm:text-3xl">
             No encuentras lo que buscas? créalo tú mismo
           </h2>
           <Link

@@ -10,6 +10,7 @@ import { SITE_URL } from "../../lib/siteUrl";
 import { JsonLd, breadcrumbJsonLd, collectionPageJsonLd, faqPageJsonLd } from "../../lib/structuredData";
 import Breadcrumbs from "../../components/Breadcrumbs";
 import ProductScroller from "../../components/ProductScroller";
+import { headingFont } from "../../lib/typography";
 
 // Landings de intención de compra (contenido en app/lib/landingPages.js).
 // A diferencia del Home/categorías (force-dynamic), acá alcanza con ISR
@@ -72,7 +73,7 @@ export default async function LandingPage({ params }) {
           data={collectionPageJsonLd({ name: page.h1, description: page.metaDescription, path, products })}
         />
       )}
-      <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
+      <div className="tienda relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
         <div
           aria-hidden="true"
           className="fixed inset-0 z-0 bg-cover bg-center"
@@ -89,7 +90,7 @@ export default async function LandingPage({ params }) {
                 🎄 {CHRISTMAS_DEADLINE.message}
               </p>
             )}
-            <h1 className="font-heading text-2xl font-extrabold tracking-tight sm:text-4xl">{page.h1}</h1>
+            <h1 className={`${headingFont(page.h1)} text-2xl font-bold tracking-tight sm:text-4xl`}>{page.h1}</h1>
             <p className="max-w-xl text-sm text-[#33456b] sm:text-base">{page.lead}</p>
             <Link href="/crear" className={CTA}>
               Crear mi cuadro con mi foto
@@ -101,7 +102,7 @@ export default async function LandingPage({ params }) {
 
           {page.sections.map((section) => (
             <section key={section.heading} className={CARD}>
-              <h2 className="font-heading mb-3 text-lg font-bold sm:text-xl">{section.heading}</h2>
+              <h2 className={`${headingFont(section.heading)} mb-3 text-lg font-bold sm:text-xl`}>{section.heading}</h2>
               {section.paragraphs?.map((text) => (
                 <p key={text.slice(0, 40)} className="mb-3 text-sm text-[#33456b] last:mb-0 sm:text-base">
                   {text}
@@ -119,7 +120,7 @@ export default async function LandingPage({ params }) {
 
           {products.length > 0 && (
             <section className="flex flex-col gap-3">
-              <h2 className="font-heading text-lg font-bold sm:text-xl">{page.examplesHeading}</h2>
+              <h2 className={`${headingFont(page.examplesHeading)} text-lg font-bold sm:text-xl`}>{page.examplesHeading}</h2>
               <ProductScroller items={products} light thumbWidth={480} />
             </section>
           )}
@@ -127,7 +128,7 @@ export default async function LandingPage({ params }) {
           {/* Precios reales desde app/lib/order.js (PRICES) — nunca
               escritos a mano en el contenido. */}
           <section className={CARD}>
-            <h2 className="font-heading mb-3 text-lg font-bold sm:text-xl">Tamaños y precios</h2>
+            <h2 className="font-display mb-3 text-lg sm:text-xl">Tamaños y precios</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
@@ -165,7 +166,7 @@ export default async function LandingPage({ params }) {
           </section>
 
           <section className={CARD}>
-            <h2 className="font-heading mb-3 text-lg font-bold sm:text-xl">Cómo se hace</h2>
+            <h2 className="font-display mb-3 text-lg sm:text-xl">Cómo se hace</h2>
             <ol className="flex list-decimal flex-col gap-2 pl-5 text-sm text-[#33456b] sm:text-base">
               <li>Sube tu foto en PNG, JPG, HEIC o PDF desde el celular o el computador.</li>
               <li>Ajústala dentro del marco (mueve y haz zoom) y elige el tamaño y el tipo de cuadro.</li>
@@ -175,7 +176,7 @@ export default async function LandingPage({ params }) {
           </section>
 
           <section>
-            <h2 className="font-heading mb-3 text-lg font-bold sm:text-xl">Preguntas frecuentes</h2>
+            <h2 className="font-display mb-3 text-lg sm:text-xl">Preguntas frecuentes</h2>
             <div className="flex flex-col divide-y divide-black/5 rounded-2xl border border-black/5 bg-[#fffaf0] shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)]">
               {faq.map((item) => (
                 <details key={item.pregunta} className="group p-5">
@@ -196,7 +197,7 @@ export default async function LandingPage({ params }) {
                 "radial-gradient(circle at 25% 15%, rgba(168,85,247,0.12), transparent 55%), radial-gradient(circle at 85% 85%, rgba(244,164,200,0.18), transparent 55%), #fffaf0",
             }}
           >
-            <h2 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">
+            <h2 className="text-balance text-xl font-bold tracking-tight sm:text-2xl">
               Crea tu cuadro en menos de 2 minutos
             </h2>
             <Link href="/crear" className={CTA}>
@@ -205,7 +206,7 @@ export default async function LandingPage({ params }) {
           </section>
 
           <nav aria-label="Más ideas" className={CARD}>
-            <h2 className="font-heading mb-3 text-base font-bold sm:text-lg">También te puede interesar</h2>
+            <h2 className="font-display mb-3 text-base sm:text-lg">También te puede interesar</h2>
             <ul className="flex flex-wrap gap-2">
               {related.map((item) => (
                 <li key={item.slug}>
