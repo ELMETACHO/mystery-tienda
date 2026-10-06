@@ -4,6 +4,7 @@ import { generateManualShipmentToken } from "./manualShipmentToken";
 import { FABRICANTES, getFabricanteForFrameType } from "./fabricantes";
 import { EMAIL_SITE_URL as SITE_URL } from "./siteUrl";
 import { embedSrgbProfile } from "./printColorProfile";
+import { generateReviewToken } from "./reviewToken";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -198,6 +199,26 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+// Invitación a dejar reseña con foto en el correo "va en camino" — link a
+// /resena (página web, mismo token HMAC que el correo de reseña de los 5
+// días). Si falta REVIEW_TOKEN_SECRET simplemente no se agrega (nunca
+// rompe el correo de envío).
+function reviewInviteRow(reference) {
+  if (!reference) return "";
+  let url;
+  try {
+    url = `${SITE_URL}/resena?ref=${encodeURIComponent(reference)}&token=${encodeURIComponent(generateReviewToken(reference))}`;
+  } catch {
+    return "";
+  }
+  return `
+        <tr>
+          <td style="padding:12px 32px 4px 32px;">
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:14px;line-height:21px;color:${BRAND.muted};">📸 Cuando lo tengas colgado, nos encantaría verlo: <a class="email-text-brand" href="${url}" style="color:${BRAND.text};font-weight:bold;text-decoration:underline;">déjanos tu reseña con una foto</a>.</p>
+          </td>
+        </tr>`;
 }
 
 // Bloque "Número de pedido + Ver estado de mi pedido" (/pedido) para los
@@ -1169,6 +1190,8 @@ function shippingNotificationEmailHtml({
 
         ${orderStatusLinkRow(reference)}
 
+        ${reviewInviteRow(reference)}
+
         <tr>
           <td style="padding:8px 32px 32px 32px;">
             <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">¡Gracias por comprar en Mystery! 💜</p>
@@ -1441,7 +1464,7 @@ function reviewRequestEmailHtml({ order, reviewUrl }) {
           <td style="padding:32px 32px 8px 32px;">
             <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¿Qué te pareció tu cuadro?</p>
             <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
-              Ya debería haber llegado tu cuadro${order.sizeLabel ? ` (${escapeHtml(order.sizeLabel)})` : ""}. Nos ayudaría mucho que nos cuentes qué te pareció — toma menos de un minuto.
+              Ya debería haber llegado tu cuadro${order.sizeLabel ? ` (${escapeHtml(order.sizeLabel)})` : ""}. Nos ayudaría mucho que nos cuentes qué te pareció — toma menos de un minuto. Si puedes, súbele una foto de cómo quedó en tu pared 📸
             </p>
           </td>
         </tr>

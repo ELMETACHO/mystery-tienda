@@ -4,6 +4,7 @@ import { getRecentProducts } from "../lib/catalog";
 import { getRecentSalesForToast } from "../lib/completedOrders";
 import { PRICES, formatCOP } from "../lib/order";
 import CrearFlow from "../components/CrearFlow";
+import CustomerReviews from "../components/CustomerReviews";
 import OfferBadges from "../components/ads/OfferBadges";
 import StickyBuyButton from "../components/ads/StickyBuyButton";
 import RecentPurchaseToast from "../components/ads/RecentPurchaseToast";
@@ -256,6 +257,13 @@ export default async function AdsLanding({ searchParams }) {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* 6b. FOTOS REALES DE CLIENTES — reseñas aprobadas en
+            /admin/resenas; lazy (request solo al acercarse) y vacío si
+            todavía no hay ninguna. */}
+        <section>
+          <CustomerReviews onlyPhotos limit={6} title="Fotos de clientes reales" className="mx-auto max-w-md px-4 pb-8" />
         </section>
 
         {/* 7. PREGUNTAS FRECUENTES + WhatsApp — objeciones típicas antes de

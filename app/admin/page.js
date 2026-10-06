@@ -24,6 +24,12 @@ const SECTIONS = [
     icon: "🎁",
   },
   {
+    href: "/admin/resenas",
+    title: "Reseñas",
+    description: "Aprueba o rechaza reseñas con foto antes de que salgan en la web.",
+    icon: "⭐",
+  },
+  {
     href: "/admin/reporte",
     title: "Reporte financiero",
     description: "Ingresos, costos, comisiones y utilidad neta por período.",

@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 function ErrorState({ message }) {
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-3 px-4 py-16 text-center">
-      <p className="text-lg font-semibold text-zinc-100">{message}</p>
-      <p className="text-sm text-zinc-500">
+      <p className="text-lg font-semibold text-[#1b2a4a]">{message}</p>
+      <p className="text-sm text-[#5b6b8c]">
         Si crees que esto es un error, escríbenos y te ayudamos.
       </p>
     </div>
@@ -37,7 +37,7 @@ export default async function ResenaPage({ searchParams }) {
       <div className="text-center">
         <h1 className="text-2xl font-bold tracking-tight">¿Qué te pareció tu cuadro?</h1>
         {order.sizeLabel && (
-          <p className="mt-1 text-sm text-zinc-400">Pedido: {order.sizeLabel}</p>
+          <p className="mt-1 text-sm text-[#5b6b8c]">Pedido: {order.sizeLabel}</p>
         )}
       </div>
 

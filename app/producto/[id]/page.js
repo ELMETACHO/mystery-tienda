@@ -15,6 +15,9 @@ import ProductScroller from "../../components/ProductScroller";
 import RelatedLinks from "../../components/RelatedLinks";
 import DeliveryEstimate from "../../components/DeliveryEstimate";
 import { headingFont } from "../../lib/typography";
+import ProductReviews from "../../components/ProductReviews";
+import { getApprovedReviews } from "../../lib/reviews";
+import { buildProductReviewJsonLd } from "../../lib/reviewModeration";
 import WallVisualizerButton from "../../components/WallVisualizerButton";
 
 function categoryLabel(categoryId) {
@@ -79,9 +82,17 @@ export default async function ProductPage({ params }) {
   const label = categoryLabel(product.category);
   // Otros diseños de la misma categoría (enlaces internos producto →
   // producto) — más nuevos primero, sin el actual.
-  const sameCategory = (await getProductsByCategory(product.category))
-    .filter((p) => p.id !== product.id)
-    .slice(0, 10);
+  // Reseñas aprobadas en paralelo con la categoría (sin sumar latencia:
+  // getApprovedReviews tiene caché en memoria de 5 min y nunca lanza).
+  const [categoryProducts, approvedReviews] = await Promise.all([
+    getProductsByCategory(product.category),
+    getApprovedReviews(),
+  ]);
+  const sameCategory = categoryProducts.filter((p) => p.id !== product.id).slice(0, 10);
+  // Solo reseñas de ESTE diseño (Google no permite reutilizar reseñas de
+  // otros productos en el JSON-LD).
+  const productReviews = approvedReviews.filter((r) => r.productId === product.id);
+  const reviewJsonLd = buildProductReviewJsonLd(productReviews);
   const productUrl = `${SITE_URL}/producto/${product.id}`;
   const categoryObj = ESTUDIO_CATEGORIES.find((c) => c.id === product.category);
   const breadcrumbs = [
@@ -91,8 +102,9 @@ export default async function ProductPage({ params }) {
       : []),
     { name: productDisplayTitle(product, label), path: `/producto/${product.id}` },
   ];
-  // Sin aggregateRating/review a propósito: no hay reseñas reales por
-  // diseño (ver app/lib/structuredData.js). sku = id del catálogo, el
+  // aggregateRating/review SOLO si hay reseñas reales aprobadas de este
+  // producto (buildProductReviewJsonLd devuelve null con 0) — nunca
+  // estrellas inventadas (ver app/lib/reviewModeration.js). sku = id del catálogo, el
   // mismo que usa el feed de Google Merchant (app/feed/google.xml) para
   // que Merchant Center pueda cruzar ambos.
   const productJsonLd = {
@@ -107,6 +119,7 @@ export default async function ProductPage({ params }) {
     category: label,
     material: "Vinilo sobre madera",
     brand: { "@type": "Brand", name: "Mystery Cuadros" },
+    ...(reviewJsonLd || {}),
     offers: {
       "@type": "Offer",
       url: productUrl,
@@ -295,6 +308,8 @@ export default async function ProductPage({ params }) {
             .
           </p>
         </section>
+
+        <ProductReviews reviews={productReviews} />
 
         {sameCategory.length > 0 && (
           <section className="flex flex-col gap-3">

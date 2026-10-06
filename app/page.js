@@ -5,6 +5,7 @@ import { getHomeTestimonials } from "./lib/homeTestimonials";
 import { SITE_URL } from "./lib/siteUrl";
 import FoldText from "./components/FoldText";
 import CategoryScroller from "./components/CategoryScroller";
+import CustomerReviews from "./components/CustomerReviews";
 import ProductScroller from "./components/ProductScroller";
 import { ESTUDIO_CATEGORIES } from "./lib/estudioCategories";
 import { JsonLd } from "./lib/structuredData";
@@ -424,10 +425,10 @@ export default async function Home() {
             {/* testimonios viene de Redis (home:testimonials, reseñas reales
                 seleccionadas semanalmente por IA) cuando hay al menos
                 MIN_REAL_TESTIMONIALS — si no, cae a TESTIMONIOS_EJEMPLO
-                arriba. Sin foto a propósito: nunca se le pide una al
-                cliente (ni en ReviewForm ni en Instagram) y mostrar una
-                foto genérica de pared junto a una reseña real daría a
-                entender que es del cuadro de ese cliente sin serlo. */}
+                arriba. Sin foto a propósito: mostrar una foto genérica de
+                pared junto a una reseña real daría a entender que es del
+                cuadro de ese cliente sin serlo. Las fotos REALES de
+                clientes van aparte, en <CustomerReviews> debajo. */}
             <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
               {testimonios.map((t, i) => (
                 <div
@@ -449,6 +450,11 @@ export default async function Home() {
               ))}
             </div>
           </div>
+
+          {/* Fotos reales de clientes (aprobadas en /admin/resenas, con
+              autorización). Se piden recién al acercarse a esta sección y
+              no pintan nada si todavía no hay ninguna aprobada. */}
+          <CustomerReviews onlyPhotos className="mx-auto mt-8 max-w-6xl" />
         </section>
 
         {/* 6. CUADROS PERSONALIZADOS — bloque explicativo con su propio CTA

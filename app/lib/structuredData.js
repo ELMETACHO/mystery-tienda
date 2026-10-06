@@ -3,8 +3,10 @@ import { SITE_URL } from "./siteUrl";
 // Helpers de datos estructurados (schema.org JSON-LD) compartidos entre
 // /categoria/[slug], /producto/[id] y las landings de /cuadros/* (oct
 // 2026). Regla: solo marcar lo que el usuario ve en la página — nada de
-// aggregateRating/review mientras no haya reseñas reales POR PRODUCTO
-// (las reseñas de app/lib/reviews.js son de la tienda, no de un diseño).
+// aggregateRating/review salvo reseñas reales APROBADAS de ESE producto
+// (/producto/[id] las agrega vía buildProductReviewJsonLd en
+// app/lib/reviewModeration.js; las de /crear son de la tienda, no de un
+// diseño, y no van en ningún JSON-LD).
 
 // items: [{ name, path }] en orden, desde "Inicio". path relativo ("/",
 // "/categoria/musica") — se vuelve absoluto con SITE_URL, que es lo que

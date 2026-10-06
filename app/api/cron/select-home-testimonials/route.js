@@ -1,4 +1,5 @@
-import { getReviews } from "../../../lib/reviews";
+import { getReviews, getReviewModeration } from "../../../lib/reviews";
+import { effectiveReviewStatus } from "../../../lib/reviewModeration";
 import { getCompletedOrderByReference } from "../../../lib/completedOrders";
 import { selectTestimonials } from "../../../lib/aiTestimonialSelection";
 import { saveHomeTestimonials, formatCustomerDisplayName } from "../../../lib/homeTestimonials";
@@ -24,13 +25,18 @@ export async function GET(request) {
     return Response.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const allReviews = await getReviews();
+  const [allReviews, moderation] = await Promise.all([getReviews(), getReviewModeration()]);
 
   // Solo reseñas de 4-5 estrellas con comentario real (sin texto no hay
-  // nada que mostrar como testimonio).
-  const qualifying = allReviews.filter(
-    (r) => r.rating >= 4 && typeof r.comment === "string" && r.comment.trim().length > 0
-  );
+  // nada que mostrar como testimonio). Reseñas nuevas (con moderación,
+  // ver app/lib/reviewModeration.js): solo si están APROBADAS y con
+  // autorización — una pendiente o rechazada nunca llega al Home. Las
+  // antiguas ("legacy", sin estado) siguen entrando como hasta ahora.
+  const qualifying = allReviews.filter((r) => {
+    const status = effectiveReviewStatus(r, moderation);
+    const allowed = status === "legacy" || (status === "approved" && r.consent === true);
+    return allowed && r.rating >= 4 && typeof r.comment === "string" && r.comment.trim().length > 0;
+  });
 
   if (qualifying.length < MIN_REVIEWS) {
     return Response.json({
