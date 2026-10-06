@@ -1,5 +1,10 @@
 import { findLatestManualShipmentByContact } from "../../lib/manualShipments";
 import { checkRateLimit, rateLimitResponse } from "../../lib/rateLimit";
+import { EMAIL_SITE_URL } from "../../lib/siteUrl";
+
+// Página de seguimiento con línea de tiempo y link de rastreo (número de
+// pedido + celular) — se sugiere en todas las respuestas.
+const PEDIDO_URL = `${EMAIL_SITE_URL}/pedido`;
 
 // Búsqueda de estado de pedido desde el chatbot (ver ChatWidget.jsx) — a
 // propósito NO pasa por la IA: la respuesta se arma acá con datos reales
@@ -20,6 +25,15 @@ export async function POST(request) {
   if (!raw) return Response.json({ error: "Falta el dato de contacto" }, { status: 400 });
 
   const isEmail = raw.includes("@");
+  // Antes bastaba con escribir unos pocos dígitos (búsqueda por
+  // "contiene"): "3" devolvía la guía del pedido más reciente de cualquier
+  // cliente. Ahora se exige el celular completo (10 dígitos).
+  if (!isEmail && raw.replace(/\D/g, "").length < 10) {
+    return Response.json({
+      found: false,
+      message: `Escribe tu celular completo (10 dígitos) o el correo con el que pagaste. Si tienes tu número de pedido, también puedes consultarlo aquí: ${PEDIDO_URL}`,
+    });
+  }
   const record = await findLatestManualShipmentByContact(
     isEmail ? { email: raw } : { phone: raw }
   );
@@ -28,7 +42,7 @@ export async function POST(request) {
     return Response.json({
       found: false,
       message:
-        "No encontramos un pedido reciente con ese dato. Revisa que esté bien escrito (el mismo correo o celular que usaste al pagar), o escríbenos por WhatsApp: https://wa.me/573202646716",
+        `No encontramos un pedido reciente con ese dato. Revisa que esté bien escrito (el mismo correo o celular que usaste al pagar). También puedes consultarlo con tu número de pedido (está en tu correo de confirmación) aquí: ${PEDIDO_URL} — o escríbenos a contacto@elmetacho.com.`,
     });
   }
 
@@ -42,7 +56,8 @@ export async function POST(request) {
       message:
         `¡Tu pedido de ${sizeLabel} ya está en camino! ${record.carrierName || "La transportadora"} ya lo tiene, ` +
         `número de guía ${record.trackingNumber}. Normalmente tarda entre 1 y 2 días más en llegar.` +
-        (link ? ` Puedes rastrearlo aquí: ${link}` : ""),
+        (link ? ` Puedes rastrearlo aquí: ${link}` : "") +
+        ` Detalle completo con tu número de pedido: ${PEDIDO_URL}`,
     });
   }
 
@@ -59,6 +74,6 @@ export async function POST(request) {
   return Response.json({
     found: true,
     status: "pending",
-    message: `Tu pedido de ${sizeLabel} está en producción — en cuanto salga hacia la transportadora te llega el número de guía por correo. Normalmente lo hacemos en 1 a 2 días y llega en máximo 5 días (la transportadora no entrega los domingos).`,
+    message: `Tu pedido de ${sizeLabel} está en producción — en cuanto salga hacia la transportadora te llega el número de guía por correo. Normalmente lo hacemos en 1 a 2 días y llega en máximo 5 días (la transportadora no entrega los domingos). Puedes seguirlo con tu número de pedido aquí: ${PEDIDO_URL}`,
   });
 }

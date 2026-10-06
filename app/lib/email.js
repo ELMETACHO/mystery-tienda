@@ -200,6 +200,29 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
+// Bloque "Número de pedido + Ver estado de mi pedido" (/pedido) para los
+// correos al cliente. El cliente necesita la referencia + su celular para
+// consultar; nunca se pone el celular en el link.
+function orderStatusLinkRow(reference) {
+  if (!reference) return "";
+  const url = `${SITE_URL}/pedido?ref=${encodeURIComponent(reference)}`;
+  return `
+        <tr>
+          <td style="padding:12px 32px 4px 32px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${BRAND.border};border-radius:10px;">
+              <tr>
+                <td style="padding:14px 18px;" align="center">
+                  <p class="email-text-faint" style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Número de pedido</p>
+                  <p class="email-text-ink" style="margin:0 0 12px 0;font-family:'Courier New',Courier,monospace;font-size:15px;font-weight:bold;color:${BRAND.ink};word-break:break-all;">${escapeHtml(reference)}</p>
+                  <a class="email-text-brand" href="${url}" style="display:inline-block;font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${BRAND.text};text-decoration:underline;">Ver el estado de mi pedido</a>
+                  <p class="email-text-faint" style="margin:6px 0 0 0;font-family:${FONT_STACK};font-size:12px;color:${BRAND.faint};">Te pediremos los últimos 4 dígitos de tu celular.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>`;
+}
+
 function housingDetailsRows(customer) {
   if (customer.housingType === "apartamento") {
     return `
@@ -221,6 +244,7 @@ function housingDetailsRows(customer) {
 function customerEmailHtml({
   order,
   customer,
+  reference,
   isReturningCustomer,
   paymentMethod,
   anticipoPagado,
@@ -305,6 +329,8 @@ function customerEmailHtml({
             </table>
           </td>
         </tr>
+
+        ${orderStatusLinkRow(reference)}
 
         ${loyaltyBlock}
 
@@ -728,6 +754,7 @@ export async function sendOrderEmails({
       customerEmailHtml({
         order,
         customer,
+        reference: transaction?.reference,
         isReturningCustomer,
         paymentMethod,
         anticipoPagado,
@@ -1063,6 +1090,7 @@ export async function sendChatLeadEmail({ nombre, ciudad, whatsapp, pregunta, su
 
 function shippingNotificationEmailHtml({
   customer,
+  reference,
   trackingNumber,
   carrierName,
   trackingUrl,
@@ -1139,6 +1167,8 @@ function shippingNotificationEmailHtml({
           </td>
         </tr>
 
+        ${orderStatusLinkRow(reference)}
+
         <tr>
           <td style="padding:8px 32px 32px 32px;">
             <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">¡Gracias por comprar en Mystery! 💜</p>
@@ -1176,6 +1206,7 @@ function shippingNotificationEmailHtml({
 // app/lib/manualShipments.js y app/api/fabricante-cancel-shipment/route.js).
 export async function sendShippingNotificationEmail({
   customer,
+  reference,
   trackingNumber,
   carrierName,
   trackingUrl,
@@ -1192,6 +1223,7 @@ export async function sendShippingNotificationEmail({
     html: wrapEmailHtml(
       shippingNotificationEmailHtml({
         customer,
+        reference,
         trackingNumber,
         carrierName,
         trackingUrl,

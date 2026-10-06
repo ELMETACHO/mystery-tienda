@@ -438,13 +438,20 @@ export default function ChatWidget() {
                   {isCheckingOrder ? "…" : "➤"}
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowOrderStatusForm(false)}
-                className="self-start text-xs font-medium text-[#5b6b8c] hover:text-[#1b2a4a]"
-              >
-                Cancelar
-              </button>
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowOrderStatusForm(false)}
+                  className="text-xs font-medium text-[#5b6b8c] hover:text-[#1b2a4a]"
+                >
+                  Cancelar
+                </button>
+                {/* Con el número de pedido del correo se ve la línea de
+                    tiempo completa y el link de rastreo (/pedido). */}
+                <a href="/pedido" className="text-xs font-medium text-accent underline-offset-2 hover:underline">
+                  ¿Tienes tu número de pedido? Ver detalle →
+                </a>
+              </div>
             </form>
           )}
 
