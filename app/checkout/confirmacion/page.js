@@ -315,6 +315,14 @@ export default function ConfirmacionPage() {
                     </span>
                   </div>
                 )}
+                {order.payment?.reference && (
+                  <Link
+                    href={`/pedido?ref=${encodeURIComponent(order.payment.reference)}`}
+                    className="self-end text-xs font-medium text-accent underline-offset-2 hover:underline"
+                  >
+                    Guarda tu referencia: con ella y tu celular ves el estado en /pedido →
+                  </Link>
+                )}
                 {order.customer && (
                   <div className="flex items-start justify-between gap-3">
                     <span className="shrink-0 text-[#33456b]">Envío a</span>

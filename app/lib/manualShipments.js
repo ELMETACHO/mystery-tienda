@@ -379,7 +379,10 @@ export async function findLatestManualShipmentByContact({ phone, email }) {
         if (!record?.customer) return false;
         const recPhone = String(record.customer.phone || "").replace(/\D/g, "");
         const recEmail = String(record.customer.email || "").trim().toLowerCase();
-        const phoneMatches = normalizedPhone && recPhone && recPhone.includes(normalizedPhone);
+        // Últimos 10 dígitos exactos (celular CO sin +57), no "contiene":
+        // con "contiene", unos pocos dígitos coincidían con cualquier pedido.
+        const phoneMatches =
+          normalizedPhone.length >= 10 && recPhone.length >= 10 && recPhone.slice(-10) === normalizedPhone.slice(-10);
         const emailMatches = normalizedEmail && recEmail && recEmail === normalizedEmail;
         return Boolean(phoneMatches || emailMatches);
       });

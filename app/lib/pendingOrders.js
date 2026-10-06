@@ -58,7 +58,7 @@ export async function savePendingOrder({ reference, order, customer, paymentMeth
   }
 
   try {
-    await client.set(
+    const result = await client.set(
       pendingOrderKey(reference),
       JSON.stringify({
         reference,
@@ -72,8 +72,18 @@ export async function savePendingOrder({ reference, order, customer, paymentMeth
         cartRecoveryEmailSentAt: null,
       }),
       "EX",
-      PENDING_ORDER_TTL_SECONDS
+      PENDING_ORDER_TTL_SECONDS,
+      // NX: nunca sobreescribe un pending-order que ya existe. El checkout
+      // genera una reference nueva (mystery-<timestamp>) en cada intento de
+      // pago y la guarda una sola vez; sin NX, cualquiera que adivinara una
+      // reference ajena podía reemplazar el pedido/dirección que luego
+      // confirma el webhook.
+      "NX"
     );
+    if (result !== "OK") {
+      console.error(`[pendingOrders] Ya existía un pending-order para reference=${reference}; no se sobreescribe.`);
+      return false;
+    }
     return true;
   } catch (err) {
     console.error("[pendingOrders] No se pudo guardar el pedido pendiente:", err);
