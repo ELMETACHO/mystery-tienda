@@ -14,6 +14,7 @@ import { FEED_DEFAULT_PRICE_COP } from "../../lib/googleFeed";
 import ProductScroller from "../../components/ProductScroller";
 import RelatedLinks from "../../components/RelatedLinks";
 import DeliveryEstimate from "../../components/DeliveryEstimate";
+import WallVisualizerButton from "../../components/WallVisualizerButton";
 
 function categoryLabel(categoryId) {
   return ESTUDIO_CATEGORIES.find((c) => c.id === categoryId)?.label || "Diseño";
@@ -35,6 +36,10 @@ function productDisplayDescription(product, label) {
 }
 
 const CHEAPEST_PRICE_COP = getPriceCOP(SIZES[0].id, "tradicional");
+
+// Dónde está el diseño dentro del mockup 1080x1350 que genera /estudio:
+// centrado, 58% del ancho, proporción 4:5 → 626x783 px desde (227, 284).
+const MOCKUP_DESIGN_CROP = { left: 0.21, top: 0.21, width: 0.58, height: 0.58 };
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
@@ -189,7 +194,8 @@ export default async function ProductPage({ params }) {
       {/* Mobile-first: una sola columna de max-w-md (igual que siempre en
           celular). Desde md el contenedor se abre a max-w-6xl (mismo ancho
           que el Home) y la parte de arriba pasa a 2 columnas: galería a la
-          izquierda (sticky) y título/precio/CTA/detalles a la derecha. Los
+          izquierda (sticky, con el botón "Así se ve en tu pared") y
+          título/precio/CTA/detalles a la derecha. Los
           wrappers usan flex-col gap-6, así que en celular el espaciado y el
           orden quedan idénticos. */}
       <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-16 md:max-w-6xl">
@@ -203,8 +209,9 @@ export default async function ProductPage({ params }) {
         <Breadcrumbs items={breadcrumbs} />
 
         <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:items-start md:gap-8 lg:gap-12">
+        <div className="flex flex-col gap-6 md:sticky md:top-8">
         <div
-          className="relative w-full overflow-hidden rounded-2xl border border-black/10 shadow-[0_20px_50px_-16px_rgba(30,20,60,0.35)] md:sticky md:top-8"
+          className="relative w-full overflow-hidden rounded-2xl border border-black/10 shadow-[0_20px_50px_-16px_rgba(30,20,60,0.35)]"
           style={{ aspectRatio: 1080 / 1350 }}
         >
           <Image
@@ -216,6 +223,20 @@ export default async function ProductPage({ params }) {
             className="object-cover"
             priority
           />
+        </div>
+
+        {/* "Así se ve en tu pared": reutiliza la misma miniatura ?w=900 que
+            ya cargó la página (sin descarga nueva) y recorta el diseño del
+            centro del mockup — /estudio siempre lo pone centrado al 58% del
+            ancho en 4:5 (DESIGN_WIDTH_RATIO en EstudioApp.jsx). */}
+        <WallVisualizerButton
+          imageSrc={`/api/catalog-thumbnail/${product.mockupFileId}?w=900`}
+          crop={MOCKUP_DESIGN_CROP}
+          imageRatio={40 / 50}
+          sizes={CATALOG_SIZES.map((s) => ({ id: s.id, label: s.label }))}
+          initialSizeId="40x50"
+          className="-mt-3 self-center"
+        />
         </div>
 
         <div className="flex flex-col gap-6">

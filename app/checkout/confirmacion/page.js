@@ -273,6 +273,7 @@ export default function ConfirmacionPage() {
 
               <div className="flex gap-4">
                 {order.croppedImage && (
+                  // eslint-disable-next-line @next/next/no-img-element -- dataURL local del pedido (IndexedDB); next/image no aplica
                   <img
                     src={order.croppedImage}
                     alt="Preview del cuadro"

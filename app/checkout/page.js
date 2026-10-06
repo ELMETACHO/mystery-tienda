@@ -227,6 +227,7 @@ function CheckoutForm() {
   // renders, lo que React nunca permite.
   useEffect(() => {
     const found = lookupPostalCode(customer.department, customer.city);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- autocompleta el código postal al cambiar ciudad/depto; el updater ya evita renders si no cambia
     setCustomer((prev) =>
       prev.postalCode === (found || "") ? prev : { ...prev, postalCode: found || "" }
     );
@@ -1188,6 +1189,7 @@ function CheckoutForm() {
                 llegar al formulario. */}
             <details className="group sm:hidden">
               <summary className="flex cursor-pointer list-none items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element -- dataURL local del pedido (IndexedDB); next/image no aplica */}
                 <img
                   src={order.croppedImage}
                   alt="Preview del cuadro"
@@ -1208,6 +1210,7 @@ function CheckoutForm() {
                   ▾
                 </span>
               </summary>
+              {/* eslint-disable-next-line @next/next/no-img-element -- dataURL local del pedido (IndexedDB); next/image no aplica */}
               <img
                 src={order.croppedImage}
                 alt="Preview del cuadro"
@@ -1226,6 +1229,7 @@ function CheckoutForm() {
                 </span>
               </div>
               <div className="overflow-hidden rounded-xl border border-black/10 shadow-lg shadow-black/40">
+                {/* eslint-disable-next-line @next/next/no-img-element -- dataURL local del pedido (IndexedDB); next/image no aplica */}
                 <img
                   src={order.croppedImage}
                   alt="Preview del cuadro"
