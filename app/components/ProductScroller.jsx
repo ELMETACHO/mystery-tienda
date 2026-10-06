@@ -77,7 +77,7 @@ export default function ProductScroller({ items, emptyMessage = 'Todavía no hay
           type="button"
           onClick={() => scrollByCard(-1)}
           aria-label="Ver productos anteriores"
-          className={`absolute left-0 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/70 p-2 text-white shadow-lg backdrop-blur transition hover:bg-black/90 sm:flex${gridClass ? ' md:hidden' : ''}`}
+          className={`absolute left-0 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/70 p-2 text-white shadow-lg backdrop-blur transition hover:bg-black/90 sm:flex ${gridClass ? 'md:hidden' : ''}`.trim()}
         >
           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
             <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -87,7 +87,7 @@ export default function ProductScroller({ items, emptyMessage = 'Todavía no hay
 
       <div
         ref={trackRef}
-        className={`flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-2 sm:gap-4${gridClass ? ` ${gridClass}` : ''}`}
+        className={`flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-2 sm:gap-4 ${gridClass}`.trim()}
       >
         {items.map((item, index) => (
           <ProductCard
@@ -97,7 +97,7 @@ export default function ProductScroller({ items, emptyMessage = 'Todavía no hay
             thumbWidth={thumbWidth}
             priority={index < eagerCount}
             data-product-card
-            className={`w-40 shrink-0 snap-start sm:w-56${gridClass ? ' md:w-auto' : ''}`}
+            className={`w-40 shrink-0 snap-start sm:w-56 ${gridClass ? 'md:w-auto' : ''}`.trim()}
           />
         ))}
       </div>
@@ -107,7 +107,7 @@ export default function ProductScroller({ items, emptyMessage = 'Todavía no hay
           type="button"
           onClick={() => scrollByCard(1)}
           aria-label="Ver más productos"
-          className={`absolute right-0 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/70 p-2 text-white shadow-lg backdrop-blur transition hover:bg-black/90 sm:flex${gridClass ? ' md:hidden' : ''}`}
+          className={`absolute right-0 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/70 p-2 text-white shadow-lg backdrop-blur transition hover:bg-black/90 sm:flex ${gridClass ? 'md:hidden' : ''}`.trim()}
         >
           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
             <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
