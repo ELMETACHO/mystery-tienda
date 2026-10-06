@@ -159,6 +159,26 @@ export async function redeemGiftCode(code) {
 // (calculados desde el contador atómico, nunca cacheados) — mismo patrón
 // KEYS + lecturas individuales que getAllReferrals, razonable al volumen
 // esperado de códigos de regalo. Nunca lanza.
+// Devuelve un uso consumido por redeemGiftCode cuando la confirmación del
+// pedido de regalo falla después de canjear (el cliente puede reintentar
+// sin que el código pierda un uso por un pedido que nunca salió).
+// Nunca lanza.
+export async function releaseGiftCodeUse(code) {
+  const client = getRedisClient();
+  if (!client || !code) return false;
+
+  try {
+    const record = await getGiftCode(code);
+    if (!record) return false;
+    const newCount = await client.decr(giftUsesKey(record.code));
+    if (newCount < 0) await client.set(giftUsesKey(record.code), 0);
+    return true;
+  } catch (err) {
+    console.error("[giftCodes] No se pudo devolver el uso del código de regalo:", err);
+    return false;
+  }
+}
+
 export async function getAllGiftCodes() {
   const client = getRedisClient();
   if (!client) return [];
