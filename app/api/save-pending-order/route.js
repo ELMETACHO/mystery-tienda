@@ -1,4 +1,9 @@
 import { savePendingOrder } from "../../lib/pendingOrders";
+import { checkRateLimit, rateLimitResponse } from "../../lib/rateLimit";
+
+// Formato exacto que genera app/checkout/page.js (handlePay / handlePayCod).
+const REFERENCE_PATTERN = /^mystery-(cod-)?\d{10,16}$/;
+const PAYMENT_METHODS = new Set(["wompi", "cod"]);
 
 // Llamado desde checkout/page.js justo ANTES de abrir el widget de
 // Wompi (no después del pago) — guarda order/customer en Redis por
@@ -8,10 +13,27 @@ import { savePendingOrder } from "../../lib/pendingOrders";
 // especial: solo persiste lo mismo que el cliente ya tenía en su
 // propio IndexedDB.
 export async function POST(request) {
+  // Un cliente real guarda 1 pending-order por intento de pago.
+  const { limited, retryAfter } = await checkRateLimit(request, "save-pending-order", {
+    limit: 20,
+    windowSeconds: 60,
+  });
+  if (limited) return rateLimitResponse(retryAfter);
+
   const { reference, order, customer, paymentMethod } = await request.json().catch(() => ({}));
 
   if (!reference || !order || !customer) {
     return Response.json({ error: "Datos incompletos" }, { status: 400 });
+  }
+
+  if (
+    typeof reference !== "string" ||
+    !REFERENCE_PATTERN.test(reference) ||
+    typeof order !== "object" ||
+    typeof customer !== "object" ||
+    (paymentMethod !== undefined && !PAYMENT_METHODS.has(paymentMethod))
+  ) {
+    return Response.json({ error: "Datos inválidos" }, { status: 400 });
   }
 
   const saved = await savePendingOrder({ reference, order, customer, paymentMethod });
