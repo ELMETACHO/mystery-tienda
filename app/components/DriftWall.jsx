@@ -64,6 +64,9 @@ const DriftWall = ({
   const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
+    // Sincroniza con matchMedia (sistema externo); el valor inicial se lee
+    // aquí y no en useState para no desajustar la hidratación SSR.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReduced(prefersReducedMotion());
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     const onChange = e => setReduced(e.matches);
@@ -229,6 +232,7 @@ const DriftWall = ({
   const renderTile = (item, id, colIndex) => {
     const inner = (
       <span className="drift-wall__inner">
+        {/* eslint-disable-next-line @next/next/no-img-element -- mosaico decorativo con lazy/async nativo; next/image no aporta aquí */}
         <img src={item.image} alt={item.title ?? ''} loading="lazy" decoding="async" draggable={false} />
         <span className="drift-wall__overlay" aria-hidden="true" />
       </span>
