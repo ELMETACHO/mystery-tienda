@@ -159,6 +159,7 @@ async function generateLocked({ fabricante, reference, manualRecord }) {
   try {
     const scheduledEmailId = await sendShippingNotificationEmail({
       customer: manualRecord.customer,
+      reference,
       trackingNumber: shipment.trackingNumber,
       carrierName: shipment.carrierName,
       trackingUrl: shipment.trackingUrl,

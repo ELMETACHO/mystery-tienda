@@ -455,6 +455,7 @@ export async function POST(request) {
     try {
       const scheduledEmailId = await sendShippingNotificationEmail({
         customer: record.customer,
+        reference: ref,
         trackingNumber: shipment.trackingNumber,
         carrierName: shipment.carrierName,
         trackingUrl: shipment.trackingUrl,
