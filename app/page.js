@@ -306,9 +306,11 @@ export default async function Home() {
       </header>
 
       <main className="relative z-10 flex-1 pt-14">
-        {/* 2. HERO — centrado en el texto animado (FoldText), sin imagen
-            lateral: la imagen de estilo de vida (head.png) se quitó, el
-            hero ahora vive del efecto de "pliegue" del título. */}
+        {/* 2. HERO — centrado en el texto animado (FoldText). Lleva una
+            foto real de un cuadro colgado (oct 2026) para que se entienda
+            el producto sin hacer scroll: WebP 600×795 de ~28KB (antes
+            head.png de 1.8MB, que se había quitado por peso), con priority
+            (preload) y width/height + aspect-ratio fijos → sin CLS. */}
         <section className="relative overflow-hidden px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16">
           <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center gap-6 text-center">
             <p className="text-center text-xs font-medium text-[#7a3fa0] sm:text-sm">
@@ -356,6 +358,18 @@ export default async function Home() {
                 🎄 Regalos de Navidad · {CHRISTMAS_DEADLINE.message} →
               </Link>
             )}
+
+            <Image
+              src="/images/hero/home-cuadro-pared.webp"
+              alt="Cuadro personalizado en vinilo sobre madera colgado en la pared"
+              width={600}
+              height={795}
+              priority
+              fetchPriority="high"
+              unoptimized
+              sizes="(min-width: 640px) 300px, 240px"
+              className="aspect-[600/795] w-[240px] rounded-2xl object-cover shadow-[0_18px_40px_-18px_rgba(30,20,60,0.45)] sm:w-[300px]"
+            />
           </div>
         </section>
 
@@ -367,7 +381,10 @@ export default async function Home() {
         <section className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <h2 className="font-display mb-4 text-lg font-semibold sm:text-xl">Elige tu estilo</h2>
-            <CategoryScroller categorias={CATEGORIAS} light />
+            {/* eagerCount 0: desde que el hero tiene foto (oct 2026) estas
+                portadas quedan debajo del pliegue en el celular; precargarlas
+                le quitaba ancho de banda a la foto del hero (el LCP). */}
+            <CategoryScroller categorias={CATEGORIAS} light eagerCount={0} />
           </div>
         </section>
 

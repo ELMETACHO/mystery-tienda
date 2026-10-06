@@ -233,7 +233,16 @@ const DriftWall = ({
     const inner = (
       <span className="drift-wall__inner">
         {/* eslint-disable-next-line @next/next/no-img-element -- mosaico decorativo con lazy/async nativo; next/image no aporta aquí */}
-        <img src={item.image} alt={item.title ?? ''} loading="lazy" decoding="async" draggable={false} />
+        <img
+          src={item.image}
+          alt={item.title ?? ''}
+          width={tileWidth}
+          height={tileHeight}
+          loading="lazy"
+          decoding="async"
+          fetchPriority="low"
+          draggable={false}
+        />
         <span className="drift-wall__overlay" aria-hidden="true" />
       </span>
     );

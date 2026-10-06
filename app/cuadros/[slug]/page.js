@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCatalogProducts } from "../../lib/catalog";
@@ -79,16 +80,40 @@ export default async function LandingPage({ params }) {
           className="fixed inset-0 z-0 bg-cover bg-center"
           style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
         />
-        <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-14">
+        {/* Mobile-first: columna de max-w-3xl como siempre (celular y
+            tablet). Desde lg se abre a max-w-6xl (mismo ancho que el Home):
+            las secciones de texto y "precios | cómo se hace" van en 2
+            columnas y los diseños del catálogo en grilla. Los wrappers usan
+            flex-col gap-6, así que en celular nada cambia. */}
+        <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-14 lg:max-w-6xl">
           <Breadcrumbs items={breadcrumbs} />
 
-          {/* HERO: solo texto (sin imagen grande) para que el LCP en celular
-              sea el propio h1. */}
-          <section className={`${CARD} flex flex-col items-center gap-4 text-center`}>
-            {showDeadline && (
+          {/* HERO: texto + (si la landing la define, ej. Navidad) una foto
+              real liviana con priority y tamaño fijo — sin CLS. La fecha
+              límite de Navidad va como cinta arriba de la tarjeta cuando hay
+              foto, o como la píldora de siempre cuando no. */}
+          <section className={`${CARD} flex flex-col items-center gap-4 overflow-hidden text-center`}>
+            {showDeadline && page.heroImage && (
+              <p className="-mx-5 -mt-5 w-[calc(100%+2.5rem)] bg-gradient-to-r from-[#b91c1c] via-[#c2410c] to-[#b91c1c] px-2 py-2 text-[11px] font-bold leading-snug text-white sm:-mx-7 sm:-mt-7 sm:w-[calc(100%+3.5rem)] sm:text-sm">
+                🎁 {CHRISTMAS_DEADLINE.message}
+              </p>
+            )}
+            {showDeadline && !page.heroImage && (
               <p className="rounded-full bg-[#f3e8ff] px-4 py-1.5 text-xs font-semibold text-accent sm:text-sm">
                 🎄 {CHRISTMAS_DEADLINE.message}
               </p>
+            )}
+            {page.heroImage && (
+              <Image
+                src={page.heroImage.src}
+                alt={page.heroImage.alt}
+                width={page.heroImage.width}
+                height={page.heroImage.height}
+                priority
+                unoptimized
+                sizes="(min-width: 640px) 300px, 220px"
+                className="aspect-square w-[220px] rounded-2xl object-cover shadow-[0_14px_30px_-14px_rgba(30,20,60,0.45)] sm:w-[300px]"
+              />
             )}
             <h1 className={`${headingFont(page.h1)} text-2xl font-bold tracking-tight sm:text-4xl`}>{page.h1}</h1>
             <p className="max-w-xl text-sm text-[#33456b] sm:text-base">{page.lead}</p>
@@ -100,6 +125,29 @@ export default async function LandingPage({ params }) {
             </p>
           </section>
 
+          {page.forWhom?.length > 0 && (
+            <section aria-labelledby="para-quien" className="flex flex-col gap-3">
+              <h2 id="para-quien" className="font-display text-lg sm:text-xl">¿Para quién es?</h2>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {page.forWhom
+                  .filter((item) => getLandingPage(item.slug))
+                  .map((item) => (
+                    <Link
+                      key={item.slug}
+                      href={`/cuadros/${item.slug}`}
+                      className="flex flex-col gap-1 rounded-2xl border border-black/5 bg-[#fffaf0] p-4 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)] transition-colors hover:border-accent"
+                    >
+                      <span aria-hidden="true" className="text-2xl">{item.emoji}</span>
+                      <span className="text-sm font-semibold text-[#1b2a4a]">{item.title}</span>
+                      <span className="text-xs text-[#5b6b8c]">{item.text}</span>
+                      <span className="mt-1 text-xs font-semibold text-accent">Ver ideas →</span>
+                    </Link>
+                  ))}
+              </div>
+            </section>
+          )}
+
+          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:[&>section:last-child:nth-child(odd)]:col-span-2">
           {page.sections.map((section) => (
             <section key={section.heading} className={CARD}>
               <h2 className={`${headingFont(section.heading)} mb-3 text-lg font-bold sm:text-xl`}>{section.heading}</h2>
@@ -117,14 +165,16 @@ export default async function LandingPage({ params }) {
               )}
             </section>
           ))}
+          </div>
 
           {products.length > 0 && (
             <section className="flex flex-col gap-3">
               <h2 className={`${headingFont(page.examplesHeading)} text-lg font-bold sm:text-xl`}>{page.examplesHeading}</h2>
-              <ProductScroller items={products} light thumbWidth={480} />
+              <ProductScroller items={products} light thumbWidth={480} desktopGrid={6} />
             </section>
           )}
 
+          <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2">
           {/* Precios reales desde app/lib/order.js (PRICES) — nunca
               escritos a mano en el contenido. */}
           <section className={CARD}>
@@ -174,6 +224,7 @@ export default async function LandingPage({ params }) {
               <li>Lo imprimimos en vinilo sobre madera en 1 a 2 días y te llega en máximo 5 días (sin domingos).</li>
             </ol>
           </section>
+          </div>
 
           <section>
             <h2 className="font-display mb-3 text-lg sm:text-xl">Preguntas frecuentes</h2>

@@ -8,7 +8,7 @@ import Link from 'next/link';
 // desktop solo controlan el scroll nativo del contenedor (scrollBy),
 // no reimplementan el carrusel — así el swipe táctil en móvil y el
 // clic en desktop comparten el mismo estado de scroll.
-export default function CategoryScroller({ categorias, light = false }) {
+export default function CategoryScroller({ categorias, light = false, eagerCount = 3 }) {
   const trackRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -76,7 +76,7 @@ export default function CategoryScroller({ categorias, light = false }) {
               unoptimized
               // Las primeras portadas se ven sin hacer scroll en el
               // celular y son el LCP del Home: carga inmediata.
-              priority={index < 3}
+              priority={index < eagerCount}
               sizes="(min-width: 640px) 20vw, 40vw"
               className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
             />
