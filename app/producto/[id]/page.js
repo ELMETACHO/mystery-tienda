@@ -186,7 +186,13 @@ export default async function ProductPage({ params }) {
         className="fixed inset-0 z-0 bg-cover bg-center"
         style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
       />
-      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-16">
+      {/* Mobile-first: una sola columna de max-w-md (igual que siempre en
+          celular). Desde md el contenedor se abre a max-w-6xl (mismo ancho
+          que el Home) y la parte de arriba pasa a 2 columnas: galería a la
+          izquierda (sticky) y título/precio/CTA/detalles a la derecha. Los
+          wrappers usan flex-col gap-6, así que en celular el espaciado y el
+          orden quedan idénticos. */}
+      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-16 md:max-w-6xl">
         <Link
           href="/"
           className="inline-flex w-fit items-center gap-1.5 rounded-full border border-black/10 bg-[#fffaf0] px-4 py-2 text-sm font-medium text-[#33456b] shadow-sm transition-colors hover:border-accent hover:text-[#1b2a4a]"
@@ -196,8 +202,9 @@ export default async function ProductPage({ params }) {
 
         <Breadcrumbs items={breadcrumbs} />
 
+        <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:items-start md:gap-8 lg:gap-12">
         <div
-          className="relative w-full overflow-hidden rounded-2xl border border-black/10 shadow-[0_20px_50px_-16px_rgba(30,20,60,0.35)]"
+          className="relative w-full overflow-hidden rounded-2xl border border-black/10 shadow-[0_20px_50px_-16px_rgba(30,20,60,0.35)] md:sticky md:top-8"
           style={{ aspectRatio: 1080 / 1350 }}
         >
           <Image
@@ -205,12 +212,13 @@ export default async function ProductPage({ params }) {
             alt={product.name ? `Cuadro de ${product.name}, en vinilo sobre madera` : `Cuadro personalizado categoría ${label}, en vinilo sobre madera`}
             fill
             unoptimized
-            sizes="(min-width: 640px) 448px, 100vw"
+            sizes="(min-width: 1152px) 528px, (min-width: 768px) 46vw, (min-width: 640px) 448px, 100vw"
             className="object-cover"
             priority
           />
         </div>
 
+        <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           {categoryObj ? (
             <Link
@@ -224,7 +232,7 @@ export default async function ProductPage({ params }) {
               {label}
             </span>
           )}
-          <h1 className="font-heading text-2xl font-bold tracking-tight">
+          <h1 className="font-heading text-2xl font-bold tracking-tight md:text-3xl">
             {productDisplayTitle(product, label)}
           </h1>
           <p className="text-sm text-[#33456b]">{productDisplayDescription(product, label)}</p>
@@ -274,11 +282,13 @@ export default async function ProductPage({ params }) {
             .
           </p>
         </section>
+        </div>
+        </div>
 
         {sameCategory.length > 0 && (
           <section className="flex flex-col gap-3">
-            <h2 className="font-heading text-base font-bold">Más cuadros de {label}</h2>
-            <ProductScroller items={sameCategory} light thumbWidth={480} />
+            <h2 className="font-heading text-base font-bold md:text-lg">Más cuadros de {label}</h2>
+            <ProductScroller items={sameCategory} light thumbWidth={480} desktopGrid={5} />
           </section>
         )}
 
