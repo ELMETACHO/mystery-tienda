@@ -13,9 +13,12 @@ const PAYMENT_METHODS = new Set(["wompi", "cod"]);
 // especial: solo persiste lo mismo que el cliente ya tenía en su
 // propio IndexedDB.
 export async function POST(request) {
-  // Un cliente real guarda 1 pending-order por intento de pago.
+  // Un cliente real guarda 1 pending-order por intento de pago. Límite
+  // holgado (60/min) porque en Colombia muchos celulares salen por la misma
+  // IP pública (CGNAT del operador). El checkout no espera esta respuesta
+  // (fire-and-forget), así que nunca suma latencia al cliente.
   const { limited, retryAfter } = await checkRateLimit(request, "save-pending-order", {
-    limit: 20,
+    limit: 60,
     windowSeconds: 60,
   });
   if (limited) return rateLimitResponse(retryAfter);
