@@ -6,7 +6,6 @@ import Link from "next/link";
 import Image from "next/image";
 import Cropper from "react-easy-crop";
 import { AnimatePresence, motion } from "motion/react";
-import TextType from "./TextType";
 import RecentesDriftWall from "./RecentesDriftWall";
 import FreeShippingBanner from "./FreeShippingBanner";
 import {
@@ -638,16 +637,13 @@ export default function CrearFlow({ compact = false }) {
       >
         ← Volver atrás
       </Link>
-      <TextType
-        as="h1"
-        text="Cuadros personalizados"
-        loop={false}
-        typingSpeed={45}
-        cursorCharacter="|"
-        cursorClassName="text-accent"
-        cursorBlinkDuration={0.6}
-        className="font-brand text-2xl font-bold tracking-tight text-accent sm:text-3xl md:text-4xl"
-      />
+      {/* Título estático y legible (oct 2026): antes era Classic
+          Couture (script) en morado sobre el cielo celeste, con efecto de
+          máquina de escribir y cursor parpadeante — contraste 2,2:1 y
+          difícil de leer en el celular. Título corto → .font-display. */}
+      <h1 className="font-display text-2xl tracking-tight text-[#1b2a4a] sm:text-3xl md:text-4xl">
+        Cuadros personalizados
+      </h1>
       <p className="text-sm font-medium text-[#33456b] sm:text-base">
         Tu cuadro en 30 segundos
       </p>
@@ -687,7 +683,7 @@ export default function CrearFlow({ compact = false }) {
           </div>
         ) : (
           <div className="mb-2 text-center sm:mb-3">
-            <h1 className="font-brand text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
+            <h1 className="font-display text-2xl tracking-tight sm:text-3xl md:text-4xl">
               Crea tu cuadro
             </h1>
             <p className="mt-2 text-sm text-[#33456b] sm:text-base">

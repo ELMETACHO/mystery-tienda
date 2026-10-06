@@ -2,7 +2,10 @@
 
 @font-face {
   font-family: "Classic Couture";
-  src: url("/Fonts/Classic Couture Free.ttf") format("truetype");
+  /* woff2 primero (37 KB vs 125 KB del TTF); el TTF queda solo como
+     respaldo para navegadores sin woff2. */
+  src: url("/Fonts/ClassicCouture.woff2") format("woff2"),
+    url("/Fonts/Classic Couture Free.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -10,7 +13,9 @@
 
 @font-face {
   font-family: "RetroCool";
-  src: url("/Fonts/RetroCool-Regular.otf") format("opentype");
+  /* woff2 primero (29 KB vs 46 KB del OTF). */
+  src: url("/Fonts/RetroCool-Regular.woff2") format("woff2"),
+    url("/Fonts/RetroCool-Regular.otf") format("opentype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -56,6 +61,38 @@ body {
 
 .font-brand {
   font-family: "Classic Couture", Arial, Helvetica, sans-serif;
+}
+
+/* Tipografía de la tienda (oct 2026, aprobado por el dueño):
+   - .font-display = RetroCool SOLO para títulos cortos (≤4 palabras:
+     "Más vendidos", "Cómo funciona"...). RetroCool tiene un único peso
+     (400): cualquier font-bold/semibold encima hacía que el navegador
+     inventara una negrita falsa (empastada). Por eso el peso queda fijo
+     en 400 y font-synthesis: none — esta regla va fuera de @layer, así
+     que gana sobre las utilidades font-* de Tailwind sin !important.
+   - Títulos largos, nombres de producto, cuerpo, precios y botones van
+     en Geist (ya cargada con next/font en app/layout.js), vía .tienda.
+     Para decidir en títulos dinámicos usar headingFont() de
+     app/lib/typography.js.
+   - .font-brand (Classic Couture) solo para el logotipo.
+   .font-heading se deja tal cual porque la siguen usando /ads, el admin
+   y referidos (la tipografía de /ads requiere aprobación del dueño). */
+.font-display {
+  font-family: "RetroCool", var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-weight: 400;
+  font-synthesis: none;
+}
+
+/* Contenedor raíz de las páginas de tienda (Home, /crear, producto,
+   categorías, landings /cuadros, políticas). Además de Geist, oscurece el
+   morado de acento a #9333ea: blanco sobre #a855f7 daba 3,96:1 y el precio
+   morado sobre crema 3,80:1 (WCAG AA pide 4,5:1 para texto normal); con
+   #9333ea quedan en 5,4:1 y 5,5:1. Se redefine la variable solo dentro de
+   este contenedor, así /checkout y /ads quedan exactamente igual. */
+.tienda {
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  --accent: #9333ea;
+  --accent-soft: #a855f7;
 }
 
 /* Slider de zoom del editor: pista más gruesa y thumb ampliado para que sea

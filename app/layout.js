@@ -16,9 +16,13 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+// Geist Mono solo se usa en referidos, la confirmación del pedido y el
+// admin (clase font-mono): sin preload, para no descargarla (~23 KB) en
+// cada página de la tienda. Se sigue bajando sola donde se usa.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false,
 });
 
 const TITLE = "Mystery — Cuadros personalizados";
