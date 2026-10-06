@@ -8,6 +8,7 @@ import { COD_DEPOSIT_COP, SIZES, formatCOP, loadOrder, saveOrder } from "../lib/
 import { lookupPostalCode } from "../lib/postalCodes";
 import { trackBeginCheckout, trackAddPaymentInfo } from "../lib/gtm";
 import FreeShippingBanner from "../components/FreeShippingBanner";
+import DeliveryEstimate from "../components/DeliveryEstimate";
 
 const WOMPI_PUBLIC_KEY = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
 
@@ -1253,6 +1254,9 @@ function CheckoutForm() {
             {discountCodeSection}
 
             <FreeShippingBanner />
+
+            {/* Solo texto informativo — no cambia el pedido ni el pago. */}
+            <DeliveryEstimate variant="compact" />
 
             {payError && (
               <p className="text-sm text-red-600">{payError}</p>

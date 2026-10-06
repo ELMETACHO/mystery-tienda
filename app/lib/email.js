@@ -186,25 +186,29 @@ async function fetchLabelPdfBase64(labelUrl) {
   }
 }
 
-// Los mensajes de error de Skydropx (shipmentError) se muestran tal cual
-// vinieron del SDK/API en el correo al fabricante — se escapan por las
-// dudas antes de insertarlos en el HTML.
+// Todo texto que viene del cliente (nombre, dirección, lead del chat,
+// sizeLabel/aiPhotoDiagnosis que llegan dentro del order del navegador) o
+// de APIs externas (errores de Skydropx) se escapa antes de insertarlo en
+// el HTML de los correos — evita que alguien inyecte enlaces/botones
+// falsos en los correos que llegan al admin y al fabricante.
 function escapeHtml(str) {
   return String(str || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function housingDetailsRows(customer) {
   if (customer.housingType === "apartamento") {
     return `
-      <p class="email-text-muted" style="margin:0;font-size:14px;line-height:21px;color:${BRAND.muted};">Edificio ${customer.buildingName || "-"}${customer.tower ? `, Torre ${customer.tower}` : ""}, Apto ${customer.apartmentNumber || "-"}</p>
+      <p class="email-text-muted" style="margin:0;font-size:14px;line-height:21px;color:${BRAND.muted};">Edificio ${escapeHtml(customer.buildingName || "-")}${customer.tower ? `, Torre ${escapeHtml(customer.tower)}` : ""}, Apto ${escapeHtml(customer.apartmentNumber || "-")}</p>
     `;
   }
   if (customer.additionalInstructions) {
     return `
-      <p class="email-text-muted" style="margin:0;font-size:14px;line-height:21px;color:${BRAND.muted};">${customer.additionalInstructions}</p>
+      <p class="email-text-muted" style="margin:0;font-size:14px;line-height:21px;color:${BRAND.muted};">${escapeHtml(customer.additionalInstructions)}</p>
     `;
   }
   return "";
@@ -250,7 +254,7 @@ function customerEmailHtml({
 
         <tr>
           <td style="padding:32px 32px 8px 32px;">
-            <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Gracias por tu pedido, ${customer.fullName}!</p>
+            <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Gracias por tu pedido, ${escapeHtml(customer.fullName)}!</p>
             <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">${
               isCod
                 ? "Confirmamos que recibimos tu anticipo — el saldo restante lo pagas en efectivo cuando recibas tu cuadro. Tu cuadro personalizado ya está en preparación."
@@ -405,7 +409,7 @@ function adminEmailHtml({
   // (needsAiUpscale, sin IA, nunca falla) sí marcó el pedido, se cae al
   // aviso genérico de siempre.
   const photoQualityMessage = order.aiPhotoDiagnosis
-    ? `⚠️ IA detectó: ${order.aiPhotoDiagnosis}`
+    ? `⚠️ IA detectó: ${escapeHtml(order.aiPhotoDiagnosis)}`
     : order.needsAiUpscale
       ? "⚠️ Esta imagen requiere escalarla con IA antes de imprimir"
       : null;
@@ -511,19 +515,19 @@ function adminEmailHtml({
         <tr>
           <td style="padding:16px 20px 4px 20px;">
             <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Nombre</p>
-            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.fullName}</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${escapeHtml(customer.fullName)}</p>
 
             <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Teléfono</p>
-            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.phonePrefix} ${customer.phone}</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${escapeHtml(customer.phonePrefix)} ${escapeHtml(customer.phone)}</p>
 
             <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Ciudad</p>
-            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.city}</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${escapeHtml(customer.city)}</p>
 
             <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Barrio</p>
-            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.neighborhood}</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${escapeHtml(customer.neighborhood)}</p>
 
             <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Dirección</p>
-            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${customer.street} · ${customer.housingType === "apartamento" ? "Apartamento" : "Casa"}</p>
+            <p class="email-text-ink" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">${escapeHtml(customer.street)} · ${customer.housingType === "apartamento" ? "Apartamento" : "Casa"}</p>
 
             <p class="email-text-faint" style="margin:0 0 2px 0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};text-transform:uppercase;letter-spacing:0.4px;">Indicaciones adicionales</p>
             ${housingDetailsRows(customer) || `<p class="email-text-muted" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.muted};">-</p>`}
@@ -555,7 +559,7 @@ function adminEmailHtml({
               <tr>
                 <td style="padding:12px 14px;">
                   <p class="email-text-bleed-note" style="margin:0;font-family:${FONT_STACK};font-size:13px;line-height:19px;color:#4c1d95;">
-                    📎 La imagen adjunta incluye <strong>1 cm de sangrado a izquierda, derecha y abajo</strong> sobre el tamaño solicitado (<strong>${order.sizeLabel}</strong>). <strong>Arriba NO lleva sangrado:</strong> el borde superior de la imagen es el borde superior del cuadro — alinear las esquinas de arriba y recortar el excedente de los otros tres lados.
+                    📎 La imagen adjunta incluye <strong>1 cm de sangrado a izquierda, derecha y abajo</strong> sobre el tamaño solicitado (<strong>${escapeHtml(order.sizeLabel)}</strong>). <strong>Arriba NO lleva sangrado:</strong> el borde superior de la imagen es el borde superior del cuadro — alinear las esquinas de arriba y recortar el excedente de los otros tres lados.
                   </p>
                 </td>
               </tr>
@@ -582,7 +586,7 @@ function adminEmailHtml({
 
         <tr>
           <td style="padding:6px 20px;border-top:1px solid ${BRAND.border};">
-            <p class="email-text-faint" style="margin:0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};">Correo: ${customer.email}</p>
+            <p class="email-text-faint" style="margin:0;font-family:${FONT_STACK};font-size:11px;color:${BRAND.faint};">Correo: ${escapeHtml(customer.email)}</p>
           </td>
         </tr>
       </table>
@@ -1021,11 +1025,11 @@ function chatLeadEmailHtml({ nombre, ciudad, whatsapp, pregunta }) {
         ${emailHeaderRow("Nuevo lead del chat")}
         <tr>
           <td style="padding:28px;">
-            <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:16px;line-height:23px;color:${BRAND.ink};"><strong>${nombre}</strong>${ciudad ? ` — ${ciudad}` : ""}</p>
-            <p class="email-text-muted" style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.muted};">WhatsApp: <strong class="email-text-brand" style="color:${BRAND.text};">${whatsapp}</strong></p>
+            <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:16px;line-height:23px;color:${BRAND.ink};"><strong>${escapeHtml(nombre)}</strong>${ciudad ? ` — ${escapeHtml(ciudad)}` : ""}</p>
+            <p class="email-text-muted" style="margin:0 0 16px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.muted};">WhatsApp: <strong class="email-text-brand" style="color:${BRAND.text};">${escapeHtml(whatsapp)}</strong></p>
             ${
               pregunta
-                ? `<p class="email-text-muted" style="margin:0 0 24px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.muted};">"${pregunta}"</p>`
+                ? `<p class="email-text-muted" style="margin:0 0 24px 0;font-family:${FONT_STACK};font-size:14px;line-height:20px;color:${BRAND.muted};">"${escapeHtml(pregunta)}"</p>`
                 : ""
             }
             <p style="margin:0;text-align:center;">
@@ -1079,7 +1083,7 @@ function shippingNotificationEmailHtml({
 
         <tr>
           <td style="padding:32px 32px 8px 32px;">
-            <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Hola ${customer.fullName}! Tu pedido ya fue despachado.</p>
+            <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Hola ${escapeHtml(customer.fullName)}! Tu pedido ya fue despachado.</p>
           </td>
         </tr>
 
@@ -1405,7 +1409,7 @@ function reviewRequestEmailHtml({ order, reviewUrl }) {
           <td style="padding:32px 32px 8px 32px;">
             <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¿Qué te pareció tu cuadro?</p>
             <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
-              Ya debería haber llegado tu cuadro${order.sizeLabel ? ` (${order.sizeLabel})` : ""}. Nos ayudaría mucho que nos cuentes qué te pareció — toma menos de un minuto.
+              Ya debería haber llegado tu cuadro${order.sizeLabel ? ` (${escapeHtml(order.sizeLabel)})` : ""}. Nos ayudaría mucho que nos cuentes qué te pareció — toma menos de un minuto.
             </p>
           </td>
         </tr>
@@ -1466,7 +1470,7 @@ function cartRecoveryEmailHtml({ customer, order, resumeUrl }) {
             </p>
             <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
               Notamos que empezaste a crear tu cuadro personalizado${
-                order.sizeLabel ? ` (${order.sizeLabel})` : ""
+                order.sizeLabel ? ` (${escapeHtml(order.sizeLabel)})` : ""
               } pero no alcanzaste a terminar el pago. Sigue exactamente donde lo dejaste — no tienes que subir tu foto ni ajustarla de nuevo.
             </p>
           </td>
@@ -1478,7 +1482,7 @@ function cartRecoveryEmailHtml({ customer, order, resumeUrl }) {
               <tr>
                 <td style="padding:16px 20px;">
                   <p class="email-text-ink" style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">
-                    ${order.sizeLabel ? `<strong>Tamaño:</strong> ${order.sizeLabel}<br>` : ""}
+                    ${order.sizeLabel ? `<strong>Tamaño:</strong> ${escapeHtml(order.sizeLabel)}<br>` : ""}
                     ${
                       typeof order.priceCOP === "number"
                         ? `<strong>Total:</strong> ${formatCOP(order.priceCOP)}`
@@ -1551,5 +1555,55 @@ export async function sendLowStockEmail(items) {
     to: ADMIN_EMAIL,
     subject: `⚠️ Stock bajo: ${items.map((i) => i.label).join(", ")}`,
     html: wrapEmailHtml(html),
+  });
+}
+
+// ---------------------------------------------------------------------
+// Alerta interna: pago aprobado que NO corresponde al pedido (monto menor
+// al mínimo posible, anticipo usado como pago completo, priceCOP
+// manipulado, etc. — ver paymentIntegrity.js). Solo va a ADMIN_EMAIL; el
+// pedido NO se mandó al fabricante. Todo dato del cliente se escapa.
+// ---------------------------------------------------------------------
+export async function sendPaymentIntegrityAlertEmail({
+  reference,
+  transactionId,
+  paymentMethod,
+  problems,
+  order,
+  customer,
+  paidCOP,
+  minimumCOP,
+}) {
+  const rows = [
+    ["Referencia", reference],
+    ["Transacción Wompi", transactionId],
+    ["Método", paymentMethod],
+    ["Pagado (Wompi)", paidCOP != null ? formatCOP(paidCOP) : "-"],
+    ["Mínimo esperado", minimumCOP != null ? formatCOP(minimumCOP) : "-"],
+    ["Tamaño / marco", `${order?.sizeId || "-"} / ${order?.frameType || "-"}`],
+    ["priceCOP declarado", order?.priceCOP != null ? String(order.priceCOP) : "-"],
+    ["Cliente", `${customer?.fullName || "-"} · ${customer?.email || "-"} · ${customer?.phone || "-"}`],
+    ["Ciudad", customer?.city || "-"],
+  ]
+    .map(
+      ([label, value]) =>
+        `<tr><td style="padding:4px 12px 4px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.muted};">${escapeHtml(label)}</td><td style="padding:4px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.ink};">${escapeHtml(value)}</td></tr>`
+    )
+    .join("");
+  const problemsHtml = (problems || [])
+    .map((p) => `<li style="font-family:${FONT_STACK};font-size:14px;color:${BRAND.ink};">${escapeHtml(p)}</li>`)
+    .join("");
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: ADMIN_EMAIL,
+    subject: `⚠️ Pago no coincide con el pedido — revisar antes de fabricar (${reference})`,
+    html: wrapEmailHtml(`
+<div style="padding:24px;font-family:${FONT_STACK};">
+  <p style="font-size:18px;font-weight:bold;color:${BRAND.ink};margin:0 0 8px 0;">Pago aprobado que no coincide con el pedido</p>
+  <p style="font-size:14px;color:${BRAND.muted};margin:0 0 16px 0;">El pedido NO se envió al fabricante ni se generó guía. Revisa en Wompi y en /admin (respaldos) antes de procesarlo a mano o devolver el dinero.</p>
+  <ul style="margin:0 0 16px 18px;padding:0;">${problemsHtml}</ul>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0">${rows}</table>
+</div>`),
   });
 }
