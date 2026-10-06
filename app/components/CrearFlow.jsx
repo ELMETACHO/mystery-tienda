@@ -19,6 +19,7 @@ import {
 import { SIZES, DEFAULT_FRAME_TYPE, getPriceCOP, formatCOP, saveOrder, isPremiumOnlySize } from "../lib/order";
 import { trackViewContent, trackAddToCart } from "../lib/gtm";
 import FrameTypeSelector from "./FrameTypeSelector";
+import DeliveryEstimate from "./DeliveryEstimate";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
 
@@ -768,6 +769,8 @@ export default function CrearFlow({ compact = false }) {
             </p>
           </div>
 
+          <DeliveryEstimate className="animate-ready-in w-full max-w-sm" />
+
           <button
             type="button"
             onClick={handleConfirmReady}
@@ -1075,6 +1078,8 @@ export default function CrearFlow({ compact = false }) {
               <LockIcon />
               Pago 100% seguro con Wompi
             </div>
+
+            <DeliveryEstimate variant="compact" className="-mt-3" />
           </div>
         </div>
       )}
