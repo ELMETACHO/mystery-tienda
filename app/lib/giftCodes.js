@@ -49,7 +49,10 @@ export const GIFT_DISCOUNT_PERCENT = 100;
 // resultado principal que el admin está esperando ver en pantalla, así
 // que un fallo real (Redis caído, no se logró un código único) debe
 // distinguirse con un mensaje claro en vez de fallar en silencio.
-export async function createGiftCode({ maxUses }) {
+// `code`/`source` opcionales: la tarjeta regalo (app/lib/giftCards.js)
+// pasa su propio código fuerte TARJETA-XXXX-XXXX y source
+// "tarjeta-regalo"; /admin/regalos sigue generando REGALO#### como antes.
+export async function createGiftCode({ maxUses, code: requestedCode = null, source = null }) {
   const client = getRedisClient();
   if (!client) {
     throw new Error("REDIS_URL no está configurado.");
@@ -61,7 +64,11 @@ export async function createGiftCode({ maxUses }) {
   }
 
   let code = null;
-  for (let attempt = 0; attempt < 10; attempt++) {
+  if (requestedCode) {
+    // SET NX abajo garantiza que nunca se pise un código existente.
+    code = String(requestedCode).trim().toUpperCase();
+  }
+  for (let attempt = 0; !code && attempt < 10; attempt++) {
     const candidate = `REGALO${Math.floor(1000 + Math.random() * 9000)}`;
     const exists = await client.exists(giftKey(candidate));
     if (!exists) {
@@ -79,8 +86,12 @@ export async function createGiftCode({ maxUses }) {
     percent: GIFT_DISCOUNT_PERCENT,
     maxUses: uses,
     createdAt: new Date().toISOString(),
+    ...(source ? { source } : {}),
   };
-  await client.set(giftKey(code), JSON.stringify(record));
+  const created = await client.set(giftKey(code), JSON.stringify(record), "NX");
+  if (created !== "OK") {
+    throw new Error("No se pudo generar un código de regalo único.");
+  }
   return { ...record, usedCount: 0, remainingUses: uses, active: true };
 }
 
