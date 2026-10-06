@@ -7,7 +7,7 @@ import { saveCompletedOrder } from "./completedOrders";
 import { consumeStockForOrder } from "./inventory";
 import { saveManualShipmentRequest } from "./manualShipments";
 import { grantDiscountCode } from "./discount";
-import { redeemGiftCode } from "./giftCodes";
+import { redeemGiftCode, releaseGiftCodeUse } from "./giftCodes";
 import { recordCrmEntry } from "./manufacturerFinance";
 
 // Equivalente de confirmApprovedOrder.js para pedidos con precio final
@@ -39,6 +39,19 @@ export async function confirmFreeOrder({
     return { alreadyProcessed: true, isReturningCustomer: false };
   }
 
+  // El uso del código se consume ANTES de procesar nada y su resultado sí
+  // se respeta: antes se validaba en la ruta y se canjeaba al final
+  // ignorando el resultado, así que N requests en paralelo con un código de
+  // 1 uso (cada una con su propia reference) generaban N cuadros gratis.
+  // INCR es atómico, así que solo pasan tantos pedidos como usos tenga.
+  if (order.giftCode) {
+    const redeemed = await redeemGiftCode(order.giftCode);
+    if (!redeemed) {
+      await releaseTransactionClaim(transaction.id);
+      return { alreadyProcessed: false, isReturningCustomer: false, giftCodeRejected: true };
+    }
+  }
+
   try {
     const isReturningCustomer = await recordOrderAndCheckReturning({
       email: customer.email,
@@ -50,14 +63,7 @@ export async function confirmFreeOrder({
       await grantDiscountCode(customer.email);
     }
 
-    // Consume uno de los usos del código de regalo — nunca lanza ni
-    // bloquea la confirmación si falla (mismo criterio que
-    // markDiscountUsed/recordReferralSale): el pedido de regalo ya se
-    // está entregando, perder el conteo de usos por un fallo de Redis
-    // no debe impedir que el influencer reciba su cuadro.
-    if (order.giftCode) {
-      await redeemGiftCode(order.giftCode);
-    }
+    // (El uso del código de regalo ya se consumió arriba, antes del try.)
 
     // Mismo flujo de guía manual que un pedido pagado completo (ver
     // confirmApprovedOrder.js) — el fabricante la dispara desde su
@@ -94,6 +100,7 @@ export async function confirmFreeOrder({
     return { alreadyProcessed: false, isReturningCustomer };
   } catch (err) {
     await releaseTransactionClaim(transaction.id);
+    if (order.giftCode) await releaseGiftCodeUse(order.giftCode);
     throw err;
   }
 }

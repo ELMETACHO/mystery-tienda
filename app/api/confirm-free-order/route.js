@@ -50,7 +50,14 @@ export async function POST(request) {
   // los correos ni a consumir un segundo uso del código.
   let isReturningCustomer;
   try {
-    ({ isReturningCustomer } = await confirmFreeOrder({ order, customer, reference }));
+    let giftCodeRejected;
+    ({ isReturningCustomer, giftCodeRejected } = await confirmFreeOrder({ order, customer, reference }));
+    if (giftCodeRejected) {
+      return Response.json(
+        { error: "El código de regalo ya no es válido o se agotaron sus usos" },
+        { status: 400 }
+      );
+    }
   } catch (err) {
     console.error(err);
     return Response.json(
