@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LEGAL_SECTIONS } from "@/app/lib/legalContent";
 import { SITE_URL } from "@/app/lib/siteUrl";
+import { headingFont } from "@/app/lib/typography";
 
 export const metadata = {
   title: "Políticas — Mystery",
@@ -11,7 +12,7 @@ export const metadata = {
 
 export default function PoliticasPage() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#8fcaf0] px-4 py-16 text-[#1b2a4a] sm:px-6">
+    <main className="tienda relative min-h-screen overflow-hidden bg-[#8fcaf0] px-4 py-16 text-[#1b2a4a] sm:px-6">
       <div
         aria-hidden="true"
         className="fixed inset-0 z-0 bg-cover bg-center"
@@ -28,7 +29,7 @@ export default function PoliticasPage() {
 
         <div className="mt-6">
           <p className="text-sm font-semibold uppercase tracking-wider text-accent">Mystery</p>
-          <h1 className="font-heading mt-2 text-2xl font-bold tracking-tight text-[#1b2a4a] sm:text-3xl">
+          <h1 className="font-display mt-2 text-2xl tracking-tight text-[#1b2a4a] sm:text-3xl">
             Políticas
           </h1>
           <p className="mt-2 text-sm text-[#5b6b8c]">
@@ -42,7 +43,7 @@ export default function PoliticasPage() {
               key={section.key}
               className="rounded-2xl border border-black/5 bg-[#fffaf0] p-5 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)] sm:p-6"
             >
-              <h2 className="font-heading text-base font-semibold text-[#1b2a4a] sm:text-lg">{section.label}</h2>
+              <h2 className={`${headingFont(section.label)} text-base font-semibold text-[#1b2a4a] sm:text-lg`}>{section.label}</h2>
               <p className="mt-3 text-sm leading-relaxed text-[#33456b]">{section.text}</p>
             </section>
           ))}

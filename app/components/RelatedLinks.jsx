@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headingFont } from "../lib/typography";
 
 // Chips de enlaces internos (oct 2026) — categorías relacionadas y
 // landings de /cuadros/*, usados en /categoria/[slug] y /producto/[id]
@@ -8,7 +9,7 @@ export default function RelatedLinks({ title, links }) {
   if (!links.length) return null;
   return (
     <nav aria-label={title} className="rounded-2xl border border-black/5 bg-[#fffaf0] p-5 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)]">
-      <h2 className="font-heading mb-3 text-base font-bold sm:text-lg">{title}</h2>
+      <h2 className={`${headingFont(title)} mb-3 text-base font-bold sm:text-lg`}>{title}</h2>
       <ul className="flex flex-wrap gap-2">
         {links.map((link) => (
           <li key={link.href}>

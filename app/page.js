@@ -216,6 +216,29 @@ const SOCIAL_LINKS = [
   { red: "TikTok", href: "https://www.tiktok.com/@bigmystery_" },
 ].filter((social) => social.href);
 
+// Íconos de las redes en SVG en línea (oct 2026) — antes eran las letras
+// "I", "F", "T" dentro de un círculo, que se veían sin terminar. Sin
+// librería ni peticiones extra; heredan el color del enlace (currentColor).
+const SOCIAL_ICONS = {
+  Instagram: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-[18px] w-[18px]" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  ),
+  Facebook: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-[18px] w-[18px]" aria-hidden="true">
+      <path d="M13.5 21v-7.5h2.6l.4-3.1h-3V8.5c0-.9.3-1.5 1.6-1.5h1.6V4.2c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.3H7.9v3.1h2.6V21h3Z" />
+    </svg>
+  ),
+  TikTok: (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-[18px] w-[18px]" aria-hidden="true">
+      <path d="M16.6 3c.3 2.2 1.6 3.6 3.9 3.8v2.6c-1.4.1-2.6-.3-3.9-1.1v5.6c0 3.6-2.6 5.9-5.9 5.6-2.9-.3-4.9-2.8-4.6-5.8.3-2.9 2.9-5 6-4.6v2.8c-.5-.1-.9-.2-1.4-.1-1.4.2-2.3 1.4-2.1 2.7.2 1.3 1.3 2.2 2.6 2.1 1.3-.1 2.3-1.1 2.3-2.6V3h3.1Z" />
+    </svg>
+  ),
+};
+
 export default async function Home() {
   const [recientes, masVendidos, testimoniosReales] = await Promise.all([
     getRecentProducts(200),
@@ -229,7 +252,7 @@ export default async function Home() {
 
   return (
     <div
-      className="relative flex flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]"
+      className="tienda relative flex flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]"
     >
       <JsonLd data={websiteJsonLd} />
       {/* Fondo de cielo con nubes, fijo respecto al viewport (no se mueve
@@ -282,9 +305,11 @@ export default async function Home() {
       </header>
 
       <main className="relative z-10 flex-1 pt-14">
-        {/* 2. HERO — centrado en el texto animado (FoldText), sin imagen
-            lateral: la imagen de estilo de vida (head.png) se quitó, el
-            hero ahora vive del efecto de "pliegue" del título. */}
+        {/* 2. HERO — centrado en el texto animado (FoldText). Lleva una
+            foto real de un cuadro colgado (oct 2026) para que se entienda
+            el producto sin hacer scroll: WebP 600×795 de ~28KB (antes
+            head.png de 1.8MB, que se había quitado por peso), con priority
+            (preload) y width/height + aspect-ratio fijos → sin CLS. */}
         <section className="relative overflow-hidden px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16">
           <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center gap-6 text-center">
             <p className="text-center text-xs font-medium text-[#7a3fa0] sm:text-sm">
@@ -332,6 +357,17 @@ export default async function Home() {
                 🎄 Regalos de Navidad · {CHRISTMAS_DEADLINE.message} →
               </Link>
             )}
+
+            <Image
+              src="/images/hero/home-cuadro-pared.webp"
+              alt="Cuadro personalizado en vinilo sobre madera colgado en la pared"
+              width={600}
+              height={795}
+              priority
+              unoptimized
+              sizes="(min-width: 640px) 300px, 240px"
+              className="aspect-[600/795] w-[240px] rounded-2xl object-cover shadow-[0_18px_40px_-18px_rgba(30,20,60,0.45)] sm:w-[300px]"
+            />
           </div>
         </section>
 
@@ -342,7 +378,7 @@ export default async function Home() {
             cerca del tope como exploración temprana por categoría). */}
         <section className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
-            <h2 className="font-heading mb-4 text-lg font-semibold sm:text-xl">Elige tu estilo</h2>
+            <h2 className="font-display mb-4 text-lg font-semibold sm:text-xl">Elige tu estilo</h2>
             <CategoryScroller categorias={CATEGORIAS} light />
           </div>
         </section>
@@ -354,7 +390,7 @@ export default async function Home() {
         <section id="recientes" className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <div className="mb-4">
-              <h2 className="font-heading text-lg font-semibold sm:text-xl">Recientes</h2>
+              <h2 className="font-display text-lg font-semibold sm:text-xl">Recientes</h2>
             </div>
             <ProductScroller items={recientes} light thumbWidth={480} />
           </div>
@@ -367,7 +403,7 @@ export default async function Home() {
         <section id="mas-vendidos" className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <div className="mb-4 flex items-end justify-between">
-              <h2 className="font-heading text-lg font-semibold sm:text-xl">Más vendidos</h2>
+              <h2 className="font-display text-lg font-semibold sm:text-xl">Más vendidos</h2>
             </div>
             <ProductScroller items={masVendidos} light thumbWidth={480} />
           </div>
@@ -441,7 +477,7 @@ export default async function Home() {
             <span className="rounded-full bg-[#f3e8ff] px-4 py-1 text-xs font-medium tracking-wide text-accent">
               Hecho para ti
             </span>
-            <h2 className="font-heading max-w-2xl text-3xl font-extrabold tracking-tight text-[#1b2a4a] sm:text-5xl">
+            <h2 className="font-display max-w-2xl text-3xl font-extrabold tracking-tight text-[#1b2a4a] sm:text-5xl">
               Cuadros personalizados
             </h2>
             <p className="max-w-xl text-base text-[#33456b] sm:text-lg">
@@ -503,7 +539,7 @@ export default async function Home() {
         <section className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
             <div className="mb-8 flex flex-col items-center gap-2 text-center">
-              <h2 className="font-heading text-2xl font-bold tracking-tight sm:text-3xl">
+              <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
                 Cómo funciona
               </h2>
               <p className="text-sm text-accent sm:text-base">
@@ -553,7 +589,7 @@ export default async function Home() {
             y le dan al visitante una puerta de entrada por ocasión. */}
         <section id="ideas" className="px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-6xl">
-            <h2 className="font-heading mb-4 text-lg font-semibold sm:text-xl">Ideas para regalar y decorar</h2>
+            <h2 className="font-display mb-4 text-lg font-semibold sm:text-xl">Ideas para regalar y decorar</h2>
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {LANDING_PAGES.map((landing) => (
                 <li key={landing.slug}>
@@ -575,7 +611,7 @@ export default async function Home() {
             checkout. id usado por "Centro de ayuda" del footer. */}
         <section id="preguntas-frecuentes" className="scroll-mt-20 px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="mx-auto max-w-3xl">
-            <h2 className="font-heading mb-6 text-center text-2xl font-bold tracking-tight sm:text-3xl">
+            <h2 className="font-display mb-6 text-center text-2xl font-bold tracking-tight sm:text-3xl">
               Preguntas frecuentes
             </h2>
             <div className="flex flex-col divide-y divide-black/5 rounded-2xl border border-black/5 bg-[#fffaf0] shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)]">
@@ -659,9 +695,9 @@ export default async function Home() {
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={red}
-                      className="flex h-9 w-9 items-center justify-center rounded-full border border-black/10 text-xs text-[#5b6b8c] transition-colors hover:border-accent hover:text-[#1b2a4a]"
+                      className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white/60 text-[#33456b] transition-colors hover:border-accent hover:text-accent"
                     >
-                      {red[0]}
+                      {SOCIAL_ICONS[red] || red[0]}
                     </a>
                   ))}
                 </div>

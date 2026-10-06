@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function CrearPage() {
   return (
-    <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
+    <div className="tienda relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
       {/* Mismo fondo fijo del Home (ver app/page.js): la foto de cielo no
           se mueve con el scroll, position:fixed en vez de
           background-attachment:fixed por confiabilidad en iOS. */}

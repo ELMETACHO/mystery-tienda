@@ -109,7 +109,14 @@ export default function ChatWidget() {
   // que le deja un hueco a la derecha a este botón — se alinea con el
   // botón de compra en vez de taparlo o de subir a tapar el contenido.
   const hasStickyBuyBar = pathname === "/ads";
-  const buttonPosition = hasStickyBuyBar ? "bottom-8" : "bottom-5 sm:bottom-6";
+  // 52px (antes 56px) y más pegado a la esquina, para que tape menos las
+  // tarjetas de producto y sus botones "Comprar ahora" al hacer scroll.
+  // Siempre visible: es el respaldo de contacto, sin automatización.
+  // En /ads se mantiene igual que antes (56px, right-5), alineado con su
+  // barra de compra — cambios en /ads requieren aprobación del dueño.
+  const buttonPosition = hasStickyBuyBar
+    ? "bottom-8 right-5 h-14 w-14"
+    : "bottom-4 right-3 h-[52px] w-[52px] sm:bottom-6";
   const panelPosition = hasStickyBuyBar ? "bottom-28" : "bottom-24";
 
   // presetText: usado por los chips de acceso rápido (preguntas frecuentes)
@@ -254,12 +261,12 @@ export default function ChatWidget() {
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         aria-label={isOpen ? "Cerrar chat" : "Abrir chat"}
-        className={`fixed ${buttonPosition} right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 text-white shadow-lg shadow-accent/50 transition-transform hover:scale-105 sm:right-6`}
+        className={`fixed ${buttonPosition} z-50 flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 text-white shadow-lg shadow-accent/50 transition-transform hover:scale-105 sm:right-6`}
       >
         {isOpen ? (
           <span className="text-2xl leading-none">✕</span>
         ) : (
-          <ChatBubbleIcon className="h-7 w-7" />
+          <ChatBubbleIcon className={hasStickyBuyBar ? "h-7 w-7" : "h-6 w-6"} />
         )}
       </button>
 

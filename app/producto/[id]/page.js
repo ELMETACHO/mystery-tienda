@@ -14,6 +14,7 @@ import { FEED_DEFAULT_PRICE_COP } from "../../lib/googleFeed";
 import ProductScroller from "../../components/ProductScroller";
 import RelatedLinks from "../../components/RelatedLinks";
 import DeliveryEstimate from "../../components/DeliveryEstimate";
+import { headingFont } from "../../lib/typography";
 import WallVisualizerButton from "../../components/WallVisualizerButton";
 
 function categoryLabel(categoryId) {
@@ -185,7 +186,7 @@ export default async function ProductPage({ params }) {
     <>
       <JsonLd data={productJsonLd} />
       <JsonLd data={breadcrumbJsonLd(breadcrumbs)} />
-    <div className="relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
+    <div className="tienda relative flex min-h-screen flex-1 flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
       <div
         aria-hidden="true"
         className="fixed inset-0 z-0 bg-cover bg-center"
@@ -253,7 +254,9 @@ export default async function ProductPage({ params }) {
               {label}
             </span>
           )}
-          <h1 className="font-heading text-2xl font-bold tracking-tight md:text-3xl">
+          {/* Nombre del producto siempre en Geist (regla tipográfica, ver
+              app/globals.css): los nombres suelen pasar de 4 palabras. */}
+          <h1 className="text-balance text-2xl font-bold tracking-tight md:text-3xl">
             {productDisplayTitle(product, label)}
           </h1>
           <p className="text-sm text-[#33456b]">{productDisplayDescription(product, label)}</p>
@@ -269,7 +272,7 @@ export default async function ProductPage({ params }) {
             de app/lib/order.js) — da contenido único y útil a cada
             producto, cuya descripción generada por IA es corta. */}
         <section className="rounded-2xl border border-black/5 bg-[#fffaf0] p-5 shadow-[0_10px_25px_-14px_rgba(30,20,60,0.3)]">
-          <h2 className="font-heading mb-3 text-base font-bold">Detalles del cuadro</h2>
+          <h2 className="font-display mb-3 text-base">Detalles del cuadro</h2>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
             <dt className="text-[#5b6b8c]">Diseño</dt>
             <dd className="text-[#1b2a4a]">{product.name || `Cuadro de ${label}`}</dd>
@@ -308,7 +311,7 @@ export default async function ProductPage({ params }) {
 
         {sameCategory.length > 0 && (
           <section className="flex flex-col gap-3">
-            <h2 className="font-heading text-base font-bold md:text-lg">Más cuadros de {label}</h2>
+            <h2 className={`${headingFont(`Más cuadros de ${label}`)} text-base font-bold md:text-lg`}>Más cuadros de {label}</h2>
             <ProductScroller items={sameCategory} light thumbWidth={480} desktopGrid={5} />
           </section>
         )}

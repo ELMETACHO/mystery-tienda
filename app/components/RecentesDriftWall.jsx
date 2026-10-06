@@ -3,24 +3,27 @@
 import { useEffect, useState } from "react";
 import DriftWall from "./DriftWall";
 
-// Fotos reales de catálogo (public/images/catalogo/) en vez de los
-// placeholders de picsum.photos que trae DriftWall por defecto.
+// Fotos reales de catálogo en vez de los placeholders de picsum.photos que
+// trae DriftWall por defecto. Se usan versiones WebP 320×224 recortadas al
+// formato de la tesela (public/images/catalogo/drift/*-320.webp, ~116KB en
+// total) en vez de los originales JPG/PNG de hasta 1320×2327 (~4.2MB) que
+// se mostraban a ~130px. Los originales siguen en public/images/catalogo/.
 const RECIENTES_IMAGES = [
-  "/images/catalogo/07c814769f3e833dfa099eab263f40d7.jpg",
-  "/images/catalogo/1f15aefea2972296115e106a6fb2b10d.jpg",
-  "/images/catalogo/60b4517715cdbdcad514eb25eb0d23a3.jpg",
-  "/images/catalogo/7767937dd7ee0a6ece2649ee09e6b5b8.jpg",
-  "/images/catalogo/7e2ad6cc1d5eddfad75334883498ed9e.jpg",
-  "/images/catalogo/8addbd0a158fda8fec74aef1c3b88e2d.jpg",
-  "/images/catalogo/8d870c2077731fa12a69accc65250be8.jpg",
-  "/images/catalogo/f93ce9c3f6875843003615e4138fa99e.jpg",
-  "/images/catalogo/IMG_7334.JPG",
-  "/images/catalogo/IMG_7336.PNG",
-  "/images/catalogo/IMG_7337.PNG",
-  "/images/catalogo/IMG_7338.JPG",
-  "/images/catalogo/IMG_7339.PNG",
-  "/images/catalogo/IMG_7340.JPG",
-  "/images/catalogo/IMG_7341.JPG",
+  "/images/catalogo/drift/07c814769f3e833dfa099eab263f40d7-320.webp",
+  "/images/catalogo/drift/1f15aefea2972296115e106a6fb2b10d-320.webp",
+  "/images/catalogo/drift/60b4517715cdbdcad514eb25eb0d23a3-320.webp",
+  "/images/catalogo/drift/7767937dd7ee0a6ece2649ee09e6b5b8-320.webp",
+  "/images/catalogo/drift/7e2ad6cc1d5eddfad75334883498ed9e-320.webp",
+  "/images/catalogo/drift/8addbd0a158fda8fec74aef1c3b88e2d-320.webp",
+  "/images/catalogo/drift/8d870c2077731fa12a69accc65250be8-320.webp",
+  "/images/catalogo/drift/f93ce9c3f6875843003615e4138fa99e-320.webp",
+  "/images/catalogo/drift/IMG_7334-320.webp",
+  "/images/catalogo/drift/IMG_7336-320.webp",
+  "/images/catalogo/drift/IMG_7337-320.webp",
+  "/images/catalogo/drift/IMG_7338-320.webp",
+  "/images/catalogo/drift/IMG_7339-320.webp",
+  "/images/catalogo/drift/IMG_7340-320.webp",
+  "/images/catalogo/drift/IMG_7341-320.webp",
 ];
 
 const DRIFT_ITEMS = RECIENTES_IMAGES.map((src, i) => ({
