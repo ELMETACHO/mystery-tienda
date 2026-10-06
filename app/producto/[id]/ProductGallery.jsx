@@ -70,8 +70,11 @@ export default function ProductGallery({ images, sizes }) {
                 i === index ? "border-accent" : "border-transparent opacity-75 hover:opacity-100"
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- miniatura fija de ~2KB, next/image no aporta */}
-              <img src={img.thumb} alt="" width={56} height={70} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+              {/* next/image (unoptimized) y no <img>: así la URL lleva el mismo
+                  sufijo de despliegue (?dpl=…) que la foto principal y la
+                  miniatura del diseño sale de caché en vez de descargarse
+                  otra vez (~78KB). */}
+              <Image src={img.thumb} alt="" width={56} height={70} unoptimized className="h-full w-full object-cover" />
             </button>
           ))}
           <p className="ml-1 self-center text-[11px] leading-tight text-[#5b6b8c]">
