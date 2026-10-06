@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCatalogProductById, getProductsByCategory } from "../../lib/catalog";
@@ -16,6 +15,9 @@ import RelatedLinks from "../../components/RelatedLinks";
 import DeliveryEstimate from "../../components/DeliveryEstimate";
 import { headingFont } from "../../lib/typography";
 import WallVisualizerButton from "../../components/WallVisualizerButton";
+import ProductGallery from "./ProductGallery";
+import ProductStickyBar from "./ProductStickyBar";
+import { getProductGalleryImages } from "../../lib/productGallery";
 
 function categoryLabel(categoryId) {
   return ESTUDIO_CATEGORIES.find((c) => c.id === categoryId)?.label || "Diseño";
@@ -83,6 +85,10 @@ export default async function ProductPage({ params }) {
     .filter((p) => p.id !== product.id)
     .slice(0, 10);
   const productUrl = `${SITE_URL}/producto/${product.id}`;
+  const mainAlt = product.name
+    ? `Cuadro de ${product.name}, en vinilo sobre madera`
+    : `Cuadro personalizado categoría ${label}, en vinilo sobre madera`;
+  const galleryImages = getProductGalleryImages(product, mainAlt);
   const categoryObj = ESTUDIO_CATEGORIES.find((c) => c.id === product.category);
   const breadcrumbs = [
     { name: "Inicio", path: "/" },
@@ -192,30 +198,26 @@ export default async function ProductPage({ params }) {
         className="fixed inset-0 z-0 bg-cover bg-center"
         style={{ backgroundImage: "url(/images/walls/fondo-cielo-2.webp)" }}
       />
-      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-16">
-        <Link
-          href="/"
-          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-black/10 bg-[#fffaf0] px-4 py-2 text-sm font-medium text-[#33456b] shadow-sm transition-colors hover:border-accent hover:text-[#1b2a4a]"
-        >
-          ← Volver al catálogo
-        </Link>
-
-        <Breadcrumbs items={breadcrumbs} />
-
-        <div
-          className="relative w-full overflow-hidden rounded-2xl border border-black/10 shadow-[0_20px_50px_-16px_rgba(30,20,60,0.35)]"
-          style={{ aspectRatio: 1080 / 1350 }}
-        >
-          <Image
-            src={`/api/catalog-thumbnail/${product.mockupFileId}?w=900`}
-            alt={product.name ? `Cuadro de ${product.name}, en vinilo sobre madera` : `Cuadro personalizado categoría ${label}, en vinilo sobre madera`}
-            fill
-            unoptimized
-            sizes="(min-width: 640px) 448px, 100vw"
-            className="object-cover"
-            priority
-          />
+      {/* Cabecera compacta en móvil (oct 2026): menos padding arriba y
+          "volver" + migas de pan en una sola fila (la miga del producto se
+          corta con "…", el nombre completo está en el h1) → la foto sube
+          ~90px. pb-24 en móvil deja sitio a la barra fija de abajo. */}
+      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pb-24 pt-4 sm:px-6 sm:py-16">
+        <div className="-mb-2 flex items-center gap-3 sm:mb-0 sm:flex-col sm:items-start sm:gap-6">
+          <Link
+            href="/"
+            className="inline-flex w-fit shrink-0 items-center gap-1 rounded-full border border-black/10 bg-[#fffaf0] px-3 py-1.5 text-xs font-medium text-[#33456b] shadow-sm transition-colors hover:border-accent hover:text-[#1b2a4a] sm:gap-1.5 sm:px-4 sm:py-2 sm:text-sm"
+          >
+            ← <span className="sm:hidden">Catálogo</span><span className="hidden sm:inline">Volver al catálogo</span>
+          </Link>
+          <div className="min-w-0 flex-1 [&_[aria-current]]:truncate [&_li:first-child]:shrink-0 [&_li]:min-w-0 [&_li_a]:truncate [&_ol]:flex-nowrap [&_ol]:overflow-hidden [&_ol]:whitespace-nowrap sm:[&_ol]:flex-wrap sm:[&_ol]:whitespace-normal">
+            <Breadcrumbs items={breadcrumbs} />
+          </div>
         </div>
+
+        {/* Galería con miniaturas (diseño + fotos reales de acabado) — ver
+            app/lib/productGallery.js para agregar fotos. */}
+        <ProductGallery images={galleryImages} sizes="(min-width: 640px) 448px, 100vw" />
 
         {/* "Así se ve en tu pared": reutiliza la misma miniatura ?w=900 que
             ya cargó la página (sin descarga nueva) y recorta el diseño del
@@ -251,7 +253,11 @@ export default async function ProductPage({ params }) {
           <p className="text-sm text-[#33456b]">{productDisplayDescription(product, label)}</p>
         </div>
 
-        <ProductSizeSelector product={product} />
+        {/* Ancla de la barra fija de móvil (ProductStickyBar). El selector
+            en sí no cambia. */}
+        <div id="elegir-tamano" className="scroll-mt-4">
+          <ProductSizeSelector product={product} />
+        </div>
 
         {/* Fecha estimada calculada en el navegador con la fecha de hoy
             (Bogotá), saltando domingos y festivos — ver DeliveryEstimate. */}
@@ -316,6 +322,7 @@ export default async function ProductPage({ params }) {
           ]}
         />
       </div>
+      <ProductStickyBar targetId="elegir-tamano" label={`Elegir tamaño · desde ${formatCOP(CHEAPEST_PRICE_COP)}`} />
     </div>
     </>
   );

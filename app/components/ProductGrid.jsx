@@ -83,19 +83,35 @@ export function ProductCard({ item, className = "", light = false, thumbWidth, p
   );
 }
 
-export default function ProductGrid({ items, emptyMessage = "Todavía no hay productos en el catálogo. Vuelve pronto." }) {
+// light/thumbWidth/eagerCount/className (opcionales, oct 2026): para la
+// grilla de 2 columnas de /categoria en móvil. Sin pasarlos, la grilla se
+// ve exactamente como antes.
+export default function ProductGrid({
+  items,
+  emptyMessage = "Todavía no hay productos en el catálogo. Vuelve pronto.",
+  light = false,
+  thumbWidth,
+  eagerCount = 0,
+  className = "",
+}) {
   if (items.length === 0) {
     return (
-      <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-zinc-500">
+      <p
+        className={
+          light
+            ? "rounded-xl border border-black/5 bg-[#fffaf0] px-4 py-6 text-center text-sm text-[#5b6b8c]"
+            : "rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-zinc-500"
+        }
+      >
         {emptyMessage}
       </p>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-      {items.map((item) => (
-        <ProductCard key={item.id} item={item} />
+    <div className={`grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 ${className}`.trim()}>
+      {items.map((item, index) => (
+        <ProductCard key={item.id} item={item} light={light} thumbWidth={thumbWidth} priority={index < eagerCount} />
       ))}
     </div>
   );
