@@ -69,3 +69,45 @@ export function rateLimitResponse(retryAfter) {
     { status: 429, headers: { "Retry-After": String(retryAfter) } }
   );
 }
+
+// Bloqueo por intentos FALLIDOS (contraseñas de /admin y /estudio, código
+// de acceso del fabricante, consulta de códigos de referido). A diferencia
+// de checkRateLimit, aquí solo cuentan los intentos que fallan: quien usa
+// su clave correcta nunca se bloquea, pero un script que prueba claves
+// queda frenado tras `limit` fallos por IP durante `windowSeconds`. Mismo
+// principio fail-open que checkRateLimit (si Redis falla, no se bloquea a
+// nadie legítimo).
+function failedAttemptsKey(request, scope) {
+  return `failed-attempts:${scope}:${getClientIp(request)}`;
+}
+
+export async function isBlockedByFailedAttempts(request, scope, { limit = 10 } = {}) {
+  const client = getRedisClient();
+  if (!client) return { blocked: false };
+
+  try {
+    const key = failedAttemptsKey(request, scope);
+    const count = Number(await client.get(key)) || 0;
+    if (count < limit) return { blocked: false };
+    const ttl = await client.ttl(key);
+    return { blocked: true, retryAfter: ttl > 0 ? ttl : 60 };
+  } catch (err) {
+    console.error(`[rateLimit] Error verificando intentos fallidos (${scope}):`, err);
+    return { blocked: false };
+  }
+}
+
+export async function registerFailedAttempt(request, scope, { windowSeconds = 15 * 60 } = {}) {
+  const client = getRedisClient();
+  if (!client) return;
+
+  try {
+    const key = failedAttemptsKey(request, scope);
+    const count = await client.incr(key);
+    if (count === 1) {
+      await client.expire(key, windowSeconds);
+    }
+  } catch (err) {
+    console.error(`[rateLimit] Error registrando intento fallido (${scope}):`, err);
+  }
+}

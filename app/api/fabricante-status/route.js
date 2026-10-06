@@ -1,5 +1,6 @@
 import { getManufacturerPendingOrders } from "../../lib/manufacturerFinance";
 import { getFabricantesByAccessCode } from "../../lib/fabricantes";
+import { isBlockedByFailedAttempts, registerFailedAttempt, rateLimitResponse } from "../../lib/rateLimit";
 
 // Sin contraseña de admin a propósito (ver /referidos/panel): un código
 // simple compartido con cada fabricante (FABRICANTE_ACCESS_CODE_PREMIUM
@@ -14,11 +15,15 @@ import { getFabricantesByAccessCode } from "../../lib/fabricantes";
 // — app/fabricante/page.js las muestra como pestañas separadas, sin
 // sumar los saldos entre sí.
 export async function GET(request) {
+  const { blocked, retryAfter } = await isBlockedByFailedAttempts(request, "fabricante-code", { limit: 10 });
+  if (blocked) return rateLimitResponse(retryAfter);
+
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
 
   const fabricantes = getFabricantesByAccessCode(code);
   if (fabricantes.length === 0) {
+    await registerFailedAttempt(request, "fabricante-code");
     return Response.json({ error: "Código incorrecto" }, { status: 401 });
   }
 

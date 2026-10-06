@@ -1,6 +1,15 @@
 import { createReferral } from "../../lib/referrals";
+import { checkRateLimit, rateLimitResponse } from "../../lib/rateLimit";
 
 export async function POST(request) {
+  // Cada código nuevo da 5% de descuento y queda guardado para siempre en
+  // Redis: se limita por IP para que nadie pueda generar miles en loop.
+  const { limited, retryAfter } = await checkRateLimit(request, "create-referral", {
+    limit: 5,
+    windowSeconds: 60 * 60,
+  });
+  if (limited) return rateLimitResponse(retryAfter);
+
   const { name, whatsapp } = await request.json().catch(() => ({}));
 
   if (!name?.trim() || !whatsapp?.trim()) {
