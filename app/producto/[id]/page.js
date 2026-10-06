@@ -207,7 +207,7 @@ export default async function ProductPage({ params }) {
           galería + "Así se ve en tu pared" a la izquierda (sticky) y
           título/precio/CTA/detalles a la derecha. Los wrappers nuevos son
           flex-col gap-6, así que en celular orden y espaciado no cambian. */}
-      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pb-24 pt-4 sm:px-6 sm:py-16 md:max-w-6xl">
+      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 pb-28 pt-4 sm:px-6 sm:py-16 md:max-w-6xl">
         <div className="-mb-2 flex items-center gap-3 sm:mb-0 sm:flex-col sm:items-start sm:gap-6">
           <Link
             href="/"
@@ -336,7 +336,11 @@ export default async function ProductPage({ params }) {
           ]}
         />
       </div>
-      <ProductStickyBar targetId="elegir-tamano" label={`Elegir tamaño · desde ${formatCOP(CHEAPEST_PRICE_COP)}`} />
+      <ProductStickyBar
+        targetId="elegir-tamano"
+        label={`Elegir tamaño · desde ${formatCOP(CHEAPEST_PRICE_COP)}`}
+        infoText="🚚 Envío gratis a toda Colombia · llega en máximo 5 días"
+      />
     </div>
     </>
   );

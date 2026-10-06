@@ -114,9 +114,16 @@ export default function ChatWidget() {
   // Siempre visible: es el respaldo de contacto, sin automatización.
   // En /ads se mantiene igual que antes (56px, right-5), alineado con su
   // barra de compra — cambios en /ads requieren aprobación del dueño.
+  // En /producto/* (móvil) el botón va DENTRO de la barra inferior fija
+  // (ProductStickyBar, 76px de alto + zona segura): centrado en ella, a la
+  // derecha del botón "Elegir tamaño". Así nunca queda flotando encima del
+  // texto de la página (antes tapaba "Llega entre…" y la descripción).
+  const isProductPage = pathname?.startsWith("/producto/");
   const buttonPosition = hasStickyBuyBar
-    ? "bottom-8 right-5 h-14 w-14"
-    : "bottom-4 right-3 h-[52px] w-[52px] sm:bottom-6";
+    ? "bottom-8 right-5 h-14 w-14 sm:right-6"
+    : isProductPage
+      ? "bottom-[calc(0.75rem+env(safe-area-inset-bottom))] right-3 h-[52px] w-[52px] md:bottom-6 md:right-6"
+      : "bottom-4 right-3 h-[52px] w-[52px] sm:bottom-6 sm:right-6";
   const panelPosition = hasStickyBuyBar ? "bottom-28" : "bottom-24";
 
   // presetText: usado por los chips de acceso rápido (preguntas frecuentes)
@@ -261,7 +268,7 @@ export default function ChatWidget() {
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         aria-label={isOpen ? "Cerrar chat" : "Abrir chat"}
-        className={`fixed ${buttonPosition} z-50 flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 text-white shadow-lg shadow-accent/50 transition-transform hover:scale-105 sm:right-6`}
+        className={`fixed ${buttonPosition} z-50 flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 text-white shadow-lg shadow-accent/50 transition-transform hover:scale-105`}
       >
         {isOpen ? (
           <span className="text-2xl leading-none">✕</span>
