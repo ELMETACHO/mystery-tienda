@@ -20,6 +20,7 @@ import { SIZES, DEFAULT_FRAME_TYPE, getPriceCOP, formatCOP, saveOrder, isPremium
 import { trackViewContent, trackAddToCart } from "../lib/gtm";
 import FrameTypeSelector from "./FrameTypeSelector";
 import DeliveryEstimate from "./DeliveryEstimate";
+import WallVisualizerButton from "./WallVisualizerButton";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
 
@@ -770,6 +771,17 @@ export default function CrearFlow({ compact = false }) {
           </div>
 
           <DeliveryEstimate className="animate-ready-in w-full max-w-sm" />
+
+          {/* Visualizador a escala real (sofá + persona) con los 5 tamaños —
+              se descarga solo al tocar el botón (ver WallVisualizerButton). */}
+          <WallVisualizerButton
+            imageSrc={readyOrder.croppedImage}
+            imageRatio={selectedSize.ratio}
+            sizes={SIZES.map((s) => ({ id: s.id, label: s.label }))}
+            initialSizeId={selectedSize.id}
+            selectedSizeId={selectedSize.id}
+            className="animate-ready-in"
+          />
 
           <button
             type="button"
