@@ -1718,12 +1718,17 @@ function giftCardEmailHtml({ purchase, code }) {
 }
 
 export async function sendGiftCardEmails({ purchase, code }) {
-  await resend.emails.send({
+  // Resend devuelve { error } en vez de lanzar: acá SÍ importa saberlo (el
+  // código es lo que el cliente pagó), así que se convierte en excepción
+  // para que el webhook de Wompi reintente.
+  const { error } = await resend.emails.send({
     from: FROM_EMAIL,
     to: purchase.buyerEmail,
     subject: "🎁 Tu tarjeta regalo Mystery",
     html: wrapEmailHtml(giftCardEmailHtml({ purchase, code })),
   });
+  if (error) throw new Error(`Resend: ${error.message || "no se pudo enviar la tarjeta regalo"}`);
+  // El aviso al admin no es crítico: si falla, no se reintenta la tarjeta.
   await resend.emails.send({
     from: FROM_EMAIL,
     to: ADMIN_EMAIL,
@@ -1731,5 +1736,5 @@ export async function sendGiftCardEmails({ purchase, code }) {
     html: wrapEmailHtml(
       `<p style="font-family:${FONT_STACK};">Se vendió una tarjeta regalo (40x50). Código ${escapeHtml(code)} · referencia ${escapeHtml(purchase.reference)} · comprador ${escapeHtml(purchase.buyerEmail)}. Se canjea como código de regalo (1 uso) en /checkout.</p>`
     ),
-  });
+  }).catch((err) => console.error("[email] Aviso de tarjeta regalo al admin falló:", err));
 }

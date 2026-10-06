@@ -69,17 +69,31 @@ export async function issueGiftCardForTransaction(transaction) {
   if (locked !== "OK") return { ok: true, alreadyIssued: true };
 
   try {
-    const code = generateGiftCardCode(crypto.randomBytes);
-    await createGiftCode({ maxUses: 1, code, source: "tarjeta-regalo" });
-    const updated = { ...purchase, code, transactionId: transaction.id || null, issuedAt: new Date().toISOString() };
-    await client.set(purchaseKey(purchase.reference), JSON.stringify(updated), "EX", ISSUED_TTL);
-    await sendGiftCardEmails({ purchase: updated, code });
+    // Si un intento anterior ya creó el código pero falló el correo, se
+    // reutiliza el mismo (nunca dos códigos por una compra).
+    let code = purchase.code;
+    if (!code) {
+      code = generateGiftCardCode(crypto.randomBytes);
+      await createGiftCode({ maxUses: 1, code, source: "tarjeta-regalo" });
+      await client.set(
+        purchaseKey(purchase.reference),
+        JSON.stringify({ ...purchase, code, transactionId: transaction.id || null }),
+        "EX",
+        ISSUED_TTL
+      );
+    }
+    const issued = { ...purchase, code, transactionId: transaction.id || null };
+    await sendGiftCardEmails({ purchase: issued, code });
+    await client.set(
+      purchaseKey(purchase.reference),
+      JSON.stringify({ ...issued, emailedAt: new Date().toISOString() }),
+      "EX",
+      ISSUED_TTL
+    );
     return { ok: true, alreadyIssued: false };
   } catch (err) {
     // Se libera el lock para que el reintento (webhook o recarga de la
-    // página de gracias) vuelva a intentar. Si el código ya se creó pero
-    // falló el correo, el reintento crea otro código: el anterior queda
-    // sin enviar a nadie (inofensivo) y aparece en /admin/regalos.
+    // página de gracias) vuelva a intentar el envío con el mismo código.
     await client.del(issuedKey(purchase.reference)).catch(() => {});
     throw err;
   }
