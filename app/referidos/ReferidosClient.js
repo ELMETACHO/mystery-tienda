@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const INPUT_CLASS =
   "rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-3.5 text-base outline-none transition-colors duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 sm:py-3 sm:text-sm";
@@ -13,6 +14,7 @@ const BENEFITS = [
 ];
 
 export default function ReferidosClient() {
+  const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [showLookup, setShowLookup] = useState(false);
   const [lookupCode, setLookupCode] = useState("");
@@ -213,7 +215,7 @@ export default function ReferidosClient() {
                   e.preventDefault();
                   const code = lookupCode.trim();
                   if (!code) return;
-                  window.location.href = `/referidos/panel?code=${encodeURIComponent(code)}`;
+                  router.push(`/referidos/panel?code=${encodeURIComponent(code)}`);
                 }}
                 className="mt-2 flex w-full flex-col gap-3 rounded-2xl border border-black/10 bg-[#fffaf0] p-5 text-left"
               >
