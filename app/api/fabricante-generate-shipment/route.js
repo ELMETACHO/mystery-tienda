@@ -11,6 +11,7 @@ import { getManufacturerOrder, markManufacturerOrderRegenerated } from "../../li
 import { sendShippingNotificationEmail, sendExtraProtectionEmail } from "../../lib/email";
 import { getFabricantesByAccessCode } from "../../lib/fabricantes";
 import { handleNoCoverage } from "../../lib/noCoverage";
+import { isBlockedByFailedAttempts, registerFailedAttempt, rateLimitResponse } from "../../lib/rateLimit";
 // La cotización espera a que TODAS las transportadoras respondan (hasta
 // 40s, ver pollQuotationRates en app/lib/skydropx.js) y luego se espera el
 // número de la guía (hasta ~40s más) — margen para que Vercel no corte a
@@ -25,10 +26,14 @@ export const maxDuration = 120;
 // (ver app/lib/manualShipments.js) — nunca le pide esos datos de nuevo al
 // fabricante, ya los tenemos.
 export async function POST(request) {
+  const { blocked, retryAfter } = await isBlockedByFailedAttempts(request, "fabricante-code", { limit: 10 });
+  if (blocked) return rateLimitResponse(retryAfter);
+
   const { code, reference } = await request.json().catch(() => ({}));
 
   const fabricantes = getFabricantesByAccessCode(code);
   if (fabricantes.length === 0) {
+    await registerFailedAttempt(request, "fabricante-code");
     return Response.json({ error: "Código incorrecto" }, { status: 401 });
   }
   if (!reference) {
@@ -159,6 +164,7 @@ async function generateLocked({ fabricante, reference, manualRecord }) {
   try {
     const scheduledEmailId = await sendShippingNotificationEmail({
       customer: manualRecord.customer,
+      reference,
       trackingNumber: shipment.trackingNumber,
       carrierName: shipment.carrierName,
       trackingUrl: shipment.trackingUrl,

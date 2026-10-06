@@ -4,8 +4,12 @@ import {
   getAdminSessionToken,
   isValidAdminPassword,
 } from "../../lib/adminAuth";
+import { isBlockedByFailedAttempts, registerFailedAttempt, rateLimitResponse } from "../../lib/rateLimit";
 
 export async function POST(request) {
+  const { blocked, retryAfter } = await isBlockedByFailedAttempts(request, "admin-auth", { limit: 10 });
+  if (blocked) return rateLimitResponse(retryAfter);
+
   const { password } = await request.json().catch(() => ({}));
 
   if (!process.env.ADMIN_PASSWORD) {
@@ -16,6 +20,7 @@ export async function POST(request) {
   }
 
   if (!isValidAdminPassword(password)) {
+    await registerFailedAttempt(request, "admin-auth");
     return NextResponse.json({ error: "Contraseña incorrecta" }, { status: 401 });
   }
 

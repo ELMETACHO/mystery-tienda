@@ -608,6 +608,9 @@ export default async function Home() {
           <div className="grid grid-cols-2 gap-8 sm:flex sm:gap-16">
             <div className="flex flex-col gap-2 text-sm">
               <span className="mb-1 font-medium text-[#33456b]">Ayuda</span>
+              <Link href="/pedido" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
+                Estado de mi pedido
+              </Link>
               <Link href="/politicas" className="text-[#5b6b8c] hover:text-[#1b2a4a]">
                 Garantías
               </Link>

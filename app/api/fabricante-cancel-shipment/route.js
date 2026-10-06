@@ -7,6 +7,7 @@ import {
 import { getManufacturerOrder, markManufacturerOrderCancelled } from "../../lib/manufacturerFinance";
 import { sendGuideCancelledEmail, cancelScheduledEmail, sendGuideCorrectionEmail } from "../../lib/email";
 import { getFabricantesByAccessCode } from "../../lib/fabricantes";
+import { isBlockedByFailedAttempts, registerFailedAttempt, rateLimitResponse } from "../../lib/rateLimit";
 
 // Botón "Cancelar guía" de /fabricante. Mismo código de acceso que
 // /api/fabricante-status (sin ADMIN_PASSWORD) — ver app/fabricante/page.js.
@@ -21,10 +22,14 @@ import { getFabricantesByAccessCode } from "../../lib/fabricantes";
 // escaneando la cuenta de Skydropx (no hay filtro confiable por
 // order_number/tracking_number en su API — confirmado probando en vivo).
 export async function POST(request) {
+  const { blocked, retryAfter } = await isBlockedByFailedAttempts(request, "fabricante-code", { limit: 10 });
+  if (blocked) return rateLimitResponse(retryAfter);
+
   const { code, reference, reason } = await request.json().catch(() => ({}));
 
   const fabricantes = getFabricantesByAccessCode(code);
   if (fabricantes.length === 0) {
+    await registerFailedAttempt(request, "fabricante-code");
     return Response.json({ error: "Código incorrecto" }, { status: 401 });
   }
   if (!reference) {
