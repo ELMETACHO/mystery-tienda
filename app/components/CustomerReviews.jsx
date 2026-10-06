@@ -8,6 +8,22 @@ import { headingFont } from "../lib/typography";
 // ningún request hasta que la sección está a ~400 px de entrar en
 // pantalla, y si no hay reseñas aprobadas no pinta nada (ni título, ni
 // estrellas, ni promedio inventado).
+// Una sola petición por URL aunque el componente se vuelva a montar (p. ej.
+// cuando /ads re-renderiza secciones al avanzar el flujo de compra).
+const requests = new Map();
+function loadReviews(url) {
+  if (!requests.has(url)) {
+    requests.set(
+      url,
+      fetch(url)
+        .then((res) => (res.ok ? res.json() : { reviews: [] }))
+        .then((data) => (Array.isArray(data.reviews) ? data.reviews : []))
+        .catch(() => [])
+    );
+  }
+  return requests.get(url);
+}
+
 export default function CustomerReviews({
   title = "Fotos de nuestros clientes",
   onlyPhotos = false,
@@ -25,12 +41,9 @@ export default function CustomerReviews({
       (entries) => {
         if (!entries.some((e) => e.isIntersecting)) return;
         observer.disconnect();
-        fetch(`/api/reviews/approved?limit=${limit}${onlyPhotos ? "&photos=1" : ""}`)
-          .then((res) => (res.ok ? res.json() : { reviews: [] }))
-          .then((data) => {
-            if (!cancelled) setReviews(Array.isArray(data.reviews) ? data.reviews : []);
-          })
-          .catch(() => {});
+        loadReviews(`/api/reviews/approved?limit=${limit}${onlyPhotos ? "&photos=1" : ""}`).then((list) => {
+          if (!cancelled) setReviews(list);
+        });
       },
       { rootMargin: "400px 0px" }
     );
