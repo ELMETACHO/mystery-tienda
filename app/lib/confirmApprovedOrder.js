@@ -15,6 +15,7 @@ import { recordCrmEntry } from "./manufacturerFinance";
 import { checkShippingCoverageAfterPayment } from "./noCoverage";
 import { checkFullPaymentIntegrity } from "./paymentIntegrity";
 import { flagSuspiciousPayment } from "./flaggedPayments";
+import { withSanitizedAttribution } from "./attributionChannels";
 
 // Lógica de confirmación de un pago YA VERIFICADO como APPROVED contra
 // Wompi — compartida entre /api/confirm-order (cuando el cliente
@@ -30,6 +31,9 @@ import { flagSuspiciousPayment } from "./flaggedPayments";
 // puede volver a intentarlo, en vez de quedar marcado como "ya
 // procesado" sin que en realidad se haya completado.
 export async function confirmApprovedOrder({ order, customer, transaction }) {
+  // Origen del cliente (ver attribution.js): se limpia acá, síncrono y en
+  // microsegundos, para que todo lo que se guarde abajo ya venga limpio.
+  order = withSanitizedAttribution(order);
   const claimed = await claimTransaction(transaction.id);
   if (!claimed) {
     return { alreadyProcessed: true, isReturningCustomer: false };

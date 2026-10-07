@@ -15,6 +15,7 @@ import { checkShippingCoverageAfterPayment } from "./noCoverage";
 import { COD_DEPOSIT_COP, SIZES } from "./order";
 import { checkCodPaymentIntegrity } from "./paymentIntegrity";
 import { flagSuspiciousPayment } from "./flaggedPayments";
+import { withSanitizedAttribution } from "./attributionChannels";
 
 // Equivalente de confirmApprovedOrder.js, pero para "Pago contraentrega":
 // el cliente pagó solo el anticipo fijo (COD_DEPOSIT_COP) por Wompi, y el
@@ -30,6 +31,9 @@ import { flagSuspiciousPayment } from "./flaggedPayments";
 // que existen dos caminos que pueden llegar a confirmar la misma
 // transacción de anticipo.
 export async function confirmApprovedCodOrder({ order, customer, transaction }) {
+  // Origen del cliente (ver attribution.js): se limpia acá, síncrono y en
+  // microsegundos, para que todo lo que se guarde abajo ya venga limpio.
+  order = withSanitizedAttribution(order);
   const claimed = await claimTransaction(transaction.id);
   if (!claimed) {
     return { alreadyProcessed: true, isReturningCustomer: false, anticipoPagado: 0, saldoPendiente: 0 };

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatCOP } from "../../lib/order";
+import { OrigenBadge, OrigenDetails, OrigenSummary } from "../OrigenBadge";
 
 function fmt(iso) {
   return new Date(iso).toLocaleString("es-CO", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -50,13 +51,14 @@ export default function RespaldosApp() {
         <a href="/admin" className="text-sm text-accent underline underline-offset-2">← Admin</a>
         <h1 className="mt-2 font-heading text-xl font-bold tracking-tight sm:text-2xl">Respaldos de pedidos pagados</h1>
         <p className="mt-1 text-sm text-[#33456b]">
-          Copia de cada pedido pagado (datos de entrega + imagen de impresión), guardada 1 año.
+          Copia de cada pedido pagado (datos de entrega + imagen de impresión + origen del cliente), guardada 1 año.
         </p>
       </div>
 
       {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {!rows && !error && <p className="text-sm text-[#33456b]">Cargando…</p>}
       {rows && rows.length === 0 && <p className="text-sm text-[#33456b]">Todavía no hay respaldos.</p>}
+      {rows && rows.length > 0 && <OrigenSummary items={rows.map((r) => r.attribution)} />}
 
       <ul className="flex flex-col gap-3">
         {(rows || []).map((r) => (
@@ -75,6 +77,13 @@ export default function RespaldosApp() {
               {r.paymentMethod === "cod" ? "Contraentrega (anticipo)" : r.paymentMethod === "regalo" ? "Regalo" : "Pago completo"}
               {r.isCatalog ? " · Catálogo" : ""}
             </p>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2 text-xs text-[#33456b]">
+                <span className="font-medium">Origen:</span>
+                <OrigenBadge attribution={r.attribution} />
+              </div>
+              <OrigenDetails attribution={r.attribution} />
+            </div>
             <pre className="whitespace-pre-wrap rounded-lg bg-white/60 p-2 text-xs text-[#33456b]">{addressLines(r.customer)}</pre>
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <button

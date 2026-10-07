@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 import { SITE_URL } from "./lib/siteUrl";
 import ChatWidget from "./components/ChatWidget";
+import OriginTracker from "./components/OriginTracker";
 import "./globals.css";
 
 // Google Tag Manager — contenedor único (septiembre 2026). Las 3 tags de
@@ -115,6 +116,7 @@ export default function RootLayout({ children }) {
         />
         {children}
         <ChatWidget />
+        <OriginTracker />
         <Analytics />
         {GTM_ID && (
           <Script id="gtm-container" strategy="afterInteractive">
