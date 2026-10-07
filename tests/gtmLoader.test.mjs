@@ -15,7 +15,7 @@ function fakeWindow({ pathname = "/", readyState = "interactive", now = 500, idl
     createElement: () => ({}),
   };
   const window = {
-    location: { pathname },
+    location: { pathname, search: "" },
     performance: { now: () => now },
     addEventListener: (t, fn) => ((listeners[t] ||= []).push(fn)),
     removeEventListener: (t, fn) => (listeners[t] = (listeners[t] || []).filter((f) => f !== fn)),
@@ -85,4 +85,17 @@ test("el tope fijo arranca GTM aunque nadie toque nada", () => {
   run(env);
   env.timers.at(-1).fn();
   assert.equal(env.inserted.length, 1);
+});
+
+test("visitas desde anuncios (gclid/fbclid/ttclid/utm) cargan de inmediato, como antes", () => {
+  for (const search of ["?gclid=abc", "?fbclid=x&y=1", "?a=1&ttclid=T", "?utm_source=tiktok&utm_medium=cpc"]) {
+    const env = fakeWindow();
+    env.window.location.search = search;
+    run(env);
+    assert.equal(env.inserted.length, 1, search);
+  }
+  const env = fakeWindow();
+  env.window.location.search = "?ref=ABC123";
+  run(env);
+  assert.equal(env.inserted.length, 0);
 });

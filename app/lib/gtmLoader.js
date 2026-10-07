@@ -19,7 +19,14 @@
 //      cada vez que el sitio empuja un evento del embudo de compra
 //      (add_to_cart, begin_checkout, add_payment_info, purchase) — ver
 //      app/lib/gtm.js. Nada de esto toca el botón de pago ni lo demora:
-//      solo inserta el <script> de GTM, que descarga en segundo plano.
+//      solo inserta el <script> de GTM, que descarga en segundo plano;
+//   5. de inmediato (igual que antes de este cambio) cuando la visita
+//      llega con identificadores de clic de anuncio o UTM en la URL
+//      (gclid/gbraid/wbraid, fbclid, ttclid, msclkid, utm_*). Los píxeles
+//      leen esos parámetros de la URL al iniciar para atribuir la venta a
+//      la campaña (cookies _gcl_aw, _fbc, ttclid); si el cliente navegara
+//      dentro del sitio antes de que GTM arranque, la URL nueva ya no los
+//      traería y la conversión quedaría sin atribuir. Ahí no se arriesga.
 //
 // No se pierde ningún evento: el dataLayer existe desde el principio y
 // todo lo que el sitio empuja antes de que GTM arranque (view_item,
@@ -48,7 +55,7 @@ j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i;
 f.parentNode.insertBefore(j,f);
 }
 w.__mysteryLoadGtm=boot;
-if(/^\\/checkout(\\/|$)/.test(w.location.pathname)){boot();return;}
+if(/^\\/checkout(\\/|$)/.test(w.location.pathname)||/[?&](gclid|gbraid|wbraid|fbclid|ttclid|msclkid|utm_[a-z]+)=/i.test(w.location.search)){boot();return;}
 for(var k=0;k<ev.length;k++)w.addEventListener(ev[k],boot,opts);
 function onLoad(){
 if(w.requestIdleCallback)w.requestIdleCallback(boot,{timeout:${GTM_IDLE_TIMEOUT_MS}});
