@@ -1,3 +1,5 @@
+import { GTM_FUNNEL_EVENTS } from "./gtmLoader";
+
 // Empuja un evento al dataLayer de Google Tag Manager (ver contenedor en
 // app/layout.js). Los tags de Meta/TikTok/Google Ads viven DENTRO del panel
 // web de GTM (tagmanager.google.com), no en este código — este helper solo
@@ -10,6 +12,13 @@ export function pushToDataLayer(event) {
     if (typeof window === "undefined") return;
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push(event);
+    // GTM se carga diferido (app/lib/gtmLoader.js): un evento del embudo de
+    // compra lo arranca YA si todavía no había arrancado, para que el
+    // InitiateCheckout/Purchase salga sin esperar. Solo inserta el <script>
+    // (no bloquea nada); el evento ya quedó en la cola de arriba.
+    if (GTM_FUNNEL_EVENTS.includes(event?.event) && typeof window.__mysteryLoadGtm === "function") {
+      window.__mysteryLoadGtm();
+    }
   } catch (err) {
     console.error("[gtm] No se pudo empujar el evento:", err);
   }

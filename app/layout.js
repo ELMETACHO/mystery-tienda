@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 import { SITE_URL } from "./lib/siteUrl";
+import { buildGtmLoaderScript } from "./lib/gtmLoader";
 import ChatWidget from "./components/ChatWidget";
 import "./globals.css";
 
@@ -117,12 +118,12 @@ export default function RootLayout({ children }) {
         <ChatWidget />
         <Analytics />
         {GTM_ID && (
+          // Carga diferida: la página se pinta primero y GTM (Meta/TikTok/
+          // Google, ~750 KB) arranca cuando el navegador queda libre, con la
+          // primera interacción o a los 4 s, lo que pase primero; en
+          // /checkout de inmediato. Detalles en app/lib/gtmLoader.js.
           <Script id="gtm-container" strategy="afterInteractive">
-            {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-            })(window,document,'script','dataLayer','${GTM_ID}');`}
+            {buildGtmLoaderScript(GTM_ID)}
           </Script>
         )}
       </body>
