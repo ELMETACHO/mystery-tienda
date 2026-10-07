@@ -62,7 +62,10 @@ const CSP_DIRECTIVES = {
   ],
   "object-src": ["'none'"],
   "base-uri": ["'self'"],
-  "form-action": ["'self'", "https://*.wompi.co"],
+  // facebook.com: el píxel de Meta envía algunos eventos con un formulario
+  // oculto (POST a www.facebook.com/tr/) — sin esto, al pasar la CSP a
+  // modo bloqueo esos eventos se perderían.
+  "form-action": ["'self'", "https://*.wompi.co", "https://www.facebook.com"],
   "frame-ancestors": ["'self'"],
   "report-uri": ["/api/csp-report"],
 };

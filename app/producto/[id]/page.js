@@ -17,6 +17,7 @@ import { headingFont } from "../../lib/typography";
 import WallVisualizerButton from "../../components/WallVisualizerButton";
 import ProductGallery from "./ProductGallery";
 import ProductStickyBar from "./ProductStickyBar";
+import ProductViewTracker from "./ProductViewTracker";
 import { getProductGalleryImages } from "../../lib/productGallery";
 
 function categoryLabel(categoryId) {
@@ -270,6 +271,11 @@ export default async function ProductPage({ params }) {
         <div id="elegir-tamano" className="scroll-mt-4">
           <ProductSizeSelector product={product} />
         </div>
+        <ProductViewTracker
+          id={product.id}
+          name={productDisplayTitle(product, label)}
+          priceCOP={FEED_DEFAULT_PRICE_COP}
+        />
 
         {/* Fecha estimada calculada en el navegador con la fecha de hoy
             (Bogotá), saltando domingos y festivos — ver DeliveryEstimate. */}
