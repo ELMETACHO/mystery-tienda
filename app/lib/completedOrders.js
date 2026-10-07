@@ -68,6 +68,8 @@ export async function saveCompletedOrder({ order, customer, transaction, payment
       // real de Wompi (el anticipo, no el total, en pedidos cod).
       priceCOP: order.priceCOP,
       paymentMethod: paymentMethod || "wompi", // "wompi" | "cod"
+      // Origen del cliente (ver attribution.js y attributionChannels.js) — ya limpio, < 1 KB.
+      attribution: order.attribution || null,
       purchasedAt: new Date().toISOString(),
       reviewEmailSentAt: null,
       reviewSubmittedAt: null,
