@@ -31,6 +31,12 @@ const CONTENT_UPDATED = {
   products: "2026-10-05",
 };
 
+// Cambios de texto de una sola categoría (app/lib/categorySeo.js): fecha
+// propia para no marcar todas como modificadas.
+const CATEGORY_CONTENT_UPDATED = {
+  anime: "2026-10-07",
+};
+
 function latest(...dates) {
   const valid = dates
     .filter(Boolean)
@@ -71,7 +77,7 @@ export default async function sitemap() {
 
   const categoryRoutes = ESTUDIO_CATEGORIES.map((category) => ({
     url: `${SITE_URL}/categoria/${category.id}`,
-    lastModified: latest(CONTENT_UPDATED.categories, newestByCategory[category.id]),
+    lastModified: latest(CONTENT_UPDATED.categories, CATEGORY_CONTENT_UPDATED[category.id], newestByCategory[category.id]),
     changeFrequency: "weekly",
     priority: 0.7,
   }));
