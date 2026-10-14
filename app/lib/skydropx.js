@@ -417,27 +417,33 @@ function isCoordinadora(rate) {
   return rateCarrierName(rate).includes("coordinadora");
 }
 
+// Transportadoras que le ponen problemas a Cris: Coordinadora (la guía de
+// $64.913 a Maicao) y Servientrega (exige caja y protección extra — caso
+// real 14 oct 2026, pedido de Felipe Estupiñan: se tuvo que cancelar y
+// rehacer por Envía).
+function isLastResortCarrier(rate) {
+  return isCoordinadora(rate) || isServientrega(rate);
+}
+
 // Para pedidos SIN contraentrega (pago completo por Wompi) cualquier
 // transportadora que haya cotizado sirve; para contraentrega, solo las que
 // soportan recaudo en efectivo (COD_CARRIERS).
 //
-// Regla de Oscar (26 sept 2026): la más barata, pero NUNCA Coordinadora
-// salvo que sea la única opción — le pone problemas a Cris, y fue la de la
-// guía de $64.913 a Maicao. "Única opción" incluye el caso en que todas
-// las demás superan MAX_SHIPPING_COST_COP y Coordinadora no: antes que
-// cancelar el pedido, se usa Coordinadora.
+// Regla de Oscar (14 oct 2026, antes solo excluía Coordinadora): la más
+// barata entre las que no dan problema (Envía, Interrapidísimo...).
+// Servientrega y Coordinadora solo si son la única opción — "única
+// opción" incluye el caso en que todas las demás superan el tope y alguna
+// de estas dos no: antes que cancelar el pedido, se usa la más barata de
+// ellas.
 function pickRate(rates, { isCod, capCOP = MAX_SHIPPING_COST_COP }) {
   const eligible = isCod
     ? rates.filter((rate) => COD_CARRIERS.some((name) => rateCarrierName(rate).includes(name)))
     : rates;
 
-  let rate = cheapestOf(eligible.filter((r) => !isCoordinadora(r)));
-  const coordinadora = cheapestOf(eligible.filter(isCoordinadora));
-  if (
-    coordinadora &&
-    (!rate || (ratePrice(rate) > capCOP && ratePrice(coordinadora) <= capCOP))
-  ) {
-    rate = coordinadora;
+  let rate = cheapestOf(eligible.filter((r) => !isLastResortCarrier(r)));
+  const lastResort = cheapestOf(eligible.filter(isLastResortCarrier));
+  if (lastResort && (!rate || (ratePrice(rate) > capCOP && ratePrice(lastResort) <= capCOP))) {
+    rate = lastResort;
   }
   // Rastro en los logs de TODO lo que cotizó y lo elegido — sin esto no
   // había forma de saber después por qué se eligió una transportadora.
