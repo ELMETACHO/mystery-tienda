@@ -1,4 +1,5 @@
 import { SIZES } from "./order";
+import { lookupPostalCode } from "./postalCodes";
 
 // Autenticación OAuth de Skydropx PRO (client_credentials).
 // Docs: POST {base}/api/v1/oauth/token, body x-www-form-urlencoded con
@@ -226,7 +227,11 @@ function buildOriginAddress() {
 function buildDestinationAddress(customer) {
   return {
     country_code: "CO",
-    postal_code: customer.postalCode || "",
+    // Red de seguridad: si el pedido quedó guardado sin código postal (la
+    // ciudad se escribió de una forma que el checkout no reconoció), se
+    // vuelve a buscar acá — sin él, Skydropx rechaza ciudades que no estén
+    // escritas exactamente como las espera.
+    postal_code: customer.postalCode || lookupPostalCode(customer.department, customer.city) || "",
     area_level1: normalizeAreaName(customer.department || ""),
     area_level2: normalizeAreaName(customer.city),
     area_level3: normalizeAreaName(customer.neighborhood),
@@ -555,7 +560,7 @@ async function createShipment({ rate, order, customer, reference, isCod, codAmou
           street1: customer.street,
           area_level1: normalizeAreaName(customer.department),
           area_level2: normalizeAreaName(customer.city),
-          postal_code: customer.postalCode || "",
+          postal_code: customer.postalCode || lookupPostalCode(customer.department, customer.city) || "",
           country: "CO",
         },
       },
