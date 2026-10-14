@@ -303,7 +303,7 @@ export default async function ProductPage({ params }) {
             <dt className="text-[#5b6b8c]">Envío</dt>
             <dd className="text-[#1b2a4a]">Gratis a toda Colombia · hecho en 1-2 días, llega en máximo 5 días (sin domingos)</dd>
             <dt className="text-[#5b6b8c]">Pago</dt>
-            <dd className="text-[#1b2a4a]">Wompi (tarjeta, PSE, Nequi o Daviplata vía PSE) o contraentrega</dd>
+            <dd className="text-[#1b2a4a]">Wompi (tarjeta, PSE, Nequi o Daviplata vía PSE) o contraentrega (+$5.000 de recargo)</dd>
           </dl>
           <p className="mt-4 text-sm text-[#33456b]">
             ¿Lo quieres con tu propia foto?{" "}

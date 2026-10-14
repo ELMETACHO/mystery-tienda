@@ -1,6 +1,8 @@
-import { COD_DEPOSIT_COP } from "../../lib/order";
+import { COD_DEPOSIT_COP, COD_FEE_COP } from "../../lib/order";
 
 const depositLabel = `$${COD_DEPOSIT_COP.toLocaleString("es-CO")}`;
+// Recargo por pagar contraentrega (oct 2026, ver COD_FEE_COP en order.js).
+const codFeeLabel = `$${COD_FEE_COP.toLocaleString("es-CO")}`;
 
 // Reemplaza la cuenta regresiva y el contador de "personas viendo" (ambos
 // simulados, ver ADS.md ronda 3): en vez de urgencia inventada, repite la
@@ -33,7 +35,7 @@ export default function OfferBadges({ variant = "card" }) {
       <div className="rounded-xl border border-emerald-600/25 bg-emerald-50 px-3 py-2.5 text-center">
         <p className="text-sm font-bold text-emerald-800">💵 Paga al recibir</p>
         <p className="mt-0.5 text-[11px] leading-snug text-emerald-900/80">
-          Separas con {depositLabel} y el resto en la puerta
+          Separas con {depositLabel} y el resto en la puerta (+{codFeeLabel})
         </p>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { LEGAL_SECTIONS } from "./legalContent";
-import { SIZES, PRICES, FRAME_TYPES, COD_DEPOSIT_COP, formatCOP } from "./order";
+import { SIZES, PRICES, FRAME_TYPES, COD_DEPOSIT_COP, COD_FEE_COP, formatCOP } from "./order";
 
 // El system prompt del chatbot se arma EN TIEMPO REAL a partir de estos
 // mismos archivos — nunca una copia pegada aparte — para que precios,
@@ -40,7 +40,7 @@ El cliente sube su foto en /crear, la ajusta dentro del marco con zoom/recorte, 
 
 ENVÍOS (datos confirmados por el dueño, oct 2026): envío gratis a toda Colombia. El cuadro se hace en 1 a 2 días y llega en máximo 5 días desde que se confirma el pago; la transportadora no entrega los domingos. Forma corta para decirlo: "Hecho en 1-2 días · llega en máximo 5 días (sin domingos)". No prometas una fecha exacta de entrega para un pedido puntual.
 
-MEDIOS DE PAGO: en línea con Wompi: tarjeta de crédito o débito, PSE, y Nequi o Daviplata (se pagan desde PSE; también con QR o llaves). O contraentrega: anticipo de ${formatCOP(COD_DEPOSIT_COP)} por Wompi y el resto en efectivo al recibir.
+MEDIOS DE PAGO: en línea con Wompi: tarjeta de crédito o débito, PSE, y Nequi o Daviplata (se pagan desde PSE; también con QR o llaves). O contraentrega: anticipo de ${formatCOP(COD_DEPOSIT_COP)} por Wompi y el resto en efectivo al recibir, con un recargo de ${formatCOP(COD_FEE_COP)} por el recaudo (pagando en línea no hay recargo; el envío es gratis en ambos casos).
 
 TRAYECTORIA: más de 1.000 cuadros entregados desde 2019, la mayoría vendidos por Instagram (@bigmystery_); la página web es nueva. No hay una calificación promedio publicada: nunca digas un número de estrellas ni de calificación.
 
