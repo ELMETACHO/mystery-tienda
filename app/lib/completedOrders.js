@@ -66,7 +66,10 @@ export async function saveCompletedOrder({ order, customer, transaction, payment
       // app/lib/financeReport.js), que usa priceCOP para ingresos y
       // paymentMethod para saber sobre qué monto calcular la comisión
       // real de Wompi (el anticipo, no el total, en pedidos cod).
-      priceCOP: order.priceCOP,
+      // + recargo contraentrega (order.codFeeCOP, solo pedidos "cod"): es
+      // parte de lo que el cliente paga de verdad.
+      priceCOP: order.priceCOP + (order.codFeeCOP || 0),
+      codFeeCOP: order.codFeeCOP || 0,
       paymentMethod: paymentMethod || "wompi", // "wompi" | "cod"
       purchasedAt: new Date().toISOString(),
       reviewEmailSentAt: null,

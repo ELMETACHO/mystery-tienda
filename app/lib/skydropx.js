@@ -1,4 +1,4 @@
-import { SIZES } from "./order";
+import { SIZES, COD_FEE_COP } from "./order";
 import { lookupPostalCode } from "./postalCodes";
 
 // Autenticación OAuth de Skydropx PRO (client_credentials).
@@ -385,9 +385,13 @@ async function pollQuotationRates(
 export const MAX_SHIPPING_COST_COP = 26000;
 
 // Tope que aplica a un tamaño: el propio (SIZES[].maxShippingCOP, ej.
-// $60.000 para 70x100 y 100x140) o MAX_SHIPPING_COST_COP.
-export function getShippingCapCOP(sizeId) {
-  return SIZES.find((s) => s.id === sizeId)?.maxShippingCOP ?? MAX_SHIPPING_COST_COP;
+// $60.000 para 70x100 y 100x140) o MAX_SHIPPING_COST_COP. En contraentrega
+// sube COD_FEE_COP ($5.000): la transportadora cobra ~$4.900 más por
+// recaudar, y ese recargo ya lo paga el cliente (ver order.js) — así
+// Medellín/Bucaramanga/Cali vuelven a salir por Envía sin tocar la ganancia.
+export function getShippingCapCOP(sizeId, { isCod = false } = {}) {
+  const base = SIZES.find((s) => s.id === sizeId)?.maxShippingCOP ?? MAX_SHIPPING_COST_COP;
+  return isCod ? base + COD_FEE_COP : base;
 }
 
 function ratePrice(rate) {
@@ -687,7 +691,7 @@ async function resumeShipment(shipmentId) {
 export async function quoteCheapestShipping({ order, customer, isCod, codAmountCOP, maxWaitMs }) {
   const quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
   const { rates, isCompleted } = await pollQuotationRates(quotationId, maxWaitMs ? { maxWaitMs } : {});
-  const capCOP = getShippingCapCOP(order.sizeId);
+  const capCOP = getShippingCapCOP(order.sizeId, { isCod });
   const { rate } = pickRate(rates, { isCod, capCOP });
   if (!rate || !Number.isFinite(ratePrice(rate))) return null;
   return {
@@ -748,7 +752,7 @@ export async function createManualShipment({
 
   let quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
   let { rates, isCompleted } = await pollQuotationRates(quotationId);
-  const capCOP = getShippingCapCOP(order.sizeId);
+  const capCOP = getShippingCapCOP(order.sizeId, { isCod });
   let picked = pickRate(rates, { isCod, capCOP });
 
   // Cotización incompleta que da "caro" o "sin tarifa": el cuadro ya está

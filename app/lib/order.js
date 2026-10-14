@@ -133,6 +133,20 @@ export const ORDER_STORAGE_KEY = "mystery:pedido";
 // efectivo al recibir el cuadro.
 export const COD_DEPOSIT_COP = 20000;
 
+// Recargo fijo por pagar contraentrega (oct 2026, decisión de Oscar): la
+// transportadora cobra ~$4.900 extra por recaudar el efectivo (medido
+// cotizando el mismo envío por Wompi vs. contraentrega). El envío sigue
+// siendo gratis; este recargo es por el servicio de recaudo y se cobra en
+// el saldo al recibir. Pago online: sin recargo. El servidor SIEMPRE lo
+// calcula con esta constante (getCodBalanceCOP), nunca lo lee del navegador.
+export const COD_FEE_COP = 5000;
+
+// Lo que el cliente paga en efectivo al recibir: precio (ya con descuento
+// si aplica) + recargo contraentrega − anticipo pagado por Wompi.
+export function getCodBalanceCOP(priceCOP) {
+  return Math.max(0, priceCOP + COD_FEE_COP - COD_DEPOSIT_COP);
+}
+
 export function formatCOP(amount) {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",

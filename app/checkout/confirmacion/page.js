@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import confetti from "canvas-confetti";
-import { formatCOP, loadOrder, saveOrder } from "../../lib/order";
+import { formatCOP, loadOrder, saveOrder, COD_FEE_COP } from "../../lib/order";
 import { trackPurchase } from "../../lib/gtm";
 
 // Morado de marca + blanco/dorado, para que el confeti se sienta "Mystery"
@@ -304,6 +304,9 @@ export default function ConfirmacionPage() {
                       {formatCOP(order.saldo_pendiente)}
                     </span>
                   </div>
+                  <p className="text-xs text-[#5b6b8c]">
+                    Incluye {formatCOP(COD_FEE_COP)} de recargo por pago contraentrega.
+                  </p>
                 </div>
               )}
 
