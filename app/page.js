@@ -10,6 +10,13 @@ import { ESTUDIO_CATEGORIES } from "./lib/estudioCategories";
 import { JsonLd } from "./lib/structuredData";
 import { LANDING_PAGES } from "./lib/landingPages";
 import { CHRISTMAS_DEADLINE, isChristmasDeadlineActive } from "./lib/christmas";
+import { PRICES, formatCOP } from "./lib/order";
+
+// Precio "desde" del hero, calculado de app/lib/order.js (mismo cálculo que
+// /ads): el más barato de todos los tamaños/tipos.
+const DESDE_COP = Math.min(
+  ...Object.values(PRICES).flatMap((porTamano) => Object.values(porTamano))
+);
 
 // WebSite (oct 2026): le confirma a Google el nombre del sitio que muestra
 // arriba del resultado ("Mystery Cuadros" en vez del dominio).
@@ -239,12 +246,22 @@ const SOCIAL_ICONS = {
   ),
 };
 
+// Diseños por fila del Home (antes 200 + 200 ≈ 580 enlaces y ~290 tarjetas
+// en la página). El catálogo completo sigue enlazado desde "Elige tu
+// estilo" (páginas de categoría) y el sitemap.
+const HOME_LIST_LIMIT = 24;
+
 export default async function Home() {
-  const [recientes, masVendidos, testimoniosReales] = await Promise.all([
-    getRecentProducts(200),
-    getBestSellingProducts(200),
+  const [recientes, masVendidosTodos, testimoniosReales] = await Promise.all([
+    getRecentProducts(HOME_LIST_LIMIT),
+    getBestSellingProducts(HOME_LIST_LIMIT),
     getHomeTestimonials(),
   ]);
+  // "Más vendidos" solo con diseños que de verdad se han vendido: antes,
+  // con casi todo en 0 ventas, la lista era una copia de "Recientes" con el
+  // título "Más vendidos" (dato que no era cierto). Si no hay ninguno, la
+  // sección y su enlace del menú no se muestran.
+  const masVendidos = masVendidosTodos.filter((p) => p.salesCount > 0);
 
   const testimonios =
     testimoniosReales.length >= MIN_REAL_TESTIMONIALS ? testimoniosReales : TESTIMONIOS_EJEMPLO;
@@ -288,9 +305,11 @@ export default async function Home() {
             <a href="#recientes" className="whitespace-nowrap hover:text-[#1b2a4a]">
               Recientes
             </a>
-            <a href="#mas-vendidos" className="whitespace-nowrap hover:text-[#1b2a4a]">
-              Más vendidos
-            </a>
+            {masVendidos.length > 0 && (
+              <a href="#mas-vendidos" className="whitespace-nowrap hover:text-[#1b2a4a]">
+                Más vendidos
+              </a>
+            )}
             <a href="#footer" className="whitespace-nowrap hover:text-[#1b2a4a]">
               Ayuda
             </a>
@@ -312,8 +331,12 @@ export default async function Home() {
             (preload) y width/height + aspect-ratio fijos → sin CLS. */}
         <section className="relative overflow-hidden px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16">
           <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center gap-6 text-center">
+            {/* Precio "desde" + las dos razones por las que más se compra
+                (envío gratis permanente y paga al recibir — 75% de los
+                pedidos). Antes decía "Por tiempo limitado", que era
+                urgencia inventada: el envío gratis no vence. */}
             <p className="text-center text-xs font-medium text-[#7a3fa0] sm:text-sm">
-              Por tiempo limitado: Envío gratis a todo el país
+              Desde {formatCOP(DESDE_COP)} · Envío gratis · Paga al recibir
             </p>
 
             {/* Único <h1> de la Home (SEO): la marca animada (FoldText ya
@@ -372,102 +395,10 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* 2.5 CATEGORÍAS EMOCIONALES — tarjetas con foto de fondo en vez de
-            chips de texto, como invitación visual más que filtro técnico.
-            Queda justo después del hero/CTA a pedido explícito (no forma
-            parte de la lista numerada de 8 secciones, pero se mantiene
-            cerca del tope como exploración temprana por categoría). */}
-        <section className="px-4 pb-16 sm:px-6 sm:pb-24">
-          <div className="mx-auto max-w-6xl">
-            <h2 className="font-display mb-4 text-lg font-semibold sm:text-xl">Elige tu estilo</h2>
-            {/* eagerCount 0: desde que el hero tiene foto (oct 2026) estas
-                portadas quedan debajo del pliegue en el celular; precargarlas
-                le quitaba ancho de banda a la foto del hero (el LCP). */}
-            <CategoryScroller categorias={CATEGORIAS} light eagerCount={0} />
-          </div>
-        </section>
-
-        {/* 3. RECIENTES — productos reales del catálogo (Redis), más
-            nuevos primero. Fila con scroll horizontal nativo (ver
-            ProductScroller) — mismo patrón que CategoryScroller, sin
-            animación ni bucle. */}
-        <section id="recientes" className="px-4 pb-16 sm:px-6 sm:pb-24">
-          <div className="mx-auto max-w-6xl">
-            <div className="mb-4">
-              <h2 className="font-display text-lg font-semibold sm:text-xl">Recientes</h2>
-            </div>
-            <ProductScroller items={recientes} light thumbWidth={480} />
-          </div>
-        </section>
-
-        {/* 4. MÁS VENDIDOS — por salesCount descendente. Sin ventas
-            reales todavía, todos empatan en 0 y el desempate por fecha
-            hace que coincida con "Recientes" (esperado, ver
-            getBestSellingProducts en app/lib/catalog.js). */}
-        <section id="mas-vendidos" className="px-4 pb-16 sm:px-6 sm:pb-24">
-          <div className="mx-auto max-w-6xl">
-            <div className="mb-4 flex items-end justify-between">
-              <h2 className="font-display text-lg font-semibold sm:text-xl">Más vendidos</h2>
-            </div>
-            <ProductScroller items={masVendidos} light thumbWidth={480} />
-          </div>
-        </section>
-
-        {/* 5. RESEÑAS — calificación, contador y testimonios con foto. */}
-        <section className="px-4 pb-16 sm:px-6 sm:pb-24">
-          <div className="mx-auto flex max-w-6xl flex-col items-center gap-10 rounded-[2.5rem] border border-black/5 bg-[#fffaf0] px-6 py-12 text-center shadow-[0_16px_40px_-16px_rgba(30,20,60,0.25)] sm:px-12">
-            <div className="flex flex-col items-center gap-2">
-              {/* Dato confirmado por el dueño (oct 2026): +1.000 cuadros
-                  entregados desde 2019, la mayoría por Instagram (la web es
-                  nueva). Sin calificación promedio: no hay fuente que la
-                  respalde (las reseñas de /resena no se promedian). */}
-              <p className="text-4xl font-black tracking-tight text-accent sm:text-5xl">
-                +1.000
-              </p>
-              <p className="text-sm text-[#33456b] sm:text-base">cuadros entregados desde 2019</p>
-              <p className="text-xs text-[#5b6b8c] sm:text-sm">
-                La mayoría vendidos por Instagram{" "}
-                <a
-                  href="https://www.instagram.com/bigmystery_/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-accent underline-offset-4 hover:underline"
-                >
-                  @bigmystery_
-                </a>
-              </p>
-            </div>
-
-            {/* testimonios viene de Redis (home:testimonials, reseñas reales
-                seleccionadas semanalmente por IA) cuando hay al menos
-                MIN_REAL_TESTIMONIALS — si no, cae a TESTIMONIOS_EJEMPLO
-                arriba. Sin foto a propósito: nunca se le pide una al
-                cliente (ni en ReviewForm ni en Instagram) y mostrar una
-                foto genérica de pared junto a una reseña real daría a
-                entender que es del cuadro de ese cliente sin serlo. */}
-            <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
-              {testimonios.map((t, i) => (
-                <div
-                  key={`${t.nombre}-${i}`}
-                  className="flex flex-col overflow-hidden rounded-2xl border border-black/5 bg-white text-left shadow-sm"
-                >
-                  <div className="p-5">
-                    <span className="text-sm text-accent" aria-hidden="true">
-                      {"★".repeat(t.rating || 5)}
-                    </span>
-                    <p className="mt-2 text-sm text-[#1b2a4a]">&ldquo;{t.texto}&rdquo;</p>
-                    <p className="mt-3 text-xs font-medium text-[#5b6b8c]">
-                      {t.nombre}
-                      {t.sizeLabel ? ` · cuadro ${t.sizeLabel}` : ""}
-                      {!testimoniosSonReales ? " · cliente de ejemplo" : ""}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
+        {/* Orden (oct 2026, área de Conversión): el producto estrella
+            (cuadro con tu foto), cómo funciona y las reseñas reales van
+            ANTES del catálogo — antes quedaban debajo de ~290 tarjetas de
+            diseños y casi nadie llegaba a verlos en el celular. */}
         {/* 6. CUADROS PERSONALIZADOS — bloque explicativo con su propio CTA
             hacia /crear. */}
         <section id="personalizados" className="px-4 pb-16 sm:px-6 sm:pb-24">
@@ -569,6 +500,102 @@ export default async function Home() {
             </div>
           </div>
         </section>
+
+        {/* 5. RESEÑAS — calificación, contador y testimonios con foto. */}
+        <section className="px-4 pb-16 sm:px-6 sm:pb-24">
+          <div className="mx-auto flex max-w-6xl flex-col items-center gap-10 rounded-[2.5rem] border border-black/5 bg-[#fffaf0] px-6 py-12 text-center shadow-[0_16px_40px_-16px_rgba(30,20,60,0.25)] sm:px-12">
+            <div className="flex flex-col items-center gap-2">
+              {/* Dato confirmado por el dueño (oct 2026): +1.000 cuadros
+                  entregados desde 2019, la mayoría por Instagram (la web es
+                  nueva). Sin calificación promedio: no hay fuente que la
+                  respalde (las reseñas de /resena no se promedian). */}
+              <p className="text-4xl font-black tracking-tight text-accent sm:text-5xl">
+                +1.000
+              </p>
+              <p className="text-sm text-[#33456b] sm:text-base">cuadros entregados desde 2019</p>
+              <p className="text-xs text-[#5b6b8c] sm:text-sm">
+                La mayoría vendidos por Instagram{" "}
+                <a
+                  href="https://www.instagram.com/bigmystery_/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-accent underline-offset-4 hover:underline"
+                >
+                  @bigmystery_
+                </a>
+              </p>
+            </div>
+
+            {/* testimonios viene de Redis (home:testimonials, reseñas reales
+                seleccionadas semanalmente por IA) cuando hay al menos
+                MIN_REAL_TESTIMONIALS — si no, cae a TESTIMONIOS_EJEMPLO
+                arriba. Sin foto a propósito: nunca se le pide una al
+                cliente (ni en ReviewForm ni en Instagram) y mostrar una
+                foto genérica de pared junto a una reseña real daría a
+                entender que es del cuadro de ese cliente sin serlo. */}
+            <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
+              {testimonios.map((t, i) => (
+                <div
+                  key={`${t.nombre}-${i}`}
+                  className="flex flex-col overflow-hidden rounded-2xl border border-black/5 bg-white text-left shadow-sm"
+                >
+                  <div className="p-5">
+                    <span className="text-sm text-accent" aria-hidden="true">
+                      {"★".repeat(t.rating || 5)}
+                    </span>
+                    <p className="mt-2 text-sm text-[#1b2a4a]">&ldquo;{t.texto}&rdquo;</p>
+                    <p className="mt-3 text-xs font-medium text-[#5b6b8c]">
+                      {t.nombre}
+                      {t.sizeLabel ? ` · cuadro ${t.sizeLabel}` : ""}
+                      {!testimoniosSonReales ? " · cliente de ejemplo" : ""}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 2.5 CATEGORÍAS EMOCIONALES — tarjetas con foto de fondo en vez de
+            chips de texto, como invitación visual más que filtro técnico.
+            Queda justo después del hero/CTA a pedido explícito (no forma
+            parte de la lista numerada de 8 secciones, pero se mantiene
+            cerca del tope como exploración temprana por categoría). */}
+        <section className="px-4 pb-16 sm:px-6 sm:pb-24">
+          <div className="mx-auto max-w-6xl">
+            <h2 className="font-display mb-4 text-lg font-semibold sm:text-xl">Elige tu estilo</h2>
+            {/* eagerCount 0: desde que el hero tiene foto (oct 2026) estas
+                portadas quedan debajo del pliegue en el celular; precargarlas
+                le quitaba ancho de banda a la foto del hero (el LCP). */}
+            <CategoryScroller categorias={CATEGORIAS} light eagerCount={0} />
+          </div>
+        </section>
+
+        {/* 3. RECIENTES — productos reales del catálogo (Redis), más
+            nuevos primero. Fila con scroll horizontal nativo (ver
+            ProductScroller) — mismo patrón que CategoryScroller, sin
+            animación ni bucle. */}
+        <section id="recientes" className="px-4 pb-16 sm:px-6 sm:pb-24">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-4">
+              <h2 className="font-display text-lg font-semibold sm:text-xl">Recientes</h2>
+            </div>
+            <ProductScroller items={recientes} light thumbWidth={480} />
+          </div>
+        </section>
+
+        {/* 4. MÁS VENDIDOS — por salesCount descendente, solo diseños con
+            al menos una venta real (ver masVendidos arriba). */}
+        {masVendidos.length > 0 && (
+        <section id="mas-vendidos" className="px-4 pb-16 sm:px-6 sm:pb-24">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-4 flex items-end justify-between">
+              <h2 className="font-display text-lg font-semibold sm:text-xl">Más vendidos</h2>
+            </div>
+            <ProductScroller items={masVendidos} light thumbWidth={480} />
+          </div>
+        </section>
+        )}
 
         {/* 7.5 GANA DINERO VENDIENDO CUADROS — apartado pequeño pero visible
             que refuerza el link discreto que ya existe en la navbar/footer

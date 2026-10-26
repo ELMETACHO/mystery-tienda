@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Image from "next/image";
 import { preload } from "react-dom";
 import { getRecentProducts } from "../lib/catalog";
@@ -12,6 +13,7 @@ import { resolverTemporada } from "./temporada";
 import AdsHeroCta from "./AdsHeroCta";
 import AdsFlowBridge from "./AdsFlowBridge";
 import AdsFaq from "./AdsFaq";
+import RealTestimonials from "../components/RealTestimonials";
 import AdsCatalogStrip, { ADS_CATALOG_LIMIT } from "./AdsCatalogStrip";
 import { WHATSAPP_URL } from "./contacto";
 
@@ -258,6 +260,13 @@ export default async function AdsLanding({ searchParams }) {
           </div>
         </section>
 
+        {/* 6b. RESEÑAS REALES (oct 2026) — antes /ads no tenía ninguna.
+            Solo reseñas verdaderas (si no hay, no se pinta nada); en
+            Suspense para no demorar el primer pantallazo. */}
+        <Suspense fallback={null}>
+          <RealTestimonials className="px-4 pb-8" />
+        </Suspense>
+
         {/* 7. PREGUNTAS FRECUENTES + WhatsApp — objeciones típicas antes de
             comprar (ver AdsFaq). */}
         <section className="px-4 pb-8">
@@ -276,9 +285,9 @@ export default async function AdsLanding({ searchParams }) {
               sirven! Si tu imagen tiene poca calidad la aumentamos con
               Inteligencia Artificial sin afectar o cambiar detalles de la imagen.
               Seguirá siendo la misma, ¡pero mejor! Puedes pagar al recibir —
-              tenemos alianza con Servientrega, Envía, Interrapidísimo y más, esto
-              te da la confianza de que puedes pagar tu cuadro en la puerta de tu
-              casa (anticipo de $20.000). Entrega en máximo 5 días (sin contar domingos).
+              enviamos con Envía, Interrapidísimo y otras transportadoras, así
+              que pagas tu cuadro en la puerta de tu casa (anticipo de $20.000 y
+              el resto al recibir, +$5.000). Entrega en máximo 5 días (sin contar domingos).
             </p>
           </div>
         </section>

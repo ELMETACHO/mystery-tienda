@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCatalogProductById, getProductsByCategory } from "../../lib/catalog";
@@ -13,6 +14,7 @@ import { FEED_DEFAULT_PRICE_COP } from "../../lib/googleFeed";
 import ProductScroller from "../../components/ProductScroller";
 import RelatedLinks from "../../components/RelatedLinks";
 import DeliveryEstimate from "../../components/DeliveryEstimate";
+import RealTestimonials from "../../components/RealTestimonials";
 import { headingFont } from "../../lib/typography";
 import WallVisualizerButton from "../../components/WallVisualizerButton";
 import ProductGallery from "./ProductGallery";
@@ -313,6 +315,12 @@ export default async function ProductPage({ params }) {
             .
           </p>
         </section>
+
+        {/* Reseñas reales de la tienda (no de este diseño en particular —
+            por eso no van en el JSON-LD del producto). Ver RealTestimonials. */}
+        <Suspense fallback={null}>
+          <RealTestimonials max={3} />
+        </Suspense>
         </div>
         </div>
 
