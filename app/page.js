@@ -72,7 +72,7 @@ const FAQ = [
   {
     pregunta: "¿Qué métodos de pago aceptan?",
     respuesta:
-      "Pagas de forma segura con Wompi: tarjeta de crédito o débito, PSE, y Nequi o Daviplata (se pagan desde PSE; también con QR o llaves). O contraentrega: anticipo de $20.000 y el resto al recibir.",
+      "Pagas de forma segura con Wompi: tarjeta de crédito o débito, PSE, y Nequi o Daviplata (se pagan desde PSE; también con QR o llaves). O contraentrega: anticipo de $20.000 y el resto al recibir (con un recargo de $5.000 por el recaudo; pagando en línea no hay recargo).",
   },
   {
     pregunta: "¿Hacen envíos a toda Colombia?",

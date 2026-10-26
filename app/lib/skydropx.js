@@ -1,4 +1,5 @@
-import { SIZES } from "./order";
+import { SIZES, COD_FEE_COP } from "./order";
+import { lookupPostalCode } from "./postalCodes";
 
 // Autenticación OAuth de Skydropx PRO (client_credentials).
 // Docs: POST {base}/api/v1/oauth/token, body x-www-form-urlencoded con
@@ -226,7 +227,11 @@ function buildOriginAddress() {
 function buildDestinationAddress(customer) {
   return {
     country_code: "CO",
-    postal_code: customer.postalCode || "",
+    // Red de seguridad: si el pedido quedó guardado sin código postal (la
+    // ciudad se escribió de una forma que el checkout no reconoció), se
+    // vuelve a buscar acá — sin él, Skydropx rechaza ciudades que no estén
+    // escritas exactamente como las espera.
+    postal_code: customer.postalCode || lookupPostalCode(customer.department, customer.city) || "",
     area_level1: normalizeAreaName(customer.department || ""),
     area_level2: normalizeAreaName(customer.city),
     area_level3: normalizeAreaName(customer.neighborhood),
@@ -380,9 +385,13 @@ async function pollQuotationRates(
 export const MAX_SHIPPING_COST_COP = 26000;
 
 // Tope que aplica a un tamaño: el propio (SIZES[].maxShippingCOP, ej.
-// $60.000 para 70x100 y 100x140) o MAX_SHIPPING_COST_COP.
-export function getShippingCapCOP(sizeId) {
-  return SIZES.find((s) => s.id === sizeId)?.maxShippingCOP ?? MAX_SHIPPING_COST_COP;
+// $60.000 para 70x100 y 100x140) o MAX_SHIPPING_COST_COP. En contraentrega
+// sube COD_FEE_COP ($5.000): la transportadora cobra ~$4.900 más por
+// recaudar, y ese recargo ya lo paga el cliente (ver order.js) — así
+// Medellín/Bucaramanga/Cali vuelven a salir por Envía sin tocar la ganancia.
+export function getShippingCapCOP(sizeId, { isCod = false } = {}) {
+  const base = SIZES.find((s) => s.id === sizeId)?.maxShippingCOP ?? MAX_SHIPPING_COST_COP;
+  return isCod ? base + COD_FEE_COP : base;
 }
 
 function ratePrice(rate) {
@@ -412,27 +421,33 @@ function isCoordinadora(rate) {
   return rateCarrierName(rate).includes("coordinadora");
 }
 
+// Transportadoras que le ponen problemas a Cris: Coordinadora (la guía de
+// $64.913 a Maicao) y Servientrega (exige caja y protección extra — caso
+// real 14 oct 2026, pedido de Felipe Estupiñan: se tuvo que cancelar y
+// rehacer por Envía).
+function isLastResortCarrier(rate) {
+  return isCoordinadora(rate) || isServientrega(rate);
+}
+
 // Para pedidos SIN contraentrega (pago completo por Wompi) cualquier
 // transportadora que haya cotizado sirve; para contraentrega, solo las que
 // soportan recaudo en efectivo (COD_CARRIERS).
 //
-// Regla de Oscar (26 sept 2026): la más barata, pero NUNCA Coordinadora
-// salvo que sea la única opción — le pone problemas a Cris, y fue la de la
-// guía de $64.913 a Maicao. "Única opción" incluye el caso en que todas
-// las demás superan MAX_SHIPPING_COST_COP y Coordinadora no: antes que
-// cancelar el pedido, se usa Coordinadora.
+// Regla de Oscar (14 oct 2026, antes solo excluía Coordinadora): la más
+// barata entre las que no dan problema (Envía, Interrapidísimo...).
+// Servientrega y Coordinadora solo si son la única opción — "única
+// opción" incluye el caso en que todas las demás superan el tope y alguna
+// de estas dos no: antes que cancelar el pedido, se usa la más barata de
+// ellas.
 function pickRate(rates, { isCod, capCOP = MAX_SHIPPING_COST_COP }) {
   const eligible = isCod
     ? rates.filter((rate) => COD_CARRIERS.some((name) => rateCarrierName(rate).includes(name)))
     : rates;
 
-  let rate = cheapestOf(eligible.filter((r) => !isCoordinadora(r)));
-  const coordinadora = cheapestOf(eligible.filter(isCoordinadora));
-  if (
-    coordinadora &&
-    (!rate || (ratePrice(rate) > capCOP && ratePrice(coordinadora) <= capCOP))
-  ) {
-    rate = coordinadora;
+  let rate = cheapestOf(eligible.filter((r) => !isLastResortCarrier(r)));
+  const lastResort = cheapestOf(eligible.filter(isLastResortCarrier));
+  if (lastResort && (!rate || (ratePrice(rate) > capCOP && ratePrice(lastResort) <= capCOP))) {
+    rate = lastResort;
   }
   // Rastro en los logs de TODO lo que cotizó y lo elegido — sin esto no
   // había forma de saber después por qué se eligió una transportadora.
@@ -555,7 +570,7 @@ async function createShipment({ rate, order, customer, reference, isCod, codAmou
           street1: customer.street,
           area_level1: normalizeAreaName(customer.department),
           area_level2: normalizeAreaName(customer.city),
-          postal_code: customer.postalCode || "",
+          postal_code: customer.postalCode || lookupPostalCode(customer.department, customer.city) || "",
           country: "CO",
         },
       },
@@ -676,7 +691,7 @@ async function resumeShipment(shipmentId) {
 export async function quoteCheapestShipping({ order, customer, isCod, codAmountCOP, maxWaitMs }) {
   const quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
   const { rates, isCompleted } = await pollQuotationRates(quotationId, maxWaitMs ? { maxWaitMs } : {});
-  const capCOP = getShippingCapCOP(order.sizeId);
+  const capCOP = getShippingCapCOP(order.sizeId, { isCod });
   const { rate } = pickRate(rates, { isCod, capCOP });
   if (!rate || !Number.isFinite(ratePrice(rate))) return null;
   return {
@@ -737,7 +752,7 @@ export async function createManualShipment({
 
   let quotationId = await createQuotation({ order, customer, isCod, codAmountCOP });
   let { rates, isCompleted } = await pollQuotationRates(quotationId);
-  const capCOP = getShippingCapCOP(order.sizeId);
+  const capCOP = getShippingCapCOP(order.sizeId, { isCod });
   let picked = pickRate(rates, { isCod, capCOP });
 
   // Cotización incompleta que da "caro" o "sin tarifa": el cuadro ya está

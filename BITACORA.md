@@ -447,3 +447,58 @@ ninguna demora nueva (todo calculado en el navegador o cargado al tocar).
 ### Pendientes / PRs abiertos de esta sesión
 - Reseñas con foto + moderación y tarjeta regalo / "Es un regalo": PRs
   aparte, abiertos para revisión del dueño (ver sus descripciones).
+
+---
+
+## Sesión del 5-23 oct 2026 — guías (duplicados, ciudad, Servientrega), recargo contraentrega
+
+### 1. Guías triplicadas (5 oct, Kevin Sotelo) — causa raíz y blindaje
+- Skydropx tardó >12 s en dar el número; el código lo tomó como fallo, Cris
+  reintentó y se crearon y cobraron TRES guías Envía. Se conservó una y se
+  cancelaron dos (reembolsadas).
+- **Blindaje** (`skydropx.js` + `manualShipments.js`): apenas Skydropx acepta
+  una guía se guarda `pendingShipmentId` en el pedido (`onShipmentAccepted`);
+  un reintento la retoma (`resumeShipment`) en vez de crear otra. Espera del
+  número: 40 s. Si aún no llega, Cris ve "la guía YA se creó, vuelve en 1-2
+  min" (no un error). `maxDuration = 120` en las dos rutas de generar guía
+  (la línea anterior había quedado dentro de un comentario y nunca aplicó).
+- Kevin pidió entregar al día siguiente: se canceló la guía y Cris generó otra
+  desde su panel ("Generar guía nueva"). Correo de corrección al cliente.
+
+### 2. Ciudad "Bogotá, D. C." sin código postal (14 oct, Felipe Estupiñan)
+- El checkout no reconoció la ciudad → pedido sin código postal → Skydropx
+  rechazaba la cotización ("Ciudad o departamento inválido") en cada toque.
+- **Arreglo**: `lookupPostalCode` compara ignorando puntuación/espacios; en
+  Bogotá D.C. cualquier forma de escribir la ciudad da 111611. `skydropx.js`
+  busca el código postal al cotizar/crear si el pedido no lo trae.
+- La guía salió por Servientrega, que exigió caja → se canceló y se rehízo por
+  Envía (014164614800). Correos de disculpa y de guía nueva al cliente.
+
+### 3. Regla de transportadora (vigente)
+- La más barata entre Envía e Interrapidísimo. **Servientrega (exige caja) y
+  Coordinadora (cara) solo como último recurso**: si son la única opción o las
+  únicas dentro del tope. Si Skydropx rechaza crear la guía, reintenta con Envía.
+
+### 4. Recargo contraentrega $5.000 (`COD_FEE_COP`, 23 oct)
+- Medido: la contraentrega cuesta ~$4.900 más por guía (recaudo). Ahora:
+  saldo al recibir = precio + $5.000 − anticipo $20.000, calculado SIEMPRE en
+  el servidor (`getCodBalanceCOP`, `confirmApprovedCodOrder`). Pago online sin
+  recargo; envío gratis en ambos casos. `completed-orders.priceCOP` incluye el
+  recargo (reporte).
+- Tope de guía en contraentrega +$5.000: $31.000 normal / $65.000 grandes
+  (`getShippingCapCOP(sizeId, { isCod })`). Medellín/Bucaramanga/Cali salen por
+  Envía (~$26.276).
+- Checkout con desglose y atajo "Paga en línea y ahórrate el recargo"; textos en
+  confirmación, correos, FAQ de /ads, Home, landings, producto y chatbot.
+- **Pendiente**: confirmar con el primer pedido contraentrega real que el
+  "valor a recaudar" de la guía = precio + $5.000 − $20.000; medir en ~2
+  semanas si cambió la proporción contraentrega vs. pago online.
+
+### 5. Pendientes abiertos
+- **Resend**: la `RESEND_API_KEY` es "solo enviar" → no puede cancelar correos
+  programados (el "va en camino" sale aunque Cris cancele la guía). Crear una
+  llave "Full access" y reemplazarla en `.env.local` y Vercel + Redeploy.
+- PRs abiertos sin fusionar: #33 (regalo/tarjeta regalo), #41 (ViewContent en
+  producto + CSP Meta), #42 (origen de pedidos en /admin) — requieren revisión.
+- Llevar 70x100/100x140 al catálogo (backfill desde los originales de Drive).
+- Decidir si se quita "Tu cuadro está listo" (AddToCart vs InitiateCheckout).

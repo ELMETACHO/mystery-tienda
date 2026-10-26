@@ -29,14 +29,21 @@ export const CATEGORY_SEO = {
     relatedLandings: ["para-sala", "de-mascotas"],
   },
   anime: {
-    title: "Cuadros de Anime en Madera para tu Cuarto | Mystery Cuadros",
-    h1: "Cuadros de anime y animación",
-    metaDescription: `Cuadros de anime decorativos en vinilo sobre madera: Death Note, Avatar: La Leyenda de Aang y más. Ideales para cuarto o setup gamer. Desde ${CATALOG_FROM_PRICE}, envío gratis en Colombia.`,
+    // oct 7 2026: /categoria/anime sale en posición 50-90 para "cuadros de
+    // anime", "cuadros decorativos anime" y "venta de cuadros de anime" con
+    // solo ~365 palabras en la página. Título/H1 con "decorativos" (la
+    // búsqueda real) y más texto útil sobre los diseños, tamaños, cómo se
+    // hacen (impresos, no pintados a mano — alguien lo buscó así) y envío.
+    title: "Cuadros de Anime Decorativos en Madera | Mystery Cuadros",
+    h1: "Cuadros decorativos de anime y animación",
+    metaDescription: `Cuadros de anime decorativos en vinilo sobre madera: Death Note, Avatar: La Leyenda de Aang, Invincible y más, o crea el de tu anime favorito. Desde ${CATALOG_FROM_PRICE}, envío gratis a toda Colombia.`,
     intro:
       "Cuadros decorativos de anime y animación para fans: Light y Ryuk de Death Note, Aang, Toph y el grupo de Avatar: La Leyenda de Aang, Invincible y más personajes. Perfectos para el cuarto o el setup gamer, impresos en vinilo sobre madera.",
     body: [
+      "En esta colección hay diseños de Death Note (Light y Ryuk en versión split face), varios de Avatar: La Leyenda de Aang (Aang dominando el aire, Aang como maestro del aire, Toph Beifong y el grupo principal), Invincible y personajes de estilo anime como el de cabello rojo intenso o el ángel oscuro de alas negras.",
       "Para un setup gamer, dos o tres cuadros de 30x40 cm del mismo anime arman una pared temática; para la cabecera de la cama o la pared principal del cuarto, un 50x70 cm.",
-      "¿Tu anime favorito no está todavía? Puedes crear el cuadro tú mismo subiendo la imagen que quieras en el editor."
+      "¿Son pintados a mano? No: cada cuadro se imprime en vinilo laminado de alta calidad sobre madera, así los colores y los detalles del dibujo original quedan nítidos, y llega listo para colgar. El envío es gratis a toda Colombia.",
+      "¿Tu anime favorito no está todavía? Puedes crear el cuadro tú mismo subiendo la imagen que quieras en el editor: un personaje, una escena o el póster de tu serie."
     ],
     relatedCategories: ["peliculas-series", "iconic"],
     relatedLandings: ["regalo-navidad-pareja", "regalo-de-navidad-personalizado"],

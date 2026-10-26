@@ -24,7 +24,7 @@ const FAQ_FOTO = {
 const FAQ_PAGO = {
   pregunta: "¿Cómo puedo pagar?",
   respuesta:
-    "Pagas de forma segura con Wompi: tarjeta de crédito o débito, PSE, y Nequi o Daviplata (se pagan desde PSE; también con QR o llaves). También puedes pagar contraentrega con un anticipo de $20.000 y el resto al recibir el cuadro.",
+    "Pagas de forma segura con Wompi: tarjeta de crédito o débito, PSE, y Nequi o Daviplata (se pagan desde PSE; también con QR o llaves). También puedes pagar contraentrega con un anticipo de $20.000 y el resto al recibir el cuadro (con un recargo de $5.000 por el recaudo; pagando en línea no hay recargo).",
 };
 
 const FAQ_ENVIO = {

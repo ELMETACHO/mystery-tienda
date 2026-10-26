@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Script from "next/script";
-import { COD_DEPOSIT_COP, SIZES, formatCOP, loadOrder, saveOrder } from "../lib/order";
+import { COD_DEPOSIT_COP, COD_FEE_COP, SIZES, formatCOP, getCodBalanceCOP, loadOrder, saveOrder } from "../lib/order";
 import { lookupPostalCode } from "../lib/postalCodes";
 import { trackBeginCheckout, trackAddPaymentInfo } from "../lib/gtm";
 import FreeShippingBanner from "../components/FreeShippingBanner";
@@ -82,11 +82,14 @@ const HOUSING_TYPES = [
 ];
 
 const PAYMENT_METHODS = [
-  { id: "wompi", label: "Pagar en línea", detail: "Tarjeta / PSE con Wompi" },
+  { id: "wompi", label: "Pagar en línea", detail: "Tarjeta / PSE con Wompi · sin recargo" },
   {
     id: "cod",
     label: "Pago contraentrega",
-    detail: `Anticipo de ${formatCOP(COD_DEPOSIT_COP)} + saldo en efectivo`,
+    // Recargo COD_FEE_COP (oct 2026): cubre lo que cobra la transportadora
+    // por recaudar el efectivo. Se muestra desde la primera vista para que
+    // nunca sea una sorpresa.
+    detail: `Anticipo de ${formatCOP(COD_DEPOSIT_COP)} + saldo en efectivo (+${formatCOP(COD_FEE_COP)})`,
   },
 ];
 
@@ -279,6 +282,11 @@ function CheckoutForm() {
   // no el type en sí, por si algún día existiera otro tipo de código al
   // 100%.
   const isFreeOrder = effectivePriceCOP === 0;
+  // Total que realmente paga el cliente según el método: contraentrega
+  // suma COD_FEE_COP (el servidor lo calcula igual, ver
+  // confirmApprovedCodOrder — esto es solo para mostrarlo).
+  const isCodSelected = !isFreeOrder && paymentMethod === "cod";
+  const displayedTotalCOP = isCodSelected ? effectivePriceCOP + COD_FEE_COP : effectivePriceCOP;
 
   const handleApplyDiscount = async () => {
     const code = discountInput.trim().toUpperCase();
@@ -749,7 +757,7 @@ function CheckoutForm() {
           status: transaction.status,
           isReturningCustomer: false,
           anticipoPagado: COD_DEPOSIT_COP,
-          saldoPendiente: fullOrder.priceCOP - COD_DEPOSIT_COP,
+          saldoPendiente: getCodBalanceCOP(fullOrder.priceCOP),
         };
       }
 
@@ -1113,7 +1121,15 @@ function CheckoutForm() {
 
             {!isFreeOrder && paymentMethod === "cod" && (
               <div className="rounded-xl border border-black/10 bg-[#fffaf0] px-4 py-3 text-sm">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between text-xs text-[#5b6b8c]">
+                  <span>Cuadro (envío gratis incluido)</span>
+                  <span>{formatCOP(effectivePriceCOP)}</span>
+                </div>
+                <div className="mb-2 flex items-center justify-between text-xs text-[#5b6b8c]">
+                  <span>Recargo por pago contraentrega</span>
+                  <span>+{formatCOP(COD_FEE_COP)}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-black/10 pt-2">
                   <span className="text-[#33456b]">Anticipo a pagar ahora</span>
                   <span className="font-semibold text-accent">
                     {formatCOP(COD_DEPOSIT_COP)}
@@ -1123,12 +1139,16 @@ function CheckoutForm() {
                 <div className="flex items-center justify-between border-t border-black/10 pt-2">
                   <span className="text-[#33456b]">Saldo al recibir tu cuadro</span>
                   <span className="font-semibold text-[#1b2a4a]">
-                    {formatCOP(effectivePriceCOP - COD_DEPOSIT_COP)}
+                    {formatCOP(getCodBalanceCOP(effectivePriceCOP))}
                   </span>
                 </div>
-                <p className="mt-2 text-xs text-[#5b6b8c]">
-                  Sin costo adicional por pagar contraentrega.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod("wompi")}
+                  className="mt-2 text-left text-xs font-medium text-accent underline underline-offset-2"
+                >
+                  Paga en línea y ahórrate el recargo de {formatCOP(COD_FEE_COP)}
+                </button>
               </div>
             )}
 
@@ -1174,7 +1194,7 @@ function CheckoutForm() {
                     : "Cargando pasarela..."}
                 </button>
                 <p className="mt-1.5 text-center text-xs text-[#5b6b8c]">
-                  Anticipo de {formatCOP(COD_DEPOSIT_COP)} + excedente al recibir
+                  Anticipo de {formatCOP(COD_DEPOSIT_COP)} + {formatCOP(getCodBalanceCOP(effectivePriceCOP))} al recibir (incluye recargo de {formatCOP(COD_FEE_COP)})
                 </p>
               </div>
             ) : (
@@ -1220,7 +1240,7 @@ function CheckoutForm() {
                         {formatCOP(order.priceCOP)}
                       </span>
                     )}
-                    {formatCOP(effectivePriceCOP)}
+                    {formatCOP(displayedTotalCOP)}
                   </span>
                 </div>
                 <span className="shrink-0 text-xs text-[#5b6b8c] transition-transform group-open:rotate-180">
@@ -1258,7 +1278,9 @@ function CheckoutForm() {
                 <span className="font-medium">{order.sizeLabel}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-[#33456b]">Total</span>
+                <span className="text-sm text-[#33456b]">
+                  Total{isCodSelected ? " (contraentrega)" : ""}
+                </span>
                 <span className="flex items-baseline gap-2">
                   {appliedCode && (
                     <span className="text-sm font-normal text-[#5b6b8c] line-through">
@@ -1266,7 +1288,7 @@ function CheckoutForm() {
                     </span>
                   )}
                   <span className="text-2xl font-bold text-accent">
-                    {formatCOP(effectivePriceCOP)}
+                    {formatCOP(displayedTotalCOP)}
                   </span>
                 </span>
               </div>
@@ -1333,7 +1355,7 @@ function CheckoutForm() {
               {isFreeOrder
                 ? "Este pedido es un regalo — no requiere pago."
                 : paymentMethod === "cod"
-                ? `Anticipo de ${formatCOP(COD_DEPOSIT_COP)} + excedente al recibir · Tarjeta / PSE con Wompi. Sin costo adicional por pagar contraentrega.`
+                ? `Anticipo de ${formatCOP(COD_DEPOSIT_COP)} con Wompi + ${formatCOP(getCodBalanceCOP(effectivePriceCOP))} al recibir (incluye ${formatCOP(COD_FEE_COP)} de recargo contraentrega).`
                 : "🔒 Pago 100% seguro con Wompi · Tarjeta o PSE. Tus datos de pago van cifrados y nunca los almacenamos."}
             </p>
             <p className="text-center text-xs text-[#8a94ac]">

@@ -93,6 +93,18 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   --accent: #9333ea;
   --accent-soft: #a855f7;
+  /* Color de fondo = el del borde inferior del cielo fijo
+     (fondo-cielo-2.webp con bg-cover). Antes era #8fcaf0, más oscuro: en
+     capturas de página completa, rebote/overscroll del celular o cuando la
+     barra del navegador se esconde, asomaba una franja/corte horizontal
+     debajo del primer pantallazo. Va fuera de @layer → gana sobre el
+     bg-[#8fcaf0] de cada página sin tocarlas. */
+  background-color: #e5f6fe;
+}
+@media (min-width: 768px) {
+  .tienda {
+    background-color: #cce8fe;
+  }
 }
 
 /* Slider de zoom del editor: pista más gruesa y thumb ampliado para que sea

@@ -1,4 +1,4 @@
-import { SIZES, PRICES, COD_DEPOSIT_COP, formatCOP } from "../lib/order";
+import { SIZES, PRICES, COD_DEPOSIT_COP, COD_FEE_COP, formatCOP } from "../lib/order";
 import { WHATSAPP_URL } from "./contacto";
 
 // Preguntas frecuentes de /ads: responden las objeciones típicas del
@@ -13,14 +13,16 @@ import { WHATSAPP_URL } from "./contacto";
 // TikTok/Instagram y no suma peso a la página.
 export default function AdsFaq({ avisoNavidad }) {
   const deposit = formatCOP(COD_DEPOSIT_COP);
+  const codFee = formatCOP(COD_FEE_COP);
   const items = [
     {
       q: "¿Cómo funciona “paga al recibir”?",
       a: (
         <>
           Separas tu pedido con un anticipo de {deposit} (en línea, con Wompi) y pagas el resto
-          en efectivo cuando el cuadro llega a la puerta de tu casa. Sin costo adicional por pagar
-          contraentrega.
+          en efectivo cuando el cuadro llega a la puerta de tu casa. El envío sigue siendo gratis;
+          pagar contraentrega tiene un recargo de {codFee} (lo que cobra la transportadora por
+          recaudar el efectivo). Pagando en línea no hay recargo.
         </>
       ),
     },
@@ -82,7 +84,7 @@ export default function AdsFaq({ avisoNavidad }) {
       a: (
         <>
           En línea con Wompi: tarjeta de crédito o débito, PSE, Nequi o Daviplata (desde PSE). O
-          contraentrega: anticipo de {deposit} y el resto en efectivo al recibir. Tus datos de pago
+          contraentrega: anticipo de {deposit} y el resto en efectivo al recibir (+{codFee} de recargo). Tus datos de pago
           van cifrados y nunca los almacenamos.
         </>
       ),

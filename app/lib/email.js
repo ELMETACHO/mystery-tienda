@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { formatCOP, getFabricanteCommissionCOP } from "./order";
+import { formatCOP, getFabricanteCommissionCOP, COD_FEE_COP } from "./order";
 import { generateManualShipmentToken } from "./manualShipmentToken";
 import { FABRICANTES, getFabricanteForFrameType } from "./fabricantes";
 import { EMAIL_SITE_URL as SITE_URL } from "./siteUrl";
@@ -310,7 +310,7 @@ function customerEmailHtml({
               <tr>
                 <td style="padding:12px 16px;">
                   <p class="email-text-success" style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">✅ Anticipo recibido: <strong>${formatCOP(anticipoPagado)}</strong></p>
-                  <p class="email-text-success" style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">💵 Saldo a pagar al recibir tu cuadro: <strong>${formatCOP(saldoPendiente)}</strong></p>
+                  <p class="email-text-success" style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">💵 Saldo a pagar al recibir tu cuadro: <strong>${formatCOP(saldoPendiente)}</strong> <span style="font-weight:normal;">(incluye ${formatCOP(COD_FEE_COP)} de recargo por pago contraentrega)</span></p>
                 </td>
               </tr>
             </table>
@@ -1180,7 +1180,7 @@ function shippingNotificationEmailHtml({
             <table class="email-banner-success-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${BRAND.successBg};border-radius:8px;">
               <tr>
                 <td style="padding:12px 16px;">
-                  <p class="email-text-success" style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">💵 Saldo a pagar al recibir: <strong>${formatCOP(saldoPendiente)}</strong></p>
+                  <p class="email-text-success" style="margin:0;font-family:${FONT_STACK};font-size:14px;color:${BRAND.success};">💵 Saldo a pagar al recibir: <strong>${formatCOP(saldoPendiente)}</strong> <span style="font-weight:normal;">(incluye ${formatCOP(COD_FEE_COP)} de recargo por pago contraentrega)</span></p>
                 </td>
               </tr>
             </table>

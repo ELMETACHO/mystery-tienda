@@ -51,6 +51,10 @@ export function ProductCard({ item, className = "", light = false, thumbWidth, p
           fill
           unoptimized
           priority={priority}
+          // En Next 16 `priority` solo quita el lazy: sin fetchPriority el
+          // navegador pedía la primera miniatura (el LCP de /categoria) con
+          // prioridad "Low" — mismo arreglo que la foto del hero de la Home.
+          fetchPriority={priority ? "high" : undefined}
           sizes="(min-width: 640px) 25vw, 50vw"
           className="object-cover transition-transform duration-300 ease-out group-hover:scale-110"
         />
