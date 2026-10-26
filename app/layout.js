@@ -67,9 +67,16 @@ export const metadata = {
   },
 };
 
+// OnlineStore (subtipo de Organization que Google recomienda para
+// tiendas en línea, oct 2026) con la política de devoluciones a nivel de
+// tienda: así Google la toma para todo el sitio y no solo producto por
+// producto. Mismo contenido que hasMerchantReturnPolicy de
+// /producto/[id] — la política real (/politicas): producto personalizado,
+// sin devoluciones por cambio de opinión, solo defectos/daños.
 const organizationJsonLd = {
   "@context": "https://schema.org",
-  "@type": "Organization",
+  "@type": "OnlineStore",
+  "@id": `${SITE_URL}/#organization`,
   name: "Mystery Cuadros",
   url: SITE_URL,
   logo: `${SITE_URL}/images/Logo/logo-navbar.png`,
@@ -89,6 +96,14 @@ const organizationJsonLd = {
     telephone: "+57-320-264-6716",
     areaServed: "CO",
     availableLanguage: "es",
+  },
+  areaServed: { "@type": "Country", name: "Colombia" },
+  hasMerchantReturnPolicy: {
+    "@type": "MerchantReturnPolicy",
+    applicableCountry: "CO",
+    returnPolicyCountry: "CO",
+    returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+    merchantReturnLink: `${SITE_URL}/politicas`,
   },
 };
 
