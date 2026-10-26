@@ -276,7 +276,7 @@ export default async function AdsLanding({ searchParams }) {
               sirven! Si tu imagen tiene poca calidad la aumentamos con
               Inteligencia Artificial sin afectar o cambiar detalles de la imagen.
               Seguirá siendo la misma, ¡pero mejor! Puedes pagar al recibir —
-              tenemos alianza con Servientrega, Envía, Interrapidísimo y más, esto
+              enviamos con Envía, Interrapidísimo y otras transportadoras, esto
               te da la confianza de que puedes pagar tu cuadro en la puerta de tu
               casa (anticipo de $20.000). Entrega en máximo 5 días (sin contar domingos).
             </p>
