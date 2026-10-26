@@ -318,10 +318,13 @@ export const LANDING_PAGES = [
   {
     slug: "de-mascotas",
     navLabel: "Cuadros de mascotas",
-    title: "Cuadro de Mascota Personalizado con su Foto | Mystery Cuadros",
+    // oct 26 2026: las búsquedas reales son sobre todo de perros
+    // ("cuadros perros personalizados", "cuadros de perros
+    // personalizados", posición 60-80) y el título no decía "perros".
+    title: "Cuadros de Perros, Gatos y Mascotas con su Foto | Mystery Cuadros",
     metaDescription:
-      "Cuadro personalizado de tu perro o gato con su foto, en vinilo sobre madera. También como recuerdo de una mascota que ya no está. Envío gratis a toda Colombia.",
-    h1: "Cuadros de mascotas personalizados",
+      "Cuadros personalizados de perros, gatos y mascotas con su foto, en vinilo sobre madera. También como recuerdo de una mascota que ya no está. Envío gratis a toda Colombia.",
+    h1: "Cuadros de mascotas personalizados: perros y gatos",
     lead:
       "Tu perro, tu gato o cualquier mascota de la familia, en un cuadro con su propia foto. Lo creas desde el celular en un par de minutos.",
     sections: [
@@ -332,6 +335,15 @@ export const LANDING_PAGES = [
           "Con luz natural (cerca de una ventana o al aire libre) y sin movimiento.",
           "La foto original del celular, no una captura de pantalla ni una foto reenviada por WhatsApp.",
           "En el editor puedes acercar y mover la foto para que la mascota quede centrada.",
+        ],
+      },
+      {
+        heading: "Cuadros de perros personalizados",
+        bullets: [
+          "Perros de pelo negro u oscuro: tómale la foto con buena luz de frente (no a contraluz), así no se pierden los ojos ni la forma de la cara.",
+          "Perros de pelo blanco o claro: evita el sol directo del mediodía, que quema los detalles del pelo.",
+          "Para que se vea el cuerpo completo (ideal en razas grandes o en 50x70 cm), deja espacio alrededor del perro al tomar la foto: el cuadro recorta un poco los bordes.",
+          "Si son dos o más perros, o el perro con su dueño, busca una foto donde todos se vean nítidos y nadie quede cortado en el borde.",
         ],
       },
       {

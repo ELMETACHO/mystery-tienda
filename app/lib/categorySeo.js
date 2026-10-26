@@ -49,8 +49,10 @@ export const CATEGORY_SEO = {
     relatedLandings: ["para-habitacion", "regalo-navidad-pareja", "regalo-de-navidad-personalizado"],
   },
   deportes: {
-    title: "Cuadros de Fútbol y Deportes en Madera | Mystery Cuadros",
-    h1: "Cuadros de fútbol y deportes",
+    // oct 26 2026: "cuadros deportivos" trae impresiones en posición ~16 y
+    // el título no tenía esa palabra.
+    title: "Cuadros Deportivos y de Fútbol en Madera | Mystery Cuadros",
+    h1: "Cuadros deportivos y de fútbol",
     metaDescription: `Cuadros de fútbol, baloncesto y deportes en vinilo sobre madera: Cristiano Ronaldo, Barcelona, Real Madrid, Chicago Bulls y más. Desde ${CATALOG_FROM_PRICE}, envío gratis en Colombia.`,
     intro:
       "Cuadros deportivos para fanáticos del fútbol y el baloncesto: Cristiano Ronaldo, jugadores del FC Barcelona, Real Madrid, Brasil y los Chicago Bulls, además de celebraciones y campeones con la copa. Un regalo seguro para cualquier hincha.",
@@ -76,12 +78,15 @@ export const CATEGORY_SEO = {
   musica: {
     title: "Cuadros de Música y Musicales Personalizados | Mystery Cuadros",
     h1: "Cuadros de música personalizados",
-    metaDescription: `Cuadros musicales de tus artistas favoritos en vinilo sobre madera: Feid (Ferxxo), Drake, Billie Eilish, Juice WRLD y más, o personaliza el tuyo. Desde ${CATALOG_FROM_PRICE}, envío gratis en Colombia.`,
+    metaDescription: `Cuadros musicales en vinilo sobre madera: Feid (Ferxxo), Drake, Billie Eilish, Juice WRLD y más, o la portada de tu álbum favorito. Desde ${CATALOG_FROM_PRICE}, envío gratis en Colombia.`,
     intro:
       "Cuadros musicales con tus artistas favoritos —Ferxxo, Drake, Billie Eilish, Juice WRLD, Snoop Dogg, Trueno, A$AP Rocky y más— en retratos y pósters de estilo urbano y pop art. ¿Quieres la portada de tu álbum favorito o una foto de tu concierto? Créalo tú mismo con tu imagen.",
     body: [
       "Los cuadros musicales son una forma de mostrar en la pared lo que suena en tu casa: retratos y pósters de artistas urbanos, reggaetón, rap y pop como Ferxxo, Drake, Billie Eilish, Juice WRLD, Snoop Dogg, Pharrell Williams, Trueno y A$AP Rocky.",
-      "¿Buscas un cuadro de música personalizado? Sube la portada de tu álbum favorito, una foto de tu concierto o de tu banda, y la imprimimos en vinilo sobre madera."
+      "¿Buscas un cuadro de música personalizado? Sube la portada de tu álbum favorito, una foto de tu concierto o de tu banda, y la imprimimos en vinilo sobre madera.",
+      // oct 26 2026: 4 búsquedas distintas de "cuadros de álbumes de música"
+      // en posición 9-14 y la página casi no hablaba de portadas.
+      "Cuadros de portadas de álbumes: las portadas son cuadradas y los cuadros no, así que en el editor eliges qué parte de la portada queda visible: puedes acercar y mover la imagen hasta que quede como quieres. Usa la imagen en la mejor calidad que encuentres, no una captura de pantalla pequeña. Dos o tres portadas en 30x40 cm arman una pared musical; una sola en 50x70 cm funciona como pieza principal."
     ],
     relatedCategories: ["iconic", "peliculas-series"],
     relatedLandings: ["para-habitacion", "regalo-navidad-pareja", "personalizados-con-fotos"],

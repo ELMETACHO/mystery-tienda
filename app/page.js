@@ -27,7 +27,8 @@ const websiteJsonLd = {
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Mystery Cuadros — Cuadros Personalizados con tu Foto | Envío Gratis Colombia",
+  // ≤ 70 caracteres para que Google no lo corte (antes 76).
+  title: "Mystery Cuadros: Cuadros Personalizados con tu Foto, Envío Gratis",
   description:
     "Convierte tu foto favorita en un cuadro personalizado en vinilo sobre madera. Elige el tamaño, paga seguro y recíbelo en tu casa — envío gratis a toda Colombia.",
   alternates: { canonical: SITE_URL },
