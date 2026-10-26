@@ -5,6 +5,7 @@ import Link from "next/link";
 import confetti from "canvas-confetti";
 import { formatCOP, loadOrder, saveOrder, COD_FEE_COP } from "../../lib/order";
 import { trackPurchase } from "../../lib/gtm";
+import DateReminderForm from "./DateReminderForm";
 
 // Morado de marca + blanco/dorado, para que el confeti se sienta "Mystery"
 // y no genérico.
@@ -355,7 +356,7 @@ export default function ConfirmacionPage() {
                       ¡Felicidades! Tienes 10% de descuento en tu próxima compra
                     </p>
                     <span className="rounded-lg border border-accent/50 bg-[#fffaf0] px-5 py-2.5 font-mono text-base tracking-wider text-[#1b2a4a]">
-                      MYSTERY10%
+                      MYSTERY10
                     </span>
                   </div>
                 ) : (
@@ -434,6 +435,12 @@ export default function ConfirmacionPage() {
                 por si quieres guardarlo. En 1-2 días te llegará otro correo
                 con la guía para hacer seguimiento de tu envío.
               </p>
+            )}
+
+            {/* Recordatorio de fecha especial (opcional, cerrado por
+                defecto) — ver DateReminderForm. */}
+            {order.payment?.status === "APPROVED" && (
+              <DateReminderForm reference={order.payment.reference} />
             )}
           </>
         ) : null}

@@ -502,3 +502,67 @@ ninguna demora nueva (todo calculado en el navegador o cargado al tocar).
   producto + CSP Meta), #42 (origen de pedidos en /admin) — requieren revisión.
 - Llevar 70x100/100x140 al catálogo (backfill desde los originales de Drive).
 - Decidir si se quita "Tu cuadro está listo" (AddToCart vs InitiateCheckout).
+
+---
+
+## Sesión del 25 oct 2026 — área de Conversión y retención
+
+Propuesta completa con fuentes en `reportes-internos/conversion/PROPUESTA.md`
+(carpeta fuera de git). Oscar dijo "aplica todo". Rama
+`claude/conversion-retencion-bf5042`.
+
+### Aplicado
+- **Bug MYSTERY10**: la confirmación y el correo mostraban "MYSTERY10%",
+  pero el sistema solo aceptaba "MYSTERY10". Ahora se muestra sin "%" y
+  `/api/validate-discount` acepta las dos formas.
+- **Urgencia falsa fuera**: "Por tiempo limitado: Envío gratis" (Home y
+  `FreeShippingBanner` con ⏱️). El envío gratis es permanente. El hero del
+  Home ahora dice "Desde $55.000 · Envío gratis · Paga al recibir".
+- **"Tu cuadro está listo"** (/crear y /ads):
+  - Muestra tamaño, tipo, precio y "puedes pagar al recibir".
+  - Botón "📤 Muéstrale tu cuadro a alguien": usa el Compartir nativo con la
+    imagen de la pared y el link. Se compone en el navegador al tocar, a
+    partir de lo que ya está en pantalla (`SharePreviewButton.jsx` +
+    `sharePreviewImage.js`).
+  - Mide con el evento de dataLayer `preview_shared`.
+- **Checkout**:
+  - Línea arriba "💵 Puedes pagar al recibir — lo eliges al final" (el método
+    por defecto sigue siendo pago en línea).
+  - Texto de Wompi menciona Nequi/Daviplata vía PSE.
+- **Reseñas reales en /ads y /producto** (`RealTestimonials.jsx`): las mismas
+  de `home:testimonials`. Si no hay reales, no se pinta nada (sin
+  ejemplos). Va en `<Suspense>`.
+- **Home reordenado**: Personalizados → Cómo funciona → Reseñas → Categorías
+  → Recientes.
+  - Las listas bajan de 200 a 24 diseños.
+  - "Más vendidos" solo muestra diseños con ventas reales (antes era copia
+    de Recientes) y se oculta, con su enlace del menú, si no hay ninguno.
+- **Correos**:
+  - La reseña se pide a los 8 días de la compra (antes 5, a veces el cuadro
+    no había llegado).
+  - "Va en camino" y el de reseña piden el video o la foto del cuadro
+    (mailto a contacto@ o etiquetar en Instagram). Solo se publica con
+    "SÍ" explícito (Ley 1581).
+- **/ads por tema** (`temporada.js`): `?temporada=mascotas` y
+  `?temporada=pareja`, o `utm_campaign` con "mascota"/"pareja". Es para que
+  los videos ganadores tengan título coherente sin sacar al cliente del
+  editor embebido.
+- **Recordatorio de fecha especial** (`app/lib/dateReminders.js`,
+  `/api/date-reminder`, `DateReminderForm.jsx` en la confirmación):
+  - Opt-in; un correo 14 días antes de la fecha del año siguiente; link para
+    cancelar (HMAC con `REVIEW_TOKEN_SECRET`).
+  - Lo envía el mismo cron diario de reseñas.
+  - El correo de destino sale del pedido real, nunca del navegador.
+  - Tests en `tests/dateReminders.test.mjs`.
+
+### Pendiente (decisión de Oscar/Finanzas)
+- C1 referidos "regala y recibe" y C3 descuento desde la primera compra:
+  falta el monto.
+- Incentivo por reseña/video: falta definir si se da y cuánto.
+- PR #33 (regalo + tarjeta regalo): actualizado con main. Antes de
+  encenderlo, Oscar define precio, vencimiento y dónde va el link.
+- PR #41 listo para fusionar; PR #42 tiene conflictos (retomar después de
+  Navidad).
+- Prueba 30x40 vs 40x50 preseleccionado en /crear (sin aplicar).
+- GTM: tag para `preview_shared` y `ads_photo_uploaded` si se quieren medir
+  en TikTok/Meta.

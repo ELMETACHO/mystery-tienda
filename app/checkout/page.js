@@ -894,6 +894,16 @@ function CheckoutForm() {
           <p className="mt-1 text-sm text-[#33456b] sm:mt-2 sm:text-base">
             Completa tus datos de envío.
           </p>
+          {/* El 75% paga contraentrega, pero esa opción solo se veía al
+              final, debajo del formulario — arriba solo decía "Pagar ahora
+              · Tarjeta / PSE" y quien venía del anuncio ("paga al recibir")
+              podía creer que ya no estaba. Solo texto: no cambia el método
+              marcado por defecto. */}
+          {!isFreeOrder && (
+            <p className="mt-1 text-xs font-medium text-[#1f7a4d] sm:text-sm">
+              💵 Puedes pagar al recibir — lo eliges al final, en «Método de pago».
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 sm:gap-8 lg:flex-row">
@@ -1335,7 +1345,7 @@ function CheckoutForm() {
                 ? "Este pedido es un regalo — no requiere pago."
                 : paymentMethod === "cod"
                 ? `Anticipo de ${formatCOP(COD_DEPOSIT_COP)} con Wompi + ${formatCOP(getCodBalanceCOP(effectivePriceCOP))} al recibir (incluye ${formatCOP(COD_FEE_COP)} de recargo contraentrega).`
-                : "🔒 Pago 100% seguro con Wompi · Tarjeta o PSE. Tus datos de pago van cifrados y nunca los almacenamos."}
+                : "🔒 Pago 100% seguro con Wompi · Tarjeta, PSE, Nequi o Daviplata (vía PSE). Tus datos de pago van cifrados y nunca los almacenamos."}
             </p>
             <p className="text-center text-xs text-[#8a94ac]">
               Al pagar aceptas nuestras{" "}

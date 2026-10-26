@@ -260,7 +260,7 @@ function customerEmailHtml({
               <td style="padding:18px;text-align:center;">
                 <p class="email-text-brand" style="margin:0 0 4px 0;font-family:${FONT_STACK};font-size:16px;font-weight:bold;color:${BRAND.text};">¡Eres cliente fiel! 🎉</p>
                 <p class="email-text-muted" style="margin:0 0 12px 0;font-family:${FONT_STACK};font-size:13px;color:${BRAND.muted};">Tienes 10% de descuento en tu próxima compra</p>
-                <span class="email-card email-text-ink" style="display:inline-block;background-color:#ffffff;border:1px solid ${BRAND.solid};border-radius:6px;padding:8px 18px;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:bold;color:${BRAND.ink};letter-spacing:1px;">MYSTERY10%</span>
+                <span class="email-card email-text-ink" style="display:inline-block;background-color:#ffffff;border:1px solid ${BRAND.solid};border-radius:6px;padding:8px 18px;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:bold;color:${BRAND.ink};letter-spacing:1px;">MYSTERY10</span>
               </td>
             </tr>
           </table>
@@ -1088,6 +1088,34 @@ export async function sendChatLeadEmail({ nombre, ciudad, whatsapp, pregunta, su
 // pedidos contraentrega y de pago completo por igual.
 // ---------------------------------------------------------------------
 
+// Pedido de contenido real de clientes (oct 2026, pedido de Marketing): el
+// video de cuando abren el paquete o una foto del cuadro colgado es lo que
+// más vende en anuncios, y casi nadie lo manda si no se le pide. Se manda
+// por correo (mailto a ADMIN_EMAIL, el cliente adjunta) o etiquetando en
+// Instagram — nunca por WhatsApp automático. El permiso para publicarlo
+// tiene que ser explícito (Ley 1581): solo cuenta si el cliente deja "SÍ"
+// en la línea de autorización del correo; sin eso no se usa en redes.
+function customerContentRequestRow(reference) {
+  const subject = encodeURIComponent(`Mi cuadro Mystery${reference ? ` (pedido ${reference})` : ""}`);
+  const body = encodeURIComponent(
+    "Les mando el video/foto de mi cuadro.\n\nAutorizo publicarlo en las redes de Mystery: SÍ / NO (borra lo que no aplique)."
+  );
+  return `
+        <tr>
+          <td style="padding:16px 32px 8px 32px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px dashed ${BRAND.border};border-radius:14px;">
+              <tr>
+                <td style="padding:16px 18px;">
+                  <p class="email-text-ink" style="margin:0 0 6px 0;font-family:${FONT_STACK};font-size:15px;font-weight:bold;color:${BRAND.ink};">🎥 ¿Nos muestras tu cuadro?</p>
+                  <p class="email-text-muted" style="margin:0 0 10px 0;font-family:${FONT_STACK};font-size:14px;line-height:21px;color:${BRAND.muted};">Nos encanta ver el video de cuando lo abren o una foto del cuadro ya colgado. Mándanoslo por correo, o etiquétanos en Instagram <a class="email-text-brand" href="${INSTAGRAM_URL}" style="color:${BRAND.text};text-decoration:none;">@bigmystery_</a>. Solo lo publicamos si nos dices que sí.</p>
+                  <a class="email-text-brand" href="mailto:${ADMIN_EMAIL}?subject=${subject}&body=${body}" style="font-family:${FONT_STACK};font-size:14px;font-weight:bold;color:${BRAND.text};text-decoration:underline;">Enviar mi video o foto</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>`;
+}
+
 function shippingNotificationEmailHtml({
   customer,
   reference,
@@ -1168,6 +1196,8 @@ function shippingNotificationEmailHtml({
         </tr>
 
         ${orderStatusLinkRow(reference)}
+
+        ${customerContentRequestRow(reference)}
 
         <tr>
           <td style="padding:8px 32px 32px 32px;">
@@ -1457,6 +1487,10 @@ function reviewRequestEmailHtml({ order, reviewUrl }) {
             <p class="email-text-faint" style="margin:0;font-family:${FONT_STACK};font-size:12px;line-height:18px;color:${BRAND.faint};text-align:center;">Si el botón no funciona, copia y pega este link en tu navegador:<br>${reviewUrl}</p>
           </td>
         </tr>
+
+        ${customerContentRequestRow(order.reference)}
+
+        <tr><td style="padding:0 0 24px 0;"></td></tr>
       </table>
     </td>
   </tr>
@@ -1638,4 +1672,62 @@ export async function sendPaymentIntegrityAlertEmail({
   <table role="presentation" cellpadding="0" cellspacing="0" border="0">${rows}</table>
 </div>`),
   });
+}
+
+// ---------------------------------------------------------------------
+// Recordatorio de fecha especial (opt-in desde la confirmación, ver
+// app/lib/dateReminders.js y el cron send-review-emails). Un solo correo
+// 14 días antes de la fecha, con link para no recibir más.
+// ---------------------------------------------------------------------
+
+const MONTHS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+function dateReminderEmailHtml({ customerName, occasionLabel, forName, occurrence, createUrl, cancelUrl }) {
+  const [, m, d] = occurrence.split("-").map(Number);
+  const dateText = `${d} de ${MONTHS_ES[m - 1]}`;
+  const forText = forName ? ` de ${escapeHtml(forName)}` : "";
+  return `
+<table class="email-bg" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.sky}" style="background-color:${BRAND.sky};padding:32px 12px;font-family:${FONT_STACK};">
+  <tr>
+    <td align="center">
+      <table class="email-card" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${BRAND.card}" style="max-width:560px;background-color:${BRAND.card};border-radius:20px;overflow:hidden;">
+        ${emailHeaderRow()}
+
+        <tr>
+          <td style="padding:32px 32px 8px 32px;">
+            <p class="email-text-ink" style="margin:0 0 8px 0;font-family:${FONT_STACK};font-size:20px;font-weight:bold;color:${BRAND.ink};">¡Hola${customerName ? ` ${escapeHtml(customerName.split(" ")[0])}` : ""}! Se acerca el ${escapeHtml(occasionLabel)}${forText} 🎁</p>
+            <p class="email-text-muted" style="margin:0;font-family:${FONT_STACK};font-size:15px;line-height:22px;color:${BRAND.muted};">
+              Nos pediste que te recordáramos esta fecha: es el <strong class="email-text-ink" style="color:${BRAND.ink};">${dateText}</strong>. Si quieres regalar otro cuadro con una foto especial, pídelo esta semana para que llegue a tiempo (lo hacemos en 1-2 días y llega en máximo 5 días, sin domingos). Envío gratis y puedes pagar al recibir.
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:24px 32px 24px 32px;" align="center">
+            <a class="email-btn-bg email-text-white" href="${createUrl}" style="display:inline-block;background-color:${BRAND.solid};color:#ffffff;font-family:${FONT_STACK};font-size:16px;font-weight:bold;text-decoration:none;border-radius:999px;padding:14px 32px;">Crear mi cuadro</a>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:0 32px 28px 32px;">
+            <p class="email-text-faint" style="margin:0;font-family:${FONT_STACK};font-size:12px;line-height:18px;color:${BRAND.faint};text-align:center;">Te escribimos solo porque lo pediste al comprar. <a href="${cancelUrl}" style="color:${BRAND.faint};">No quiero más recordatorios</a></p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+  `;
+}
+
+export async function sendDateReminderEmail({ to, customerName, occasionLabel, forName, occurrence, cancelToken, reference }) {
+  const createUrl = `${SITE_URL}/crear?utm_source=email&utm_medium=recordatorio&utm_campaign=fecha-especial`;
+  const cancelUrl = `${SITE_URL}/api/date-reminder?ref=${encodeURIComponent(reference)}&token=${encodeURIComponent(cancelToken)}`;
+  const { error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `Se acerca el ${occasionLabel}${forName ? ` de ${forName}` : ""} 🎁`,
+    html: wrapEmailHtml(dateReminderEmailHtml({ customerName, occasionLabel, forName, occurrence, createUrl, cancelUrl })),
+  });
+  if (error) throw new Error(`Resend: ${error.message || JSON.stringify(error)}`);
 }

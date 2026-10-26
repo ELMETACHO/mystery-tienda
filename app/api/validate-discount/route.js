@@ -24,7 +24,11 @@ export async function POST(request) {
     return Response.json({ valid: false, error: INVALID_MESSAGE }, { status: 400 });
   }
 
-  const normalizedCode = String(code).trim().toUpperCase();
+  // Se quita un "%" final: la confirmación y el correo mostraron por un
+  // tiempo "MYSTERY10%" y el cliente lo copia tal cual. Como el código
+  // normalizado es el que vuelve al checkout, el resto del flujo (firma,
+  // markDiscountUsed) ya recibe "MYSTERY10".
+  const normalizedCode = String(code).trim().toUpperCase().replace(/%+$/, "");
 
   // El código de descuento nunca es canjeable por un correo sin compras
   // registradas — así se cumple "no es compartible": aunque alguien
