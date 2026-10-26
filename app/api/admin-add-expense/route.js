@@ -11,18 +11,18 @@ async function isAuthenticated() {
 
 // Sección "Gastos manuales" de /admin/reporte — categoría fija
 // (Publicidad/Insumos, ver EXPENSE_CATEGORIES), monto, fecha, y
-// descripción opcional.
+// descripción opcional (+ plataforma si es Publicidad).
 export async function POST(request) {
   if (!(await isAuthenticated())) {
     return Response.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  const { category, amount, date, description } = await request.json().catch(() => ({}));
+  const { category, amount, date, description, platform } = await request.json().catch(() => ({}));
   if (!category || !amount || !date) {
     return Response.json({ error: "Faltan categoría, monto o fecha" }, { status: 400 });
   }
 
-  const expense = await addExpense({ category, amount, date, description });
+  const expense = await addExpense({ category, amount, date, description, platform });
   if (!expense) {
     return Response.json({ error: "No se pudo guardar el gasto" }, { status: 400 });
   }
