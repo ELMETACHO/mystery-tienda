@@ -46,7 +46,7 @@ export const CATEGORY_SEO = {
       "¿Tu anime favorito no está todavía? Puedes crear el cuadro tú mismo subiendo la imagen que quieras en el editor: un personaje, una escena o el póster de tu serie."
     ],
     relatedCategories: ["peliculas-series", "iconic"],
-    relatedLandings: ["regalo-navidad-pareja", "regalo-de-navidad-personalizado"],
+    relatedLandings: ["para-habitacion", "regalo-navidad-pareja", "regalo-de-navidad-personalizado"],
   },
   deportes: {
     title: "Cuadros de Fútbol y Deportes en Madera | Mystery Cuadros",
@@ -84,7 +84,7 @@ export const CATEGORY_SEO = {
       "¿Buscas un cuadro de música personalizado? Sube la portada de tu álbum favorito, una foto de tu concierto o de tu banda, y la imprimimos en vinilo sobre madera."
     ],
     relatedCategories: ["iconic", "peliculas-series"],
-    relatedLandings: ["regalo-navidad-pareja", "personalizados-con-fotos"],
+    relatedLandings: ["para-habitacion", "regalo-navidad-pareja", "personalizados-con-fotos"],
   },
   "peliculas-series": {
     title: "Cuadros de Películas y Series en Madera | Mystery Cuadros",
@@ -97,7 +97,7 @@ export const CATEGORY_SEO = {
       "Quedan muy bien en el cuarto, en la sala de TV o en un home theater. Si la escena que quieres no está, puedes crearla tú mismo con tu propia imagen."
     ],
     relatedCategories: ["anime", "iconic"],
-    relatedLandings: ["regalo-navidad-pareja", "regalo-de-navidad-personalizado"],
+    relatedLandings: ["para-habitacion", "regalo-navidad-pareja", "regalo-de-navidad-personalizado"],
   },
   "mystery-disenos": {
     title: "Diseños Originales Mystery — Cuadros Únicos | Mystery Cuadros",
