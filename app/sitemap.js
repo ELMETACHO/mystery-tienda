@@ -22,20 +22,21 @@ export const dynamic = "force-dynamic";
 // nuevos. Al cambiar los textos o la plantilla de un tipo de página,
 // actualizar su fecha aquí.
 const CONTENT_UPDATED = {
-  home: "2026-10-25",
+  home: "2026-10-26",
   crear: "2026-10-05",
   politicas: "2026-10-05",
   referidos: "2026-10-05",
   landings: "2026-10-05",
   categories: "2026-10-05",
-  products: "2026-10-05",
+  products: "2026-10-26",
 };
 
 // Cambios de texto de una sola categoría (app/lib/categorySeo.js): fecha
 // propia para no marcar todas como modificadas.
 const CATEGORY_CONTENT_UPDATED = {
   anime: "2026-10-25",
-  musica: "2026-10-25",
+  musica: "2026-10-26",
+  deportes: "2026-10-26",
   "peliculas-series": "2026-10-25",
 };
 
@@ -44,6 +45,7 @@ const CATEGORY_CONTENT_UPDATED = {
 const LANDING_CONTENT_UPDATED = {
   "personalizados-bogota": "2026-10-25",
   "para-habitacion": "2026-10-25",
+  "de-mascotas": "2026-10-26",
 };
 
 function latest(...dates) {
