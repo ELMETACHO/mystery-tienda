@@ -355,7 +355,7 @@ export default function ConfirmacionPage() {
                       ¡Felicidades! Tienes 10% de descuento en tu próxima compra
                     </p>
                     <span className="rounded-lg border border-accent/50 bg-[#fffaf0] px-5 py-2.5 font-mono text-base tracking-wider text-[#1b2a4a]">
-                      MYSTERY10%
+                      MYSTERY10
                     </span>
                   </div>
                 ) : (

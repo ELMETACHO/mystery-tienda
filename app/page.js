@@ -313,7 +313,7 @@ export default async function Home() {
         <section className="relative overflow-hidden px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16">
           <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center gap-6 text-center">
             <p className="text-center text-xs font-medium text-[#7a3fa0] sm:text-sm">
-              Por tiempo limitado: Envío gratis a todo el país
+              Envío gratis a todo el país
             </p>
 
             {/* Único <h1> de la Home (SEO): la marca animada (FoldText ya

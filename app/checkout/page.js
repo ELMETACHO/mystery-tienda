@@ -110,6 +110,42 @@ const INPUT_CLASS =
 const PAY_BUTTON_CLASS =
   "mt-1 w-full rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-accent/50 transition-all duration-200 hover:shadow-[0_0_36px_rgba(168,85,247,0.85)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:animate-none";
 
+// El widget de Wompi SOLO llama al callback de open() cuando hay una
+// transacción: si el cliente lo cierra con la X antes de pagar (por
+// ejemplo, para cambiar a contraentrega), nunca avisa, y los botones se
+// quedaban en "Procesando..." hasta recargar la página (reproducido en
+// sandbox, oct 2026). Al cerrarse, Wompi oculta su modal (.waybox-modal
+// con display: none) — si eso pasa y el callback no llegó, se liberan los
+// botones. Con un pago ya aprobado el widget no se puede cerrar con la X
+// (solo con "Volver al comercio", que sí llama al callback), así que esto
+// nunca suelta un pago hecho. `result.done` lo marca el callback.
+function watchWompiWidgetClose(result, onClosedWithoutResult) {
+  let wasOpen = false;
+  const startedAt = Date.now();
+  const timer = setInterval(() => {
+    if (result.done || Date.now() - startedAt > 30 * 60 * 1000) {
+      clearInterval(timer);
+      return;
+    }
+    // Cada open() crea un .waybox-modal nuevo y los anteriores quedan
+    // ocultos en la página: basta con que alguno esté visible.
+    const isOpen = [...document.querySelectorAll(".waybox-modal")].some(
+      (modal) => getComputedStyle(modal).display !== "none"
+    );
+    if (isOpen) {
+      wasOpen = true;
+      return;
+    }
+    if (!wasOpen) return;
+    clearInterval(timer);
+    // Margen por si Wompi oculta el modal un instante antes de invocar el
+    // callback.
+    setTimeout(() => {
+      if (!result.done) onClosedWithoutResult();
+    }, 1500);
+  }, 500);
+}
+
 function CheckoutForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -546,7 +582,11 @@ function CheckoutForm() {
       },
     });
 
+    const widgetResult = { done: false };
+    watchWompiWidgetClose(widgetResult, () => setIsPaying(false));
+
     widgetRef.current.open(async (result) => {
+      widgetResult.done = true;
       const transaction = result?.transaction;
       console.log("Resultado de Wompi (navegador):", transaction);
 
@@ -693,7 +733,11 @@ function CheckoutForm() {
       },
     });
 
+    const widgetResult = { done: false };
+    watchWompiWidgetClose(widgetResult, () => setIsConfirmingCod(false));
+
     widgetRef.current.open(async (result) => {
+      widgetResult.done = true;
       const transaction = result?.transaction;
       console.log("Resultado de Wompi (anticipo contraentrega):", transaction);
 
