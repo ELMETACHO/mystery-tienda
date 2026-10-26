@@ -125,7 +125,7 @@ export default async function ProductPage({ params }) {
       price: String(FEED_DEFAULT_PRICE_COP),
       itemCondition: "https://schema.org/NewCondition",
       availability: "https://schema.org/InStock",
-      seller: { "@type": "Organization", name: "Mystery Cuadros" },
+      seller: { "@type": "OnlineStore", "@id": `${SITE_URL}/#organization`, name: "Mystery Cuadros" },
       // Política REAL (/politicas, app/lib/legalContent.js — aprobado por
       // el dueño, oct 2026): producto personalizado, NO se aceptan
       // devoluciones por cambio de opinión; solo se responde por defectos
