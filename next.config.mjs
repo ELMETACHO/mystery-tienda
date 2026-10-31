@@ -90,6 +90,14 @@ const FRAME_HEADERS = [{ key: "X-Frame-Options", value: "SAMEORIGIN" }];
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Siempre definida ("0" si falta en Vercel) para que el build la
+  // incruste como constante y el minificador elimine el código de "Es un
+  // regalo"/tarjeta regalo del bundle de /checkout mientras esté apagada
+  // (sin esto Turbopack la deja como lectura en tiempo de ejecución y el
+  // componente viaja igual). Ver app/lib/giftFeatures.js.
+  env: {
+    NEXT_PUBLIC_GIFT_FEATURES: process.env.NEXT_PUBLIC_GIFT_FEATURES === "1" ? "1" : "0",
+  },
   // Desactivado tras diagnosticar (agosto 2026) que esta caché persiste en
   // disco (.next/dev/cache/turbopack) ENTRE reinicios del servidor — a
   // diferencia de lo que parece, un `Ctrl+C` + `npm run dev` normal NO la

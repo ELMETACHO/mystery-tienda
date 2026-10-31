@@ -9,6 +9,12 @@ import { lookupPostalCode } from "../lib/postalCodes";
 import { trackBeginCheckout, trackAddPaymentInfo } from "../lib/gtm";
 import FreeShippingBanner from "../components/FreeShippingBanner";
 import DeliveryEstimate from "../components/DeliveryEstimate";
+import GiftOptionField from "../components/GiftOptionField";
+
+// Literal NEXT_PUBLIC_ en línea (no importado de giftFeatures.js) para que
+// el build lo reemplace por una constante y, con la función apagada, el
+// minificador elimine GiftOptionField del bundle: 0 bytes en /checkout.
+const GIFT_FEATURES_ON = process.env.NEXT_PUBLIC_GIFT_FEATURES === "1";
 
 const WOMPI_PUBLIC_KEY = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
 
@@ -150,6 +156,8 @@ function CheckoutForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [order, setOrder] = useState(null);
+  // "Es un regalo" (apagado por defecto, ver app/lib/giftFeatures.js).
+  const [giftOption, setGiftOption] = useState({ enabled: false, message: "" });
   const [isLoadingOrder, setIsLoadingOrder] = useState(true);
   const [customer, setCustomer] = useState(emptyCustomer);
   const [isWidgetReady, setIsWidgetReady] = useState(false);
@@ -493,6 +501,9 @@ function CheckoutForm() {
       discountCode: appliedCode?.type === "discount" ? appliedCode.code : null,
       referralCode: appliedCode?.type === "referral" ? appliedCode.code : null,
       giftCode: appliedCode?.type === "gift" ? appliedCode.code : null,
+      // El servidor vuelve a normalizar/escapar el mensaje al armar el correo.
+      giftOption:
+        GIFT_FEATURES_ON && giftOption.enabled ? { enabled: true, message: giftOption.message.slice(0, 200) } : null,
     };
     trackAddPaymentInfo(fullOrder, customer, "wompi");
     await saveOrder(fullOrder);
@@ -674,6 +685,9 @@ function CheckoutForm() {
       discountCode: appliedCode?.type === "discount" ? appliedCode.code : null,
       referralCode: appliedCode?.type === "referral" ? appliedCode.code : null,
       giftCode: appliedCode?.type === "gift" ? appliedCode.code : null,
+      // El servidor vuelve a normalizar/escapar el mensaje al armar el correo.
+      giftOption:
+        GIFT_FEATURES_ON && giftOption.enabled ? { enabled: true, message: giftOption.message.slice(0, 200) } : null,
     };
     trackAddPaymentInfo(fullOrder, customer, "contraentrega");
     await saveOrder(fullOrder);
@@ -834,6 +848,9 @@ function CheckoutForm() {
       discountCode: null,
       referralCode: null,
       giftCode: appliedCode?.type === "gift" ? appliedCode.code : null,
+      // El servidor vuelve a normalizar/escapar el mensaje al armar el correo.
+      giftOption:
+        GIFT_FEATURES_ON && giftOption.enabled ? { enabled: true, message: giftOption.message.slice(0, 200) } : null,
     };
     await saveOrder(fullOrder);
 
@@ -1322,6 +1339,10 @@ function CheckoutForm() {
             </div>
 
             {discountCodeSection}
+
+            {GIFT_FEATURES_ON && (
+              <GiftOptionField value={giftOption} onChange={setGiftOption} inputClassName={INPUT_CLASS} />
+            )}
 
             <FreeShippingBanner />
 

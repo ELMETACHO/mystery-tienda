@@ -2,6 +2,8 @@ import { createHash } from "crypto";
 import { getPendingOrder } from "../../lib/pendingOrders";
 import { confirmApprovedOrder } from "../../lib/confirmApprovedOrder";
 import { confirmApprovedCodOrder } from "../../lib/confirmApprovedCodOrder";
+import { isGiftCardReference } from "../../lib/giftFeatures";
+import { issueGiftCardForTransaction } from "../../lib/giftCards";
 
 // Notificación server-to-server de Wompi ("Eventos"): se entera de un
 // pago aprobado sin depender de que el navegador del cliente siga
@@ -72,6 +74,20 @@ export async function POST(request) {
   // (DECLINED/ERROR/PENDING) y cualquier otro tipo de evento futuro.
   if (body.event !== "transaction.updated" || transaction?.status !== "APPROVED") {
     return Response.json({ ok: true, ignored: true });
+  }
+
+  // Tarjeta regalo (referencia giftcard-…, ver app/lib/giftCards.js): no
+  // es un pedido de cuadro, no pasa por pending-order ni por
+  // confirmApproved*. Idempotente; 500 si falla algo transitorio para que
+  // Wompi reintente.
+  if (isGiftCardReference(transaction.reference)) {
+    try {
+      const result = await issueGiftCardForTransaction(transaction);
+      return Response.json({ ok: true, giftCard: result.ok, reason: result.reason });
+    } catch (err) {
+      console.error("[wompi-webhook] Falló la emisión de la tarjeta regalo:", err);
+      return Response.json({ error: "Falló la emisión" }, { status: 500 });
+    }
   }
 
   const pending = await getPendingOrder(transaction.reference);
