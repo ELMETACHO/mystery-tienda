@@ -31,6 +31,24 @@ export function trackViewContent() {
   });
 }
 
+// Vista de un diseño del catálogo (/producto/[id]). Misma forma que
+// trackViewContent, así la reciben los mismos tags de GTM (Meta y TikTok
+// ViewContent leen ecommerce.items.0.item_id). item_id es el id del
+// producto, el mismo g:id del feed de Google (app/lib/googleFeed.js),
+// para que los catálogos de Meta/Google puedan cruzar la vista con el
+// producto; price/value es el precio de referencia del feed.
+export function trackProductView({ id, name, priceCOP }) {
+  if (!id) return;
+  pushToDataLayer({
+    event: "view_item",
+    ecommerce: {
+      currency: "COP",
+      value: priceCOP,
+      items: [{ item_id: id, item_name: name, price: priceCOP, quantity: 1 }],
+    },
+  });
+}
+
 // Equivalente a "agregar al carrito": se dispara justo cuando el cliente
 // confirma foto + tamaño y ve la pantalla "Tu cuadro está listo" — la
 // señal de intención más fuerte antes de llegar al checkout. sizeId viaja
