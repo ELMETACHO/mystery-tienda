@@ -9,6 +9,7 @@ import { saveManualShipmentRequest } from "./manualShipments";
 import { grantDiscountCode } from "./discount";
 import { redeemGiftCode, releaseGiftCodeUse } from "./giftCodes";
 import { recordCrmEntry } from "./manufacturerFinance";
+import { withSanitizedAttribution } from "./attributionChannels";
 
 // Equivalente de confirmApprovedOrder.js para pedidos con precio final
 // $0 (código de regalo, ver app/lib/giftCodes.js): NUNCA pasan por
@@ -32,6 +33,9 @@ export async function confirmFreeOrder({
   subjectPrefix,
   testRecipientOverride,
 }) {
+  // Origen del cliente (ver attribution.js): se limpia acá, síncrono y en
+  // microsegundos, para que todo lo que se guarde abajo ya venga limpio.
+  order = withSanitizedAttribution(order);
   const transaction = { id: reference, reference, status: "APPROVED" };
 
   const claimed = await claimTransaction(transaction.id);

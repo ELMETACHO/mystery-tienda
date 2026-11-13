@@ -15,6 +15,7 @@ import { checkShippingCoverageAfterPayment } from "./noCoverage";
 import { COD_DEPOSIT_COP, COD_FEE_COP, SIZES, getCodBalanceCOP } from "./order";
 import { checkCodPaymentIntegrity } from "./paymentIntegrity";
 import { flagSuspiciousPayment } from "./flaggedPayments";
+import { withSanitizedAttribution } from "./attributionChannels";
 
 // Equivalente de confirmApprovedOrder.js, pero para "Pago contraentrega":
 // el cliente pagó solo el anticipo fijo (COD_DEPOSIT_COP) por Wompi, y el
@@ -33,7 +34,9 @@ export async function confirmApprovedCodOrder({ order: orderFromClient, customer
   // Recargo contraentrega (ver COD_FEE_COP en order.js): queda guardado en
   // el pedido para correos/reportes; el valor sale de la constante del
   // servidor, nunca del navegador.
-  const order = { ...orderFromClient, codFeeCOP: COD_FEE_COP };
+  // Origen del cliente (ver attribution.js): se limpia acá, síncrono y en
+  // microsegundos, para que todo lo que se guarde abajo ya venga limpio.
+  const order = withSanitizedAttribution({ ...orderFromClient, codFeeCOP: COD_FEE_COP });
   const claimed = await claimTransaction(transaction.id);
   if (!claimed) {
     return { alreadyProcessed: true, isReturningCustomer: false, anticipoPagado: 0, saldoPendiente: 0 };

@@ -71,6 +71,8 @@ export async function saveCompletedOrder({ order, customer, transaction, payment
       priceCOP: order.priceCOP + (order.codFeeCOP || 0),
       codFeeCOP: order.codFeeCOP || 0,
       paymentMethod: paymentMethod || "wompi", // "wompi" | "cod"
+      // Origen del cliente (ver attribution.js y attributionChannels.js) — ya limpio, < 1 KB.
+      attribution: order.attribution || null,
       purchasedAt: new Date().toISOString(),
       reviewEmailSentAt: null,
       reviewSubmittedAt: null,

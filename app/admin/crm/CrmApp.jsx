@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { OrigenBadge } from "../OrigenBadge";
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("es-CO", {
@@ -71,10 +72,11 @@ export default function CrmApp() {
         </p>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-accent/30 bg-accent/5 shadow-[0_0_40px_-14px_rgba(168,85,247,0.3)]">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[820px] text-left text-sm">
             <thead>
               <tr className="border-b border-accent/20 bg-accent/10 text-xs uppercase tracking-wide text-accent">
                 <th className="px-4 py-3 font-medium">Nombre</th>
+                <th className="px-4 py-3 font-medium">Origen</th>
                 <th className="px-4 py-3 font-medium">Teléfono</th>
                 <th className="px-4 py-3 font-medium">Dirección</th>
                 <th className="px-4 py-3 font-medium">Correo</th>
@@ -92,6 +94,18 @@ export default function CrmApp() {
                   className="border-b border-black/5 transition-colors last:border-0 hover:bg-accent/5"
                 >
                   <td className="px-4 py-3 font-medium text-[#1b2a4a]">{e.nombre}</td>
+                  <td className="px-4 py-3">
+                    {e.metodoPago === "Lead del chat" ? (
+                      <span className="text-[#5b6b8c]">-</span>
+                    ) : (
+                      <>
+                        <OrigenBadge attribution={e.origen} />
+                        {e.origen?.last?.campaign && (
+                          <p className="mt-1 text-xs text-[#5b6b8c]">{e.origen.last.campaign}</p>
+                        )}
+                      </>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-[#33456b]">{e.telefono || "-"}</td>
                   <td className="px-4 py-3 text-[#33456b]">{e.direccion || "-"}</td>
                   <td className="px-4 py-3 text-[#33456b]">{e.correo || "-"}</td>

@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import { withSanitizedAttribution } from "./attributionChannels";
 
 // Pedido pendiente guardado por `reference` de Wompi, ANTES de que el
 // cliente pague (al abrir el widget) — así tanto el camino normal
@@ -62,7 +63,8 @@ export async function savePendingOrder({ reference, order, customer, paymentMeth
       pendingOrderKey(reference),
       JSON.stringify({
         reference,
-        order,
+        // order.attribution (origen del cliente) se guarda ya limpio.
+        order: withSanitizedAttribution(order),
         customer,
         // "wompi" (pago completo) o "cod" (anticipo contraentrega) — le
         // dice a /api/wompi-webhook cuál función de confirmación llamar

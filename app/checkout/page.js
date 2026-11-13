@@ -9,6 +9,7 @@ import { lookupPostalCode } from "../lib/postalCodes";
 import { trackBeginCheckout, trackAddPaymentInfo } from "../lib/gtm";
 import FreeShippingBanner from "../components/FreeShippingBanner";
 import DeliveryEstimate from "../components/DeliveryEstimate";
+import { readAttributionForOrder } from "../lib/attribution";
 
 const WOMPI_PUBLIC_KEY = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY;
 
@@ -159,6 +160,14 @@ function CheckoutForm() {
   const [isConfirmingCod, setIsConfirmingCod] = useState(false);
   const [isConfirmingFree, setIsConfirmingFree] = useState(false);
   const widgetRef = useRef(null);
+
+  // Origen del cliente (ver app/lib/attribution.js), leído UNA vez al
+  // abrir el checkout — en el botón de pago solo se copia esta referencia
+  // dentro de fullOrder: sin red, sin await, sin trabajo extra.
+  const attributionRef = useRef(null);
+  useEffect(() => {
+    attributionRef.current = readAttributionForOrder();
+  }, []);
 
   // Código de descuento MYSTERY10, de referido, o de regalo (100%,
   // influencers — ver app/lib/giftCodes.js) — mismo campo, mismo efecto
@@ -493,6 +502,7 @@ function CheckoutForm() {
       discountCode: appliedCode?.type === "discount" ? appliedCode.code : null,
       referralCode: appliedCode?.type === "referral" ? appliedCode.code : null,
       giftCode: appliedCode?.type === "gift" ? appliedCode.code : null,
+      attribution: attributionRef.current || order.attribution || null,
     };
     trackAddPaymentInfo(fullOrder, customer, "wompi");
     await saveOrder(fullOrder);
@@ -674,6 +684,7 @@ function CheckoutForm() {
       discountCode: appliedCode?.type === "discount" ? appliedCode.code : null,
       referralCode: appliedCode?.type === "referral" ? appliedCode.code : null,
       giftCode: appliedCode?.type === "gift" ? appliedCode.code : null,
+      attribution: attributionRef.current || order.attribution || null,
     };
     trackAddPaymentInfo(fullOrder, customer, "contraentrega");
     await saveOrder(fullOrder);
@@ -834,6 +845,7 @@ function CheckoutForm() {
       discountCode: null,
       referralCode: null,
       giftCode: appliedCode?.type === "gift" ? appliedCode.code : null,
+      attribution: attributionRef.current || order.attribution || null,
     };
     await saveOrder(fullOrder);
 

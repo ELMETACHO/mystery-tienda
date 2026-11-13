@@ -325,6 +325,8 @@ export async function recordCrmEntry({ order, customer, paymentMethod }) {
     cuponOReferido,
     fecha,
     totalHistorico,
+    // Origen de ESTA compra (ver attribution.js y attributionChannels.js) — ya limpio.
+    origen: order.attribution || null,
   };
 
   try {

@@ -38,7 +38,7 @@ const SECTIONS = [
   {
     href: "/admin/respaldos",
     title: "Respaldos de pedidos",
-    description: "Datos de entrega e imagen de cada pedido pagado (guardados 1 año).",
+    description: "Datos de entrega, imagen y origen del cliente de cada pedido pagado (guardados 1 año).",
     icon: "🛟",
   },
 ];
