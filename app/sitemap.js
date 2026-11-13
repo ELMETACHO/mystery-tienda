@@ -26,7 +26,7 @@ const CONTENT_UPDATED = {
   crear: "2026-10-05",
   politicas: "2026-10-05",
   referidos: "2026-10-05",
-  landings: "2026-10-05",
+  landings: "2026-11-13",
   categories: "2026-10-05",
   products: "2026-10-26",
 };
