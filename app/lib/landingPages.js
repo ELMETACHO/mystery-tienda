@@ -318,10 +318,13 @@ export const LANDING_PAGES = [
   {
     slug: "de-mascotas",
     navLabel: "Cuadros de mascotas",
-    title: "Cuadro de Mascota Personalizado con su Foto | Mystery Cuadros",
+    // oct 26 2026: las búsquedas reales son sobre todo de perros
+    // ("cuadros perros personalizados", "cuadros de perros
+    // personalizados", posición 60-80) y el título no decía "perros".
+    title: "Cuadros de Perros, Gatos y Mascotas con su Foto | Mystery Cuadros",
     metaDescription:
-      "Cuadro personalizado de tu perro o gato con su foto, en vinilo sobre madera. También como recuerdo de una mascota que ya no está. Envío gratis a toda Colombia.",
-    h1: "Cuadros de mascotas personalizados",
+      "Cuadros personalizados de perros, gatos y mascotas con su foto, en vinilo sobre madera. También como recuerdo de una mascota que ya no está. Envío gratis a toda Colombia.",
+    h1: "Cuadros de mascotas personalizados: perros y gatos",
     lead:
       "Tu perro, tu gato o cualquier mascota de la familia, en un cuadro con su propia foto. Lo creas desde el celular en un par de minutos.",
     sections: [
@@ -332,6 +335,15 @@ export const LANDING_PAGES = [
           "Con luz natural (cerca de una ventana o al aire libre) y sin movimiento.",
           "La foto original del celular, no una captura de pantalla ni una foto reenviada por WhatsApp.",
           "En el editor puedes acercar y mover la foto para que la mascota quede centrada.",
+        ],
+      },
+      {
+        heading: "Cuadros de perros personalizados",
+        bullets: [
+          "Perros de pelo negro u oscuro: tómale la foto con buena luz de frente (no a contraluz), así no se pierden los ojos ni la forma de la cara.",
+          "Perros de pelo blanco o claro: evita el sol directo del mediodía, que quema los detalles del pelo.",
+          "Para que se vea el cuerpo completo (ideal en razas grandes o en 50x70 cm), deja espacio alrededor del perro al tomar la foto: el cuadro recorta un poco los bordes.",
+          "Si son dos o más perros, o el perro con su dueño, busca una foto donde todos se vean nítidos y nadie quede cortado en el borde.",
         ],
       },
       {
@@ -355,6 +367,92 @@ export const LANDING_PAGES = [
     faq: [FAQ_FOTO, FAQ_TIPOS, FAQ_ENVIO, FAQ_PAGO],
     related: ["personalizados-con-fotos", "regalo-de-navidad-personalizado", "para-sala", "regalo-aniversario"],
     relatedCategories: ["abstracto", "mystery-disenos", "iconic"],
+  },
+  // oct 25 2026: "cuadros personalizados bogota" y "cuadros personalizados
+  // con fotos bogotá" son las dos primeras sugerencias de Google (gl=co)
+  // para "cuadros personalizados". Mystery no tiene local: la página lo
+  // dice claro y se enfoca en el envío gratis a Bogotá — nada de
+  // direcciones, tiempos más cortos ni "tienda en Bogotá" que no existan.
+  {
+    slug: "personalizados-bogota",
+    navLabel: "Cuadros personalizados en Bogotá",
+    title: "Cuadros Personalizados en Bogotá con Envío Gratis | Mystery Cuadros",
+    metaDescription:
+      "Cuadros personalizados con tus fotos con envío gratis a Bogotá: súbela desde el celular, elige tamaño y recíbela en tu casa u oficina. Vinilo sobre madera, desde 30x40 cm.",
+    h1: "Cuadros personalizados en Bogotá",
+    lead:
+      "Haz tu cuadro con foto desde el celular y te lo enviamos gratis a cualquier barrio de Bogotá. Sin ir a ningún local: subes la foto, la ajustas, eliges el tamaño y llega a tu puerta.",
+    sections: [
+      {
+        heading: "Cuadros con fotos en Bogotá, sin salir de casa",
+        paragraphs: [
+          "Mystery es una tienda en línea: no tenemos local en Bogotá, y no hace falta. Todo el pedido se hace desde el celular en un par de minutos y el cuadro llega a tu casa, apartamento u oficina, en cualquier localidad: Usaquén, Chapinero, Suba, Kennedy, Engativá, Teusaquillo, Fontibón o donde estés.",
+          "El envío a Bogotá es gratis. Producimos el cuadro en 1 a 2 días y te llega en máximo 5 días después de confirmar el pedido (la transportadora no entrega los domingos).",
+        ],
+      },
+      {
+        heading: "Cómo pedir tu cuadro",
+        bullets: [
+          "Sube tu foto (PNG, JPG, HEIC de iPhone o PDF).",
+          "Ajústala dentro del marco y elige el tamaño: desde 30x40 cm hasta 100x140 cm.",
+          "Escribe tu dirección: casa, o edificio, torre y apartamento si vives en conjunto.",
+          "Paga en línea o contraentrega con un anticipo, y recíbelo en Bogotá.",
+        ],
+      },
+      {
+        heading: "Ideas para tu cuadro",
+        paragraphs: [
+          "La foto de la familia para la sala, la de tu pareja para un aniversario, la de tu mascota o un viaje. Si buscas un diseño en vez de una foto, en el catálogo hay cuadros de música, anime, películas y series, fútbol y arte abstracto, con el mismo envío gratis.",
+        ],
+      },
+    ],
+    productMatch: { categories: ["musica", "abstracto", "mystery-disenos"], limit: 12 },
+    examplesHeading: "Diseños del catálogo que también te llegan a Bogotá",
+    faq: [FAQ_ENVIO, FAQ_PAGO, FAQ_FOTO, FAQ_DANO],
+    related: ["personalizados-con-fotos", "para-sala", "regalo-de-navidad-personalizado", "de-mascotas"],
+    relatedCategories: ["musica", "abstracto", "peliculas-series"],
+  },
+  // oct 25 2026: "cuadros decorativos para habitación" es la 2.ª sugerencia
+  // de Google (gl=co) para "cuadros decorativos", y las categorías que más
+  // impresiones traen (música, anime, películas) son justo diseños de cuarto.
+  {
+    slug: "para-habitacion",
+    navLabel: "Cuadros para habitación",
+    title: "Cuadros Decorativos para Habitación y Cuarto | Mystery Cuadros",
+    metaDescription:
+      "Cuadros decorativos para habitación: música, anime, películas, series y diseños modernos en vinilo sobre madera, o con tu propia foto. Envío gratis a toda Colombia.",
+    h1: "Cuadros decorativos para habitación",
+    lead:
+      "El cuarto es tu espacio: llénalo con lo que te gusta. Tus artistas, tu anime, tus películas o una foto tuya, en cuadros de vinilo sobre madera listos para colgar.",
+    sections: [
+      {
+        heading: "Qué tamaño poner en el cuarto",
+        paragraphs: [
+          "Sobre la cabecera de la cama, un 50x70 cm se ve proporcionado en una cama doble; para una cama sencilla o una pared angosta, un 40x50 cm. Si quieres una pared temática, combina dos o tres cuadros de 30x40 cm del mismo estilo en línea.",
+          "Para un escritorio o un setup gamer, los 30x40 y 40x50 cm quedan bien a la altura de los ojos, sin tapar repisas ni pantallas.",
+        ],
+      },
+      {
+        heading: "Estilos para la habitación",
+        bullets: [
+          "Música: retratos y pósters de Ferxxo, Drake, Billie Eilish y más.",
+          "Anime y animación: Death Note, Avatar: La Leyenda de Aang, Invincible.",
+          "Películas y series: Spider-Man, Batman, Breaking Bad, Rick y Morty.",
+          "Algo más tranquilo: diseños abstractos y minimalistas, o una foto propia.",
+        ],
+      },
+      {
+        heading: "Premium o Tradicional para el cuarto",
+        paragraphs: [
+          "El Premium tiene un marco trasero de 3 cm que lo despega de la pared; el Tradicional es más delgado, trae soporte para colgar y es la opción más económica, ideal si vas a armar una pared con varios cuadros.",
+        ],
+      },
+    ],
+    productMatch: { categories: ["musica", "anime", "peliculas-series"], limit: 14 },
+    examplesHeading: "Diseños para el cuarto del catálogo",
+    faq: [FAQ_TIPOS, FAQ_ENVIO, FAQ_FOTO, FAQ_PAGO],
+    related: ["para-sala", "personalizados-con-fotos", "regalo-navidad-pareja", "de-mascotas"],
+    relatedCategories: ["musica", "anime", "peliculas-series"],
   },
 ];
 

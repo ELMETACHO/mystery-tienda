@@ -418,7 +418,13 @@ export async function getAllManufacturerOrders(fabricanteId) {
   try {
     assertFabricanteId(fabricanteId);
     const ordersRaw = await client.hgetall(ordersKey(fabricanteId));
-    return Object.values(ordersRaw || {}).map((raw) => JSON.parse(raw));
+    // La referencia sale del campo del hash: los registros ya pagados no la
+    // traen adentro (markManufacturerBalancePaid la quita al reescribirlos),
+    // y el margen por pedido de /admin/reporte la necesita para cruzarlos.
+    return Object.entries(ordersRaw || {}).map(([reference, raw]) => ({
+      reference,
+      ...JSON.parse(raw),
+    }));
   } catch (err) {
     console.error("[manufacturerFinance] No se pudieron leer todos los pedidos:", err);
     return [];

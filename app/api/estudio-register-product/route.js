@@ -1,9 +1,11 @@
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import { ESTUDIO_COOKIE_NAME, getEstudioSessionToken } from "../../lib/estudioAuth";
 import { getCategoryFolderId } from "../../lib/estudioCategories";
 import { makeFilePublic } from "../../lib/googleDrive";
 import { addCatalogProduct } from "../../lib/catalog";
 import { generateProductText } from "../../lib/aiProductText";
+import { submitToIndexNow } from "../../lib/indexNow";
 
 // Protegido con la misma cookie de sesión que /estudio.
 async function isAuthenticated() {
@@ -80,6 +82,11 @@ export async function POST(request) {
       name: aiText?.name,
       description: aiText?.description,
     });
+    // Aviso a Bing (IndexNow) de la página nueva y de las dos que la
+    // listan — después de responder, para no demorar /estudio.
+    after(() =>
+      submitToIndexNow([`/producto/${product.id}`, `/categoria/${categoryId}`, "/"])
+    );
     return Response.json({ ok: true, product });
   } catch (err) {
     console.error("[estudio-register-product] Falló el registro en el catálogo:", err);

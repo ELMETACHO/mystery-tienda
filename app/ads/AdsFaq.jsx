@@ -94,8 +94,8 @@ export default function AdsFaq({ avisoNavidad }) {
       a: (
         <>
           Tienes garantía ante daños de fábrica o de transporte: repórtalo en los primeros días de
-          recibido, con fotos, y lo solucionamos. Enviamos con Envía, Interrapidísimo y otras
-          transportadoras.
+          recibido, con fotos, y lo solucionamos. Enviamos con Envía, Interrapidísimo
+          y otras transportadoras.
         </>
       ),
     },

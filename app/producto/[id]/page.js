@@ -54,8 +54,9 @@ export async function generateMetadata({ params }) {
   const label = categoryLabel(product.category);
   // Nombre del diseño primero (es lo que se busca, ej. "death note
   // cuadro"), precio "desde" como gancho de CTR y marca al final — si
-  // Google trunca, se pierde la marca, no el nombre.
-  const title = `${productDisplayTitle(product, label)} | Desde ${formatCOP(CHEAPEST_PRICE_COP)} · Mystery Cuadros`;
+  // Google trunca, se pierde la marca, no el nombre. Marca corta
+  // ("Mystery") para quedar en ≤ 70 caracteres con la mayoría de nombres.
+  const title = `${productDisplayTitle(product, label)} | Desde ${formatCOP(CHEAPEST_PRICE_COP)} · Mystery`;
   const description = `${productDisplayDescription(product, label)} Vinilo sobre madera en 30x40, 40x50 o 50x70 cm, desde ${formatCOP(CHEAPEST_PRICE_COP)}. Envío gratis a toda Colombia.`;
 
   return {
@@ -127,7 +128,7 @@ export default async function ProductPage({ params }) {
       price: String(FEED_DEFAULT_PRICE_COP),
       itemCondition: "https://schema.org/NewCondition",
       availability: "https://schema.org/InStock",
-      seller: { "@type": "Organization", name: "Mystery Cuadros" },
+      seller: { "@type": "OnlineStore", "@id": `${SITE_URL}/#organization`, name: "Mystery Cuadros" },
       // Política REAL (/politicas, app/lib/legalContent.js — aprobado por
       // el dueño, oct 2026): producto personalizado, NO se aceptan
       // devoluciones por cambio de opinión; solo se responde por defectos
