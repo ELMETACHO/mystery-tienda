@@ -7,7 +7,8 @@
 //      Permite que un anuncio navideño y uno normal convivan al mismo tiempo,
 //      cada uno con su landing coherente (message match).
 //   2. utm_campaign que contenga "navidad"/"christmas"/"xmas" (si la URL del
-//      anuncio usa la macro de nombre de campaña de TikTok).
+//      anuncio usa la macro de nombre de campaña de TikTok). Igual con
+//      "mascota" → mascotas y "pareja" → pareja.
 //   3. Variable de entorno ADS_TEMPORADA ("navidad" | "regular") en Vercel —
 //      cambia la temporada por defecto de toda la página (requiere Redeploy).
 //   4. TEMPORADA_POR_DEFECTO de este archivo.
@@ -50,6 +51,28 @@ export const TEMPORADAS = {
     cta: "🎁 Sube la foto y mira cómo queda",
     tituloFlujo: "Arma tu regalo con cualquier foto",
   },
+  // Temas por video del anuncio (oct 2026, pedido de Marketing): si gana un
+  // video de mascotas o de pareja, el anuncio aterriza en /ads con el mismo
+  // botón que abre la galería, pero con el título del video (message
+  // match). Se usan en vez de /cuadros/de-mascotas o
+  // /cuadros/regalo-navidad-pareja porque esas son páginas de SEO sin el
+  // editor embebido. La fecha de Navidad sale sola desde mostrarDesde.
+  mascotas: {
+    id: "mascotas",
+    barra: "🚚 Envío gratis a todo el país · 💵 Paga al recibir",
+    titulo: "Tu mascota, en un cuadro real",
+    subtitulo: "Su mejor foto en vinilo laminado sobre madera, lista para colgar.",
+    cta: "🐾 Sube su foto y mira cómo queda",
+    tituloFlujo: "El cuadro de tu mascota",
+  },
+  pareja: {
+    id: "pareja",
+    barra: "💜 Regalo para tu pareja · 🚚 Envío gratis · 💵 Paga al recibir",
+    titulo: "Su foto favorita juntos, en un cuadro real",
+    subtitulo: "Un regalo personalizado en vinilo laminado sobre madera, listo para colgar.",
+    cta: "💜 Sube su foto y mira cómo queda",
+    tituloFlujo: "Arma tu regalo con su foto",
+  },
 };
 
 // Hoy en Colombia (UTC-5, sin horario de verano) como "AAAA-MM-DD".
@@ -83,6 +106,8 @@ export function resolverTemporada(searchParams = {}) {
   let id = TEMPORADA_POR_DEFECTO;
   if (TEMPORADAS[pedida]) id = pedida;
   else if (/navidad|christmas|xmas/i.test(campana)) id = "navidad";
+  else if (/mascota/i.test(campana)) id = "mascotas";
+  else if (/pareja/i.test(campana)) id = "pareja";
   else if (TEMPORADAS[env]) id = env;
 
   return {

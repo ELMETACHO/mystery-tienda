@@ -1,3 +1,32 @@
+import { track } from "@vercel/analytics";
+
+// Pasos del embudo que además se cuentan en Vercel Web Analytics (nov
+// 2026): hasta ahora no había dónde ver cuánta gente abandona en cada paso
+// (GA4 no recibe el embudo y TikTok solo ve el tráfico pagado). Solo el
+// nombre del paso + tamaño/tipo/método de pago: nunca correo, celular ni
+// referencia. Requiere activar Web Analytics en Vercel (Analytics → Enable);
+// mientras no esté activo, track() no hace nada visible.
+const FUNNEL_EVENTS = new Set([
+  "view_item",
+  "photo_uploaded",
+  "add_to_cart",
+  "preview_shared",
+  "begin_checkout",
+  "add_payment_info",
+  "purchase",
+]);
+
+function trackFunnelStep(event) {
+  if (!FUNNEL_EVENTS.has(event?.event)) return;
+  const item = event.ecommerce?.items?.[0];
+  const props = {};
+  if (item?.item_id) props.tamano = String(item.item_id).slice(0, 40);
+  if (event.ecommerce?.payment_type) props.pago = String(event.ecommerce.payment_type).slice(0, 20);
+  if (event.share_method) props.metodo = String(event.share_method).slice(0, 20);
+  if (typeof window !== "undefined") props.pagina = window.location.pathname.slice(0, 60);
+  track(event.event, props);
+}
+
 // Empuja un evento al dataLayer de Google Tag Manager (ver contenedor en
 // app/layout.js). Los tags de Meta/TikTok/Google Ads viven DENTRO del panel
 // web de GTM (tagmanager.google.com), no en este código — este helper solo
@@ -13,6 +42,17 @@ export function pushToDataLayer(event) {
   } catch (err) {
     console.error("[gtm] No se pudo empujar el evento:", err);
   }
+  try {
+    trackFunnelStep(event);
+  } catch {
+    // Medición opcional: nunca debe afectar la compra.
+  }
+}
+
+// Foto cargada en el editor (/crear y /ads): el paso entre "vio la
+// página" y "Tu cuadro está listo", que es donde más gente se pierde.
+export function trackPhotoUploaded() {
+  pushToDataLayer({ event: "photo_uploaded" });
 }
 
 // Vista del "producto" (la página de personalización, /crear o el flujo

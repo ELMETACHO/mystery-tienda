@@ -15,11 +15,23 @@ import {
   getDownscaledImage,
   pdfFirstPageToImage,
 } from "../crear/cropImage";
-import { SIZES, DEFAULT_FRAME_TYPE, getPriceCOP, formatCOP, saveOrder, isPremiumOnlySize } from "../lib/order";
-import { trackViewContent, trackAddToCart } from "../lib/gtm";
+import {
+  SIZES,
+  DEFAULT_FRAME_TYPE,
+  FRAME_TYPES,
+  RECOMMENDED_SIZE_ID,
+  sizeUpgradeHint,
+  COD_DEPOSIT_COP,
+  getPriceCOP,
+  formatCOP,
+  saveOrder,
+  isPremiumOnlySize,
+} from "../lib/order";
+import { trackViewContent, trackAddToCart, trackPhotoUploaded } from "../lib/gtm";
 import FrameTypeSelector from "./FrameTypeSelector";
 import DeliveryEstimate from "./DeliveryEstimate";
 import WallVisualizerButton from "./WallVisualizerButton";
+import SharePreviewButton from "./SharePreviewButton";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "application/pdf"];
 
@@ -305,7 +317,9 @@ export default function CrearFlow({ compact = false }) {
   const [isPreparingOrder, setIsPreparingOrder] = useState(false);
   const [error, setError] = useState("");
 
-  const [sizeId, setSizeId] = useState(SIZES[0].id);
+  // Viene marcado el tamaño recomendado (40x50), no el más pequeño: ver
+  // RECOMMENDED_SIZE_ID en app/lib/order.js. El cliente lo cambia con un toque.
+  const [sizeId, setSizeId] = useState(RECOMMENDED_SIZE_ID);
   const [frameType, setFrameType] = useState(DEFAULT_FRAME_TYPE);
 
   // 70x100 y 100x140 solo existen en Premium: elegir uno de esos tamaños
@@ -471,6 +485,7 @@ export default function CrearFlow({ compact = false }) {
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setCroppedAreaPixels(null);
+      trackPhotoUploaded();
       console.log("[crear] Imagen cargada y lista para editar");
     } catch (err) {
       console.error("[crear] Error procesando el archivo:", err);
@@ -603,6 +618,7 @@ export default function CrearFlow({ compact = false }) {
   // página al reemplazar el editor cancelaba el scroll hecho antes.
   const scrollToReadyRef = useRef(false);
   const readyScreenRef = useRef(null);
+  const readyMockupRef = useRef(null);
   useEffect(() => {
     primaryActionRef.current = () => {
       if (isPreparingOrder) return;
@@ -722,6 +738,7 @@ export default function CrearFlow({ compact = false }) {
               30x40 / 40x50 / 50x70. */}
           <div
             key={readyOrder.croppedImage}
+            ref={readyMockupRef}
             className="relative w-full max-w-sm animate-ready-in overflow-hidden rounded-2xl border border-black/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
             style={{ aspectRatio: MOCKUP.ratio }}
           >
@@ -766,6 +783,21 @@ export default function CrearFlow({ compact = false }) {
             </p>
           </div>
 
+          {/* Tamaño, tipo y precio a la vista antes del checkout (antes no
+              se veían en esta pantalla: no ver el total es causa de
+              abandono, Baymard) + recordatorio de "paga al recibir", que es
+              como paga el 75% de los clientes. Solo texto, sin cálculos
+              nuevos: priceCOP ya viene en readyOrder. */}
+          <div className="animate-ready-in flex w-full max-w-sm flex-col items-center gap-1 rounded-2xl border border-black/5 bg-[#fffaf0] px-4 py-3">
+            <p className="text-sm font-semibold text-[#1b2a4a]">
+              {readyOrder.sizeLabel} · {FRAME_TYPES[readyOrder.frameType]?.label ?? ""} ·{" "}
+              {formatCOP(readyOrder.priceCOP)}
+            </p>
+            <p className="text-xs text-[#33456b]">
+              💵 Puedes pagar al recibir (separas con {formatCOP(COD_DEPOSIT_COP)}) · envío gratis
+            </p>
+          </div>
+
           <DeliveryEstimate className="animate-ready-in w-full max-w-sm" />
 
           {/* Visualizador a escala real (sofá + persona) con los 5 tamaños —
@@ -778,6 +810,8 @@ export default function CrearFlow({ compact = false }) {
             selectedSizeId={selectedSize.id}
             className="animate-ready-in"
           />
+
+          <SharePreviewButton targetRef={readyMockupRef} className="animate-ready-in" />
 
           <button
             type="button"
@@ -1044,9 +1078,9 @@ export default function CrearFlow({ compact = false }) {
                             <span className={`whitespace-nowrap text-xs sm:text-sm ${isSelected ? "text-[#1b2a4a] font-medium" : "text-[#33456b]"}`}>
                               {size.label}
                             </span>
-                            {size.id === "40x50" && (
+                            {size.id === RECOMMENDED_SIZE_ID && (
                               <span className="whitespace-nowrap rounded-full bg-accent/20 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-accent sm:px-2 sm:text-[10px]">
-                                Más elegido
+                                Recomendado
                               </span>
                             )}
                             {/* Con Tradicional elegido, avisa que tocarlo
@@ -1070,6 +1104,11 @@ export default function CrearFlow({ compact = false }) {
                     );
                   })}
                 </div>
+                {sizeUpgradeHint(frameType) && (
+                  <p className="mt-2 text-[11px] leading-snug text-[#5b6b8c] sm:text-xs">
+                    💡 {sizeUpgradeHint(frameType)}
+                  </p>
+                )}
               </div>
             </div>
 

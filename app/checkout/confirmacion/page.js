@@ -5,6 +5,7 @@ import Link from "next/link";
 import confetti from "canvas-confetti";
 import { formatCOP, loadOrder, saveOrder, COD_FEE_COP } from "../../lib/order";
 import { trackPurchase } from "../../lib/gtm";
+import DateReminderForm from "./DateReminderForm";
 
 // Morado de marca + blanco/dorado, para que el confeti se sienta "Mystery"
 // y no genérico.
@@ -434,6 +435,12 @@ export default function ConfirmacionPage() {
                 por si quieres guardarlo. En 1-2 días te llegará otro correo
                 con la guía para hacer seguimiento de tu envío.
               </p>
+            )}
+
+            {/* Recordatorio de fecha especial (opcional, cerrado por
+                defecto) — ver DateReminderForm. */}
+            {order.payment?.status === "APPROVED" && (
+              <DateReminderForm reference={order.payment.reference} />
             )}
           </>
         ) : null}
