@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { pushToDataLayer } from "../lib/gtm";
 
 // "Muéstrale tu cuadro a alguien" (oct 2026): mucha gente compra para
 // regalar o consulta con la pareja/familia antes de pagar — antes tenían
@@ -21,10 +22,7 @@ export default function SharePreviewButton({ targetRef, className = "" }) {
     try {
       const { shareReadyPreview } = await import("./sharePreviewImage");
       const method = await shareReadyPreview(targetRef.current);
-      if (method && typeof window !== "undefined") {
-        window.dataLayer = window.dataLayer || [];
-        window.dataLayer.push({ event: "preview_shared", share_method: method });
-      }
+      if (method) pushToDataLayer({ event: "preview_shared", share_method: method });
     } catch (err) {
       // AbortError = el cliente cerró el menú de compartir; no es un error.
       if (err?.name !== "AbortError") console.error("[compartir] No se pudo compartir:", err);

@@ -19,13 +19,15 @@ import {
   SIZES,
   DEFAULT_FRAME_TYPE,
   FRAME_TYPES,
+  RECOMMENDED_SIZE_ID,
+  sizeUpgradeHint,
   COD_DEPOSIT_COP,
   getPriceCOP,
   formatCOP,
   saveOrder,
   isPremiumOnlySize,
 } from "../lib/order";
-import { trackViewContent, trackAddToCart } from "../lib/gtm";
+import { trackViewContent, trackAddToCart, trackPhotoUploaded } from "../lib/gtm";
 import FrameTypeSelector from "./FrameTypeSelector";
 import DeliveryEstimate from "./DeliveryEstimate";
 import WallVisualizerButton from "./WallVisualizerButton";
@@ -315,7 +317,9 @@ export default function CrearFlow({ compact = false }) {
   const [isPreparingOrder, setIsPreparingOrder] = useState(false);
   const [error, setError] = useState("");
 
-  const [sizeId, setSizeId] = useState(SIZES[0].id);
+  // Viene marcado el tamaño recomendado (40x50), no el más pequeño: ver
+  // RECOMMENDED_SIZE_ID en app/lib/order.js. El cliente lo cambia con un toque.
+  const [sizeId, setSizeId] = useState(RECOMMENDED_SIZE_ID);
   const [frameType, setFrameType] = useState(DEFAULT_FRAME_TYPE);
 
   // 70x100 y 100x140 solo existen en Premium: elegir uno de esos tamaños
@@ -481,6 +485,7 @@ export default function CrearFlow({ compact = false }) {
       setCrop({ x: 0, y: 0 });
       setZoom(1);
       setCroppedAreaPixels(null);
+      trackPhotoUploaded();
       console.log("[crear] Imagen cargada y lista para editar");
     } catch (err) {
       console.error("[crear] Error procesando el archivo:", err);
@@ -1073,9 +1078,9 @@ export default function CrearFlow({ compact = false }) {
                             <span className={`whitespace-nowrap text-xs sm:text-sm ${isSelected ? "text-[#1b2a4a] font-medium" : "text-[#33456b]"}`}>
                               {size.label}
                             </span>
-                            {size.id === "40x50" && (
+                            {size.id === RECOMMENDED_SIZE_ID && (
                               <span className="whitespace-nowrap rounded-full bg-accent/20 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-accent sm:px-2 sm:text-[10px]">
-                                Más elegido
+                                Recomendado
                               </span>
                             )}
                             {/* Con Tradicional elegido, avisa que tocarlo
@@ -1099,6 +1104,11 @@ export default function CrearFlow({ compact = false }) {
                     );
                   })}
                 </div>
+                {sizeUpgradeHint(frameType) && (
+                  <p className="mt-2 text-[11px] leading-snug text-[#5b6b8c] sm:text-xs">
+                    💡 {sizeUpgradeHint(frameType)}
+                  </p>
+                )}
               </div>
             </div>
 

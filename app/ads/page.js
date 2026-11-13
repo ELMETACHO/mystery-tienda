@@ -121,6 +121,9 @@ export default async function AdsLanding({ searchParams }) {
             <span className="text-xs font-semibold text-emerald-800">· envío incluido</span>
           </p>
 
+          {/* nov 2026: hero-loop.mp4 re-codificado a 512 px de ancho (se
+              muestra a 256 px CSS) — 886 KB → 248 KB; en 4G lenta el video
+              era el LCP de /ads (4,1 s). */}
           {/* Video en vez de GIF: el archivo original (Freepik) pesaba
               95MB; convertido a MP4 (h264, ~0.9MB) con la misma animación.
               autoPlay + muted + loop + playsInline arranca solo en Safari
