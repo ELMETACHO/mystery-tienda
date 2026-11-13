@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCatalogProductById, getProductsByCategory } from "../../lib/catalog";
@@ -13,6 +14,7 @@ import { FEED_DEFAULT_PRICE_COP } from "../../lib/googleFeed";
 import ProductScroller from "../../components/ProductScroller";
 import RelatedLinks from "../../components/RelatedLinks";
 import DeliveryEstimate from "../../components/DeliveryEstimate";
+import RealTestimonials from "../../components/RealTestimonials";
 import { headingFont } from "../../lib/typography";
 import WallVisualizerButton from "../../components/WallVisualizerButton";
 import ProductGallery from "./ProductGallery";
@@ -53,8 +55,11 @@ export async function generateMetadata({ params }) {
   // Nombre del diseño primero (es lo que se busca, ej. "death note
   // cuadro"), precio "desde" como gancho de CTR y marca al final — si
   // Google trunca, se pierde la marca, no el nombre. Marca corta
-  // ("Mystery") para quedar en ≤ 70 caracteres con la mayoría de nombres.
-  const title = `${productDisplayTitle(product, label)} | Desde ${formatCOP(CHEAPEST_PRICE_COP)} · Mystery`;
+  // ("Mystery") para quedar en ≤ 70 caracteres; en los nombres más largos
+  // se omite la marca para no pasarse.
+  const titleWithoutBrand = `${productDisplayTitle(product, label)} | Desde ${formatCOP(CHEAPEST_PRICE_COP)}`;
+  const titleWithBrand = `${titleWithoutBrand} · Mystery`;
+  const title = titleWithBrand.length <= 70 ? titleWithBrand : titleWithoutBrand;
   const description = `${productDisplayDescription(product, label)} Vinilo sobre madera en 30x40, 40x50 o 50x70 cm, desde ${formatCOP(CHEAPEST_PRICE_COP)}. Envío gratis a toda Colombia.`;
 
   return {
@@ -314,6 +319,12 @@ export default async function ProductPage({ params }) {
             .
           </p>
         </section>
+
+        {/* Reseñas reales de la tienda (no de este diseño en particular —
+            por eso no van en el JSON-LD del producto). Ver RealTestimonials. */}
+        <Suspense fallback={null}>
+          <RealTestimonials max={3} />
+        </Suspense>
         </div>
         </div>
 

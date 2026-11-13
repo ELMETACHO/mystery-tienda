@@ -75,6 +75,7 @@ export async function listPaidBackups() {
         priceCOP: j.order?.priceCOP,
         hasImage: Boolean(j.order?.printImage),
         isCatalog: Boolean(j.order?.productId),
+        attribution: j.order?.attribution || null,
         customer: j.customer,
       });
     }

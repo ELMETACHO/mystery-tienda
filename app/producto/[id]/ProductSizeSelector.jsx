@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { SIZES, CATALOG_SIZES, DEFAULT_FRAME_TYPE, getPriceCOP, formatCOP } from "../../lib/order";
+import {
+  SIZES,
+  CATALOG_SIZES,
+  DEFAULT_FRAME_TYPE,
+  RECOMMENDED_SIZE_ID,
+  getPriceCOP,
+  formatCOP,
+  sizeUpgradeHint,
+} from "../../lib/order";
 import ProductBuyButton from "./ProductBuyButton";
 import FreeShippingBanner from "../../components/FreeShippingBanner";
 import FrameTypeSelector from "../../components/FrameTypeSelector";
@@ -10,7 +18,7 @@ import FrameTypeSelector from "../../components/FrameTypeSelector";
 // tamaño, precio que se actualiza según SIZES, no un valor fijo del
 // producto — ahora el catálogo vende los 3 tamaños, elegidos acá.
 export default function ProductSizeSelector({ product }) {
-  const [sizeId, setSizeId] = useState("40x50");
+  const [sizeId, setSizeId] = useState(RECOMMENDED_SIZE_ID);
   const [frameType, setFrameType] = useState(DEFAULT_FRAME_TYPE);
   const size = SIZES.find((s) => s.id === sizeId);
   const priceCOP = getPriceCOP(sizeId, frameType);
@@ -38,9 +46,9 @@ export default function ProductSizeSelector({ product }) {
             >
               <span className="flex items-center gap-1.5">
                 <span className={`text-sm ${isSelected ? "text-[#1b2a4a]" : "text-[#33456b]"}`}>{s.label}</span>
-                {s.id === "40x50" && (
+                {s.id === RECOMMENDED_SIZE_ID && (
                   <span className="whitespace-nowrap rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
-                    Más elegido
+                    Recomendado
                   </span>
                 )}
               </span>
@@ -51,6 +59,9 @@ export default function ProductSizeSelector({ product }) {
           );
         })}
       </div>
+      {sizeUpgradeHint(frameType) && (
+        <p className="-mt-2 text-xs leading-snug text-[#5b6b8c]">💡 {sizeUpgradeHint(frameType)}</p>
+      )}
 
       <ProductBuyButton
         product={product}

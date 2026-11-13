@@ -104,6 +104,26 @@ export const FRAME_TYPES = {
 
 export const DEFAULT_FRAME_TYPE = "premium";
 
+// Tamaño recomendado y marcado por defecto en /crear, /ads y /producto
+// (nov 2026). Antes la etiqueta decía "Más elegido", pero en los pedidos
+// reales el más vendido es el 30x40 (13 de 18 hasta nov 2026): decirlo
+// sería un dato falso (Ley 1480). "Recomendado" es una recomendación, y se
+// respalda con una comparación que se puede verificar (sizeUpgradeHint).
+export const RECOMMENDED_SIZE_ID = "40x50";
+
+// "67 % más grande que el 30 x 40 por $24.000 más" — calculado de SIZES y
+// PRICES, nunca escrito a mano, para que siga siendo cierto si cambian.
+export function sizeUpgradeHint(frameType = DEFAULT_FRAME_TYPE, fromId = "30x40", toId = RECOMMENDED_SIZE_ID) {
+  const area = (id) => id.split("x").map(Number).reduce((a, b) => a * b, 1);
+  const from = SIZES.find((s) => s.id === fromId);
+  const to = SIZES.find((s) => s.id === toId);
+  if (!from || !to) return null;
+  const pct = Math.round((area(toId) / area(fromId) - 1) * 100);
+  const diff = getPriceCOP(toId, frameType) - getPriceCOP(fromId, frameType);
+  if (!(pct > 0) || !(diff > 0)) return null;
+  return `El ${to.label} es ${pct} % más grande que el ${from.label} y cuesta ${formatCOP(diff)} más.`;
+}
+
 // Precios definitivos por tipo de cuadro + tamaño (agosto 2026).
 // 70x100 y 100x140 (sept 2026) solo existen en Premium.
 export const PRICES = {
