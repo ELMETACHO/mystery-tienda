@@ -575,3 +575,40 @@ Reportes privados en `reportes-internos/<area>/` (ignorado por git vía
   la tarea de SEO).
 - Siguen de antes: llave Full access de Resend; confirmar "valor a recaudar"
   en el primer COD real con recargo; PRs #33, #41, #42.
+
+---
+
+## Sesión del 2026-11-10 — cierre de la sesión "contexto de trabajo" (antes de /clear)
+
+Para qué fue: sesión principal de Oscar desde el 25 oct. Hizo la prueba de
+punta a punta, repartió el trabajo en 5 áreas (SEO, Marketing, Finanzas,
+Conversión, Dirección; ver sección del 25 oct) y fusionó las correcciones.
+Al final se usó para un trabajo de impresión que no es de la tienda.
+
+### Estado de la tienda
+- En `main` y en producción (`423a5ba`): botón de Wompi liberado al cerrar,
+  MYSTERY10%, sin "por tiempo limitado" y PRs #43/#44/#45.
+- Sin fusionar, esperando que Oscar diga "fusiona": **#46** (propuesta completa
+  de Conversión) y **#33** (regalo y tarjeta regalo, ya al día con main). El #46
+  probablemente choca con los textos ya corregidos (MYSTERY10, envío gratis,
+  FAQ de /ads): actualizarlo con main antes de fusionar.
+- Regla de Oscar en esta sesión: un "fusiona" vale solo para lo que estaba
+  listo en ese momento; los PRs que llegan después necesitan un "fusiona" nuevo.
+
+### Trabajo aparte: stickers PODEROSAS (no es de Mystery)
+- Entregado en `D:\DESCARGAS\PODEROSAS-FINAL\`:
+  `PODEROSAS_pliego_100x100cm_CutContour_con_frases.pdf` (versión final:
+  30 círculos de 8 cm, 30 rectangulares de 5x2,2, 30 QR de 4x4,8 a
+  https://poderosas.org y 197 frases de 3,6 cm), `..._CutContour.pdf` (sin
+  frases), `PODEROSAS_muestra_A4.pdf` y el PNG rectangular.
+- Reglas de Oscar para impresión: el corte en color directo **CutContour**
+  (Separation, sobreimpresión), exactamente sobre el borde de cada pieza, con
+  2 mm de sangrado por fuera; la máxima calidad posible (upscale con Replicate
+  crystal-upscaler, la misma cuenta `elmetacho` de la tienda; logo del círculo
+  ×8 = 760 ppp, limpiado a 2 tonos rosado/dorado).
+- Texto "poderosas.org" vectorial en Cascadia Mono, dorado del logo #AF8138; el
+  QR en bronce #7A551E para que tenga contraste (probado: escanea).
+- Pendiente de Oscar: imprimir la muestra A4 y escanear el QR antes de mandar
+  el metro; confirmar con la imprenta que su plotter lee CutContour.
+- Los scripts (`armar.py`/`armar2.py`, `upscale.sh`) quedaron en el scratchpad
+  temporal de la sesión; no están en el repo.
