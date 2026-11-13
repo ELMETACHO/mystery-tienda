@@ -447,3 +447,131 @@ ninguna demora nueva (todo calculado en el navegador o cargado al tocar).
 ### Pendientes / PRs abiertos de esta sesión
 - Reseñas con foto + moderación y tarjeta regalo / "Es un regalo": PRs
   aparte, abiertos para revisión del dueño (ver sus descripciones).
+
+---
+
+## Sesión del 5-23 oct 2026 — guías (duplicados, ciudad, Servientrega), recargo contraentrega
+
+### 1. Guías triplicadas (5 oct, Kevin Sotelo) — causa raíz y blindaje
+- Skydropx tardó >12 s en dar el número; el código lo tomó como fallo, Cris
+  reintentó y se crearon y cobraron TRES guías Envía. Se conservó una y se
+  cancelaron dos (reembolsadas).
+- **Blindaje** (`skydropx.js` + `manualShipments.js`): apenas Skydropx acepta
+  una guía se guarda `pendingShipmentId` en el pedido (`onShipmentAccepted`);
+  un reintento la retoma (`resumeShipment`) en vez de crear otra. Espera del
+  número: 40 s. Si aún no llega, Cris ve "la guía YA se creó, vuelve en 1-2
+  min" (no un error). `maxDuration = 120` en las dos rutas de generar guía
+  (la línea anterior había quedado dentro de un comentario y nunca aplicó).
+- Kevin pidió entregar al día siguiente: se canceló la guía y Cris generó otra
+  desde su panel ("Generar guía nueva"). Correo de corrección al cliente.
+
+### 2. Ciudad "Bogotá, D. C." sin código postal (14 oct, Felipe Estupiñan)
+- El checkout no reconoció la ciudad → pedido sin código postal → Skydropx
+  rechazaba la cotización ("Ciudad o departamento inválido") en cada toque.
+- **Arreglo**: `lookupPostalCode` compara ignorando puntuación/espacios; en
+  Bogotá D.C. cualquier forma de escribir la ciudad da 111611. `skydropx.js`
+  busca el código postal al cotizar/crear si el pedido no lo trae.
+- La guía salió por Servientrega, que exigió caja → se canceló y se rehízo por
+  Envía (014164614800). Correos de disculpa y de guía nueva al cliente.
+
+### 3. Regla de transportadora (vigente)
+- La más barata entre Envía e Interrapidísimo. **Servientrega (exige caja) y
+  Coordinadora (cara) solo como último recurso**: si son la única opción o las
+  únicas dentro del tope. Si Skydropx rechaza crear la guía, reintenta con Envía.
+
+### 4. Recargo contraentrega $5.000 (`COD_FEE_COP`, 23 oct)
+- Medido: la contraentrega cuesta ~$4.900 más por guía (recaudo). Ahora:
+  saldo al recibir = precio + $5.000 − anticipo $20.000, calculado SIEMPRE en
+  el servidor (`getCodBalanceCOP`, `confirmApprovedCodOrder`). Pago online sin
+  recargo; envío gratis en ambos casos. `completed-orders.priceCOP` incluye el
+  recargo (reporte).
+- Tope de guía en contraentrega +$5.000: $31.000 normal / $65.000 grandes
+  (`getShippingCapCOP(sizeId, { isCod })`). Medellín/Bucaramanga/Cali salen por
+  Envía (~$26.276).
+- Checkout con desglose y atajo "Paga en línea y ahórrate el recargo"; textos en
+  confirmación, correos, FAQ de /ads, Home, landings, producto y chatbot.
+- **Pendiente**: confirmar con el primer pedido contraentrega real que el
+  "valor a recaudar" de la guía = precio + $5.000 − $20.000; medir en ~2
+  semanas si cambió la proporción contraentrega vs. pago online.
+
+### 5. Pendientes abiertos
+- **Resend**: la `RESEND_API_KEY` es "solo enviar" → no puede cancelar correos
+  programados (el "va en camino" sale aunque Cris cancele la guía). Crear una
+  llave "Full access" y reemplazarla en `.env.local` y Vercel + Redeploy.
+- PRs abiertos sin fusionar: #33 (regalo/tarjeta regalo), #41 (ViewContent en
+  producto + CSP Meta), #42 (origen de pedidos en /admin) — requieren revisión.
+- Llevar 70x100/100x140 al catálogo (backfill desde los originales de Drive).
+- Decidir si se quita "Tu cuadro está listo" (AddToCart vs InitiateCheckout).
+
+---
+
+## Sesión del 25 oct 2026 — prueba de punta a punta, áreas en sesiones, correcciones
+
+### 1. Prueba de punta a punta sin gastar plata (y cómo repetirla)
+- Entorno aislado: `node scripts/e2e-fake-services.mjs` (Redis en memoria
+  en :6390 + Resend falso en :6391 que guarda los correos en
+  `%TEMP%/mystery-e2e/emails` sin enviarlos) y la tienda con
+  `NEXT_PUBLIC_GTM_ID=` al compilar (sin píxeles) y al arrancar:
+  `env -u ANTHROPIC_API_KEY ANTHROPIC_API_KEY=sk-ant-invalid-test REPLICATE_API_TOKEN=invalid-test REDIS_URL=redis://127.0.0.1:6390 RESEND_BASE_URL=http://127.0.0.1:6391 SITE_URL=http://localhost:3005 npx next start -p 3005`
+  (Resend respeta `RESEND_BASE_URL`). Pagos con Wompi sandbox de
+  `.env.local`: Nequi de prueba **3991111111** = aprobado (evita el campo de
+  cédula de la tarjeta). Skydropx cotiza de verdad (gratis), nunca se generó
+  guía.
+- Probado OK: /crear en móvil (foto 3000x4000, sangrado 99 px/cm), checkout,
+  pago completo $65.000, contraentrega (anticipo $20.000, saldo $50.000 =
+  65.000+5.000−20.000), "Bogotá, D. C." → 111611, inventario (+ alerta de
+  stock bajo), respaldo, CRM, cliente recurrente, correos (Cris con adjunto y
+  link de guía al dominio real), `/pedido` (celular bueno/malo), crons con y
+  sin clave. Transportadora: Medellín Envía $13.922; Bogotá Envía $13.350
+  aunque Servientrega cotizó $12.874 (regla vigente OK).
+- Producción (solo lectura): páginas 200, sin-www → www 308, checkout con
+  `pub_prod_`.
+- Nota: el código postal de Medellín sale "50015" (sin el 0 inicial de
+  DANE); Skydropx lo acepta y cotiza, así que no se tocó.
+
+### 2. Correcciones (fusionadas a main, commit `2b0cd38`)
+- **Bug real — botón de pago trabado**: si el cliente cerraba Wompi con la X
+  (p. ej. para pasar a contraentrega), "Pagar ahora" y "Pagar al recibir"
+  quedaban en "Procesando..." hasta recargar. Wompi solo llama al callback
+  cuando hay transacción. Ahora `watchWompiWidgetClose` (app/checkout/page.js)
+  libera los botones si el modal se oculta sin callback. Tras un pago
+  aprobado el widget no se puede cerrar con la X, así que nunca suelta un
+  pago hecho. Probado: cerrar/reabrir dos veces, cambio a contraentrega y
+  pago aprobado (Playwright, 390 px).
+- **MYSTERY10%**: confirmación y correo mostraban "MYSTERY10%" pero solo se
+  aceptaba "MYSTERY10" → el cliente fiel recibía "código inválido". Ahora se
+  muestra MYSTERY10 y `/api/validate-discount` ignora espacios y "%" final.
+- Quitado "Por tiempo limitado: Envío gratis" (Home + `FreeShippingBanner`
+  en /crear, /producto, /checkout): urgencia falsa, el envío gratis es
+  permanente.
+- FAQ de /ads: ya no dice "alianza con Servientrega" (es último recurso).
+- /crear ya no imprime en consola la foto completa en base64 (varios MB).
+- En el mismo merge entraron los PRs #43 y #44 (SEO) y #45 (Finanzas), que
+  ya estaban fusionados en GitHub.
+
+### 3. Áreas en sesiones propias + tareas programadas (Claude Desktop)
+Reportes privados en `reportes-internos/<area>/` (ignorado por git vía
+`.git/info/exclude`: el repo es público).
+- **SEO** `mystery-seo-diario` 11:00 a. m. (PRs #43, #44).
+- **Marketing** `mystery-marketing-diario` 9:00 a. m. — RUTA.md hasta el 17
+  dic, 10 guiones, carpeta de edición `D:\METACHO CLAUDE\MYSTERY-CONTENIDO`
+  (kit de Metacho Labs adaptado).
+- **Finanzas** `mystery-finanzas-diario` 8:00 p. m. (PR #45).
+- **Dirección** `mystery-direccion-diario` 9:00 p. m. — HOJA-DE-RUTA aprobada
+  por Oscar: 12 ventas/semana en el pico, tope de pauta $600.000, no escalar
+  con conversión < 1,2 %.
+- **Conversión** (sin tarea diaria): PROPUESTA.md con mejoras priorizadas
+  (reseñas en /ads y /producto, compartir vista previa, video de reacción,
+  referidos, recordatorio de fechas, retomar #33 antes del 10 nov).
+- Horarios elegidos para no chocar con Sellame (2 a. m./2 p. m.) ni con las
+  fábricas de video de Metacho (5 a. m.).
+
+### Pendientes abiertos
+- Oscar: elegir qué aplica Conversión (está esperando respuesta en su
+  sesión). A1/A2/A4 de su propuesta ya quedaron hechos aquí.
+- Dirección: dato de capacidad semanal de Cris para diciembre.
+- Marketing: primer lote real de video.
+- Correr una vez `node scripts/indexnow-submit.mjs` tras el deploy (lo hace
+  la tarea de SEO).
+- Siguen de antes: llave Full access de Resend; confirmar "valor a recaudar"
+  en el primer COD real con recargo; PRs #33, #41, #42.

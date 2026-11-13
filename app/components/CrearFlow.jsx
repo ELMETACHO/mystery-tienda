@@ -494,7 +494,7 @@ export default function CrearFlow({ compact = false }) {
   }, []);
 
   const handleContinue = async () => {
-    console.log("Click en Continuar - imageSrc:", imageSrc, "croppedAreaPixels:", croppedAreaPixels);
+    console.log("Click en Continuar - imageSrc (largo):", imageSrc?.length, "croppedAreaPixels:", croppedAreaPixels);
     if (!imageSrc) return;
 
     setIsPreparingOrder(true);
@@ -513,7 +513,7 @@ export default function CrearFlow({ compact = false }) {
       console.log("Tamaño elegido:", selectedSize.label);
       console.log("Resolución original:", imageDimensions);
       console.log("Resolución baja para este tamaño:", isLowResolution);
-      console.log("Imagen recortada (dataURL):", croppedImage);
+      console.log("Imagen recortada (largo del dataURL):", croppedImage?.length);
 
       // Imagen para el fabricante: mismo recorte + 1cm de sangrado a izquierda, derecha y abajo (NO arriba),
       // escalado a la densidad real del recorte (no un valor fijo de

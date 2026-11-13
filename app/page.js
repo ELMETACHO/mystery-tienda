@@ -27,7 +27,8 @@ const websiteJsonLd = {
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Mystery Cuadros — Cuadros Personalizados con tu Foto | Envío Gratis Colombia",
+  // ≤ 70 caracteres para que Google no lo corte (antes 76).
+  title: "Mystery Cuadros: Cuadros Personalizados con tu Foto, Envío Gratis",
   description:
     "Convierte tu foto favorita en un cuadro personalizado en vinilo sobre madera. Elige el tamaño, paga seguro y recíbelo en tu casa — envío gratis a toda Colombia.",
   alternates: { canonical: SITE_URL },
@@ -72,7 +73,7 @@ const FAQ = [
   {
     pregunta: "¿Qué métodos de pago aceptan?",
     respuesta:
-      "Pagas de forma segura con Wompi: tarjeta de crédito o débito, PSE, y Nequi o Daviplata (se pagan desde PSE; también con QR o llaves). O contraentrega: anticipo de $20.000 y el resto al recibir.",
+      "Pagas de forma segura con Wompi: tarjeta de crédito o débito, PSE, y Nequi o Daviplata (se pagan desde PSE; también con QR o llaves). O contraentrega: anticipo de $20.000 y el resto al recibir (con un recargo de $5.000 por el recaudo; pagando en línea no hay recargo).",
   },
   {
     pregunta: "¿Hacen envíos a toda Colombia?",
@@ -313,7 +314,7 @@ export default async function Home() {
         <section className="relative overflow-hidden px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16">
           <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center gap-6 text-center">
             <p className="text-center text-xs font-medium text-[#7a3fa0] sm:text-sm">
-              Por tiempo limitado: Envío gratis a todo el país
+              Envío gratis a todo el país
             </p>
 
             {/* Único <h1> de la Home (SEO): la marca animada (FoldText ya

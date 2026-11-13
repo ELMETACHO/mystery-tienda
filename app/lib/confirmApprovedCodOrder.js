@@ -12,7 +12,7 @@ import { grantDiscountCode, markDiscountUsed } from "./discount";
 import { recordReferralSale } from "./referrals";
 import { recordCrmEntry } from "./manufacturerFinance";
 import { checkShippingCoverageAfterPayment } from "./noCoverage";
-import { COD_DEPOSIT_COP, SIZES } from "./order";
+import { COD_DEPOSIT_COP, COD_FEE_COP, SIZES, getCodBalanceCOP } from "./order";
 import { checkCodPaymentIntegrity } from "./paymentIntegrity";
 import { flagSuspiciousPayment } from "./flaggedPayments";
 import { withSanitizedAttribution } from "./attributionChannels";
@@ -30,17 +30,20 @@ import { withSanitizedAttribution } from "./attributionChannels";
 // Mismo lock de idempotencia que confirmApprovedOrder — necesario ahora
 // que existen dos caminos que pueden llegar a confirmar la misma
 // transacción de anticipo.
-export async function confirmApprovedCodOrder({ order, customer, transaction }) {
+export async function confirmApprovedCodOrder({ order: orderFromClient, customer, transaction }) {
+  // Recargo contraentrega (ver COD_FEE_COP en order.js): queda guardado en
+  // el pedido para correos/reportes; el valor sale de la constante del
+  // servidor, nunca del navegador.
   // Origen del cliente (ver attribution.js): se limpia acá, síncrono y en
   // microsegundos, para que todo lo que se guarde abajo ya venga limpio.
-  order = withSanitizedAttribution(order);
+  const order = withSanitizedAttribution({ ...orderFromClient, codFeeCOP: COD_FEE_COP });
   const claimed = await claimTransaction(transaction.id);
   if (!claimed) {
     return { alreadyProcessed: true, isReturningCustomer: false, anticipoPagado: 0, saldoPendiente: 0 };
   }
 
   const anticipoPagado = COD_DEPOSIT_COP;
-  const saldoPendiente = order.priceCOP - COD_DEPOSIT_COP;
+  const saldoPendiente = getCodBalanceCOP(order.priceCOP);
 
   // Anticipo y priceCOP deben corresponder al pedido (ver
   // paymentIntegrity.js). Si no, no se fabrica: se respalda y se avisa.

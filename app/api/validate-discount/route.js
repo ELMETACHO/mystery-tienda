@@ -24,7 +24,9 @@ export async function POST(request) {
     return Response.json({ valid: false, error: INVALID_MESSAGE }, { status: 400 });
   }
 
-  const normalizedCode = String(code).trim().toUpperCase();
+  // Sin espacios ni "%" final: durante un tiempo el sitio y el correo
+  // mostraron "MYSTERY10%" y el cliente lo copia tal cual.
+  const normalizedCode = String(code).trim().toUpperCase().replace(/\s+/g, "").replace(/%+$/, "");
 
   // El código de descuento nunca es canjeable por un correo sin compras
   // registradas — así se cumple "no es compartible": aunque alguien
