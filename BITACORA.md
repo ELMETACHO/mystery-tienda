@@ -613,6 +613,8 @@ Al final se usó para un trabajo de impresión que no es de la tienda.
 - Los scripts (`armar.py`/`armar2.py`, `upscale.sh`) quedaron en el scratchpad
   temporal de la sesión; no están en el repo.
 
+---
+
 ## Sesión del 25 oct 2026 — área de Conversión y retención
 
 Propuesta completa con fuentes en `reportes-internos/conversion/PROPUESTA.md`
@@ -702,3 +704,45 @@ Propuesta completa con fuentes en `reportes-internos/conversion/PROPUESTA.md`
 - **Home con las listas de 24** (PR #46): HTML de 675 KB a 134 KB. LCP: de
   2,3 s a 1,6 s.
 - **PR #42 al día con main** (`ed69510`), sin fusionar.
+
+---
+
+## Sesión del 13 nov 2026 — informe de temporada, integración de PRs, Home liviano
+
+### 1. Datos reales al 13 nov (Redis, solo lectura)
+- Noviembre: 1 venta ($65.000). Histórico: 18 pedidos reales; 30x40 = 13 de 18,
+  40x50 = 2, 50x70 = 2, 100x140 = 1. Desde que hay inventario (21 sept): 30x40
+  Premium 6, 30x40 Tradicional 1, 40x50 Premium 1.
+- Stock: 30x40 Premium **0**, 30x40 Tradicional 3, 40x50 Premium 10, 40x50
+  Tradicional 11 (≈$222.600 quietos). Oscar compra 1 docena de 30x40 Premium
+  (plan de Finanzas en `reportes-internos/finanzas/COMPRA-DICIEMBRE.md`).
+- Pauta: no hay campañas activas. La última (TikTok) gastó "unos $470.000"
+  según Oscar; falta confirmarlo con la factura.
+- Los intentos de pago (`pending-order:*`) duran 2 días: el embudo no se puede
+  medir desde Redis. Ahora el #42 guarda el canal de cada pedido.
+
+### 2. Fusionado a main (`76b704a`) tras prueba de punta a punta en sandbox
+- PRs **#46** (Conversión: paga al recibir visible, reseñas reales, compartir
+  vista previa, recordatorio de fechas, Home con 24 diseños por fila), **#42**
+  (origen de cada pedido: probado, guarda `tiktok_ads` + campaña), **#47** y
+  **#48** (textos SEO) y **#49** (quita "el más elegido" de las landings).
+- **Decisión de Oscar**: la etiqueta del 40x50 pasa de "Más elegido" a
+  **"Recomendado"** (mantiene el resaltado del medio; "más elegido" era falso:
+  el 30x40 vende el 72 %). /crear ahora marca 40x50 por defecto (hay stock).
+- **Home liviano** (`ProductScroller` con `initialCount`): cada fila muestra 6
+  diseños y la tarjeta "Ver más diseños" trae el resto al tocarla. Medido en
+  celular 4G: de 299 a 17 `<img>` en la página, descarga al abrir de ~3 MB a
+  ~1,8 MB (sin contar píxeles).
+- Probado: compra en línea y contraentrega (saldo 89.000+5.000−20.000 =
+  74.000), correos, inventario, Skydropx (Envía). El error de JS
+  "reading 'status'" en el checkout viene del bundle de Wompi, no del sitio.
+- No tocado: los píxeles (GTM, Meta, TikTok ≈ 880 KB) siguen cargando igual,
+  para no afectar la medición de la pauta de diciembre.
+
+### Pendientes abiertos
+- Oscar: avisar cuando lleguen los 30x40; permiso de Chrome para que SEO lea
+  Search Console; aprobar la pauta del plan de Marketing
+  (`reportes-internos/marketing/PLAN-TEMPORADA.md`); ¿Finanzas reclasifica los
+  3 gastos mal anotados como "Publicidad"?
+- SEO: aliviar la foto principal de /producto ahora que el #46 está en main.
+
