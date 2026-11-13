@@ -639,3 +639,31 @@ Propuesta completa con fuentes en `reportes-internos/conversion/PROPUESTA.md`
 - Prueba 30x40 vs 40x50 preseleccionado en /crear (sin aplicar).
 - GTM: tag para `preview_shared` y `ads_photo_uploaded` si se quieren medir
   en TikTok/Meta.
+
+---
+
+## Sesión del 13 nov 2026 — embudo real y ajustes de conversión (Conversión)
+
+- **Embudo de 30 días** (14 oct–13 nov), sacado de Vercel Observability
+  (llamadas por ruta), porque TikTok pide login y Web Analytics no está
+  activado ("Demo Data"):
+  - 35 visitas a /ads (sin pauta).
+  - ~170 sesiones reales cada 14 días; el resto del tráfico del Home son
+    robots.
+  - 7 llegaron a "Tu cuadro está listo" (`/api/ai-photo-diagnosis`).
+  - 4 empezaron la dirección, 3 tocaron Pagar y 2 pagaron.
+  - Detalle en `reportes-internos/conversion/EMBUDO-2026-11.md`.
+- **40x50 por defecto** (`RECOMMENDED_SIZE_ID` en `app/lib/order.js`):
+  - "Más elegido" pasó a "Recomendado". El dato no era cierto: el 30x40 es
+    13 de 18 pedidos.
+  - Comparación calculada de los precios con `sizeUpgradeHint`.
+  - SEO avisado de los textos "más elegido" en `landingPages.js` y
+    `/cuadros/[slug]`.
+- **Embudo en Vercel Web Analytics**: `pushToDataLayer` también llama
+  `track()` para foto subida, cuadro listo, compartido, checkout, pagar y
+  compra, sin datos personales. Falta que Oscar active Web Analytics.
+- **/ads**: `hero-loop.mp4` pasó de 886 KB a 248 KB. LCP en 4G lenta: de
+  4,1 s a 2,0 s.
+- **Home con las listas de 24** (PR #46): HTML de 675 KB a 134 KB. LCP: de
+  2,3 s a 1,6 s.
+- **PR #42 al día con main** (`ed69510`), sin fusionar.
