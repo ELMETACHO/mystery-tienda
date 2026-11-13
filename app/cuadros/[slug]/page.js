@@ -193,11 +193,6 @@ export default async function LandingPage({ params }) {
                     <tr key={size.id} className="border-b border-black/5 last:border-0">
                       <td className="py-2 pr-3 font-medium">
                         {size.label}
-                        {size.id === "40x50" && (
-                          <span className="ml-1.5 whitespace-nowrap rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
-                            Más elegido
-                          </span>
-                        )}
                       </td>
                       <td className="py-2 pr-3">
                         {PRICES.tradicional[size.id] ? formatCOP(PRICES.tradicional[size.id]) : "—"}

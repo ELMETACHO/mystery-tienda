@@ -66,7 +66,7 @@ export const LANDING_PAGES = [
       {
         heading: "Qué tamaño elegir",
         paragraphs: [
-          "El 30x40 cm funciona bien en mesas de noche, escritorios y paredes pequeñas. El 40x50 cm es el más elegido: se ve bien en casi cualquier pared de cuarto o pasillo. El 50x70 cm es para ser protagonista en la sala o el comedor, y si buscas algo realmente grande, en el editor también encuentras 70x100 y 100x140 cm (solo Premium).",
+          "El 30x40 cm funciona bien en mesas de noche, escritorios y paredes pequeñas. El 40x50 cm se ve bien en casi cualquier pared de cuarto o pasillo. El 50x70 cm es para ser protagonista en la sala o el comedor, y si buscas algo realmente grande, en el editor también encuentras 70x100 y 100x140 cm (solo Premium).",
           "En el editor ves una silueta de persona a escala junto a cada tamaño, para que te hagas una idea real antes de pagar.",
         ],
       },
@@ -124,7 +124,7 @@ export const LANDING_PAGES = [
       {
         heading: "Cuánto cuesta",
         paragraphs: [
-          "Los precios dependen del tamaño y del tipo de cuadro, y el envío a toda Colombia es gratis. Abajo tienes la tabla completa: el 30x40 cm Tradicional es la opción más económica para un detalle, y el 40x50 cm es el tamaño más elegido para regalar.",
+          "Los precios dependen del tamaño y del tipo de cuadro, y el envío a toda Colombia es gratis. Abajo tienes la tabla completa: el 30x40 cm Tradicional es la opción más económica para un detalle, y el 40x50 cm se ve más grande en la pared sin llegar al precio del 50x70.",
         ],
       },
     ],
@@ -194,7 +194,7 @@ export const LANDING_PAGES = [
       {
         heading: "Un regalo para los dos",
         paragraphs: [
-          "Si quieres regalarles a los dos al tiempo, una foto de ellos en pareja o de la familia completa en 50x70 cm queda muy bien en la sala. Si la idea es para su cuarto o una pared más pequeña, el 40x50 cm es el más elegido.",
+          "Si quieres regalarles a los dos al tiempo, una foto de ellos en pareja o de la familia completa en 50x70 cm queda muy bien en la sala. Si la idea es para su cuarto o una pared más pequeña, un 30x40 o un 40x50 cm.",
         ],
       },
     ],
