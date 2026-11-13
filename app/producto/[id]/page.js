@@ -55,8 +55,11 @@ export async function generateMetadata({ params }) {
   // Nombre del diseño primero (es lo que se busca, ej. "death note
   // cuadro"), precio "desde" como gancho de CTR y marca al final — si
   // Google trunca, se pierde la marca, no el nombre. Marca corta
-  // ("Mystery") para quedar en ≤ 70 caracteres con la mayoría de nombres.
-  const title = `${productDisplayTitle(product, label)} | Desde ${formatCOP(CHEAPEST_PRICE_COP)} · Mystery`;
+  // ("Mystery") para quedar en ≤ 70 caracteres; en los nombres más largos
+  // se omite la marca para no pasarse.
+  const titleWithoutBrand = `${productDisplayTitle(product, label)} | Desde ${formatCOP(CHEAPEST_PRICE_COP)}`;
+  const titleWithBrand = `${titleWithoutBrand} · Mystery`;
+  const title = titleWithBrand.length <= 70 ? titleWithBrand : titleWithoutBrand;
   const description = `${productDisplayDescription(product, label)} Vinilo sobre madera en 30x40, 40x50 o 50x70 cm, desde ${formatCOP(CHEAPEST_PRICE_COP)}. Envío gratis a toda Colombia.`;
 
   return {
