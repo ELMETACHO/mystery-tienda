@@ -36,7 +36,7 @@ export const CATEGORY_SEO = {
     // hacen (impresos, no pintados a mano — alguien lo buscó así) y envío.
     title: "Cuadros de Anime Decorativos en Madera | Mystery Cuadros",
     h1: "Cuadros decorativos de anime y animación",
-    metaDescription: `Cuadros de anime decorativos en vinilo sobre madera: Death Note, Avatar: La Leyenda de Aang, Invincible y más, o crea el de tu anime favorito. Desde ${CATALOG_FROM_PRICE}, envío gratis a toda Colombia.`,
+    metaDescription: `Cuadros de anime decorativos en vinilo sobre madera: Death Note, Avatar, Invincible y más, o crea el de tu anime favorito. Desde ${CATALOG_FROM_PRICE}, envío gratis.`,
     intro:
       "Cuadros decorativos de anime y animación para fans: Light y Ryuk de Death Note, Aang, Toph y el grupo de Avatar: La Leyenda de Aang, Invincible y más personajes. Perfectos para el cuarto o el setup gamer, impresos en vinilo sobre madera.",
     body: [
@@ -107,7 +107,7 @@ export const CATEGORY_SEO = {
   "mystery-disenos": {
     title: "Diseños Originales Mystery — Cuadros Únicos | Mystery Cuadros",
     h1: "Diseños originales Mystery",
-    metaDescription: `Cuadros con diseños 100% originales de Mystery, que no vas a encontrar en otro lado: "La Buena Mi Rey", "A Marte Más No Pude" y más. Desde ${CATALOG_FROM_PRICE}, envío gratis en Colombia.`,
+    metaDescription: `Cuadros con diseños 100% originales de Mystery: "La Buena Mi Rey", "A Marte Más No Pude" y más. Desde ${CATALOG_FROM_PRICE}, envío gratis en Colombia.`,
     intro:
       "Piezas creadas 100% por Mystery, con sabor colombiano: \"La Buena Mi Rey\", \"A Marte Más No Pude\", el vendedor ambulante, \"Juguito de Amor Propio\" y paisajes urbanos de noche estrellada.",
     body: [

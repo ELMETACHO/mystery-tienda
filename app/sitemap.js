@@ -34,10 +34,11 @@ const CONTENT_UPDATED = {
 // Cambios de texto de una sola categoría (app/lib/categorySeo.js): fecha
 // propia para no marcar todas como modificadas.
 const CATEGORY_CONTENT_UPDATED = {
-  anime: "2026-10-25",
+  anime: "2026-11-03",
   musica: "2026-10-26",
   deportes: "2026-10-26",
   "peliculas-series": "2026-10-25",
+  "mystery-disenos": "2026-11-03",
 };
 
 // Landings nuevas o reescritas: fecha propia (el resto usa
@@ -46,6 +47,7 @@ const LANDING_CONTENT_UPDATED = {
   "personalizados-bogota": "2026-10-25",
   "para-habitacion": "2026-10-25",
   "de-mascotas": "2026-10-26",
+  "regalo-navidad-pareja": "2026-11-03",
 };
 
 function latest(...dates) {

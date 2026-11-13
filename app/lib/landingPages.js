@@ -210,7 +210,7 @@ export const LANDING_PAGES = [
     navLabel: "Regalo de Navidad para tu pareja",
     title: "Regalo de Navidad para tu Novio, Novia o Pareja | Mystery Cuadros",
     metaDescription:
-      "Regalo de Navidad original para tu novio, novia, esposo o esposa: un cuadro personalizado con su foto favorita, en vinilo sobre madera. Lo creas desde el celular, envío gratis en Colombia.",
+      "Regalo de Navidad original para tu novio, novia, esposo o esposa: un cuadro con su foto favorita en vinilo sobre madera. Envío gratis en Colombia.",
     h1: "Regalo de Navidad para tu pareja",
     lead:
       "¿No sabes qué regalarle a tu novio, novia, esposo o esposa en Navidad? Un cuadro con la foto que más les gusta a los dos es un regalo original, personal y que se queda a la vista todo el año.",
