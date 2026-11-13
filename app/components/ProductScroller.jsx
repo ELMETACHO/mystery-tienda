@@ -22,9 +22,16 @@ const DESKTOP_GRID = {
   6: 'md:grid md:grid-cols-4 md:overflow-visible md:pb-0 lg:grid-cols-6',
 };
 
-export default function ProductScroller({ items, emptyMessage = 'Todavía no hay productos en el catálogo. Vuelve pronto.', light = false, thumbWidth, eagerCount = 0, desktopGrid }) {
+// initialCount (opcional, nov 2026): muestra solo esas tarjetas y al final
+// una tarjeta "Ver más" que agrega otras tantas al tocarla. En el Home, aun
+// con loading="lazy", el celular descargaba todas las miniaturas de la fila
+// apenas cargaba la página; así solo baja lo que el cliente pide ver.
+export default function ProductScroller({ items, emptyMessage = 'Todavía no hay productos en el catálogo. Vuelve pronto.', light = false, thumbWidth, eagerCount = 0, desktopGrid, initialCount }) {
   const gridClass = DESKTOP_GRID[desktopGrid] || '';
   const trackRef = useRef(null);
+  const [visibleCount, setVisibleCount] = useState(initialCount || items.length);
+  const visibleItems = items.slice(0, visibleCount);
+  const remaining = items.length - visibleItems.length;
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
@@ -46,7 +53,7 @@ export default function ProductScroller({ items, emptyMessage = 'Todavía no hay
       track.removeEventListener('scroll', updateArrows);
       window.removeEventListener('resize', updateArrows);
     };
-  }, [items.length]);
+  }, [items.length, visibleCount]);
 
   const scrollByCard = (direction) => {
     const track = trackRef.current;
@@ -89,7 +96,7 @@ export default function ProductScroller({ items, emptyMessage = 'Todavía no hay
         ref={trackRef}
         className={`flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-2 sm:gap-4 ${gridClass}`.trim()}
       >
-        {items.map((item, index) => (
+        {visibleItems.map((item, index) => (
           <ProductCard
             key={item.id}
             item={item}
@@ -100,6 +107,21 @@ export default function ProductScroller({ items, emptyMessage = 'Todavía no hay
             className={`w-40 shrink-0 snap-start sm:w-56 ${gridClass ? 'md:w-auto' : ''}`.trim()}
           />
         ))}
+        {remaining > 0 && (
+          <button
+            type="button"
+            onClick={() => setVisibleCount((n) => n + (initialCount || items.length))}
+            className={`flex w-40 shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-2xl border text-sm font-semibold sm:w-56 ${
+              light
+                ? 'border-accent/30 bg-[#fffaf0] text-accent shadow-[0_10px_25px_-12px_rgba(30,20,60,0.3)]'
+                : 'border-white/10 bg-white/5 text-white'
+            } ${gridClass ? 'md:w-auto md:min-h-40' : ''}`.trim()}
+          >
+            <span aria-hidden="true" className="text-2xl leading-none">+</span>
+            Ver más diseños
+            <span className="text-xs font-normal opacity-70">{remaining} más</span>
+          </button>
+        )}
       </div>
 
       {canScrollRight && (

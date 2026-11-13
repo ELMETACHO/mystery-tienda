@@ -581,7 +581,7 @@ export default async function Home() {
             <div className="mb-4">
               <h2 className="font-display text-lg font-semibold sm:text-xl">Recientes</h2>
             </div>
-            <ProductScroller items={recientes} light thumbWidth={480} />
+            <ProductScroller items={recientes} light thumbWidth={480} initialCount={6} />
           </div>
         </section>
 
@@ -593,7 +593,7 @@ export default async function Home() {
             <div className="mb-4 flex items-end justify-between">
               <h2 className="font-display text-lg font-semibold sm:text-xl">Más vendidos</h2>
             </div>
-            <ProductScroller items={masVendidos} light thumbWidth={480} />
+            <ProductScroller items={masVendidos} light thumbWidth={480} initialCount={6} />
           </div>
         </section>
         )}
