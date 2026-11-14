@@ -746,3 +746,17 @@ Propuesta completa con fuentes en `reportes-internos/conversion/PROPUESTA.md`
   3 gastos mal anotados como "Publicidad"?
 - SEO: aliviar la foto principal de /producto ahora que el #46 está en main.
 
+
+### Agregado 13 nov (tarde) — /ads más rápida (la página que se pauta)
+- `AdsHeroVideo.jsx`: el póster es una imagen con prioridad alta y el video
+  se monta después del `load` con fundido. `AdsCatalogStrip` (cliente)
+  muestra 4 diseños + "Ver más". Póster a 512 px (50 → 33 KB) y sin
+  `preload()` manual (lo descargaba dos veces). `ADS_CATALOG_LIMIT` vive en
+  `app/ads/page.js`: importada desde un componente de cliente no llega como
+  número al servidor.
+- Producción, celular lento (CPU x4, 4G): LCP de 4,1 s a **2,4 s**; al abrir
+  pide 4 miniaturas en vez de 11. Editor de /ads probado hasta "Tu cuadro está
+  listo".
+- Search Console ya responde desde el Chrome de Oscar (13 nov: 49 páginas
+  indexadas, 131 sin indexar, 20 clics desde sept, /categoria/musica +107 %).
+  Bing Webmaster pide iniciar sesión: lo hace Oscar.
