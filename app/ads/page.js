@@ -83,7 +83,7 @@ export default async function AdsLanding({ searchParams }) {
   ]);
 
   return (
-    <div className="relative flex min-h-full flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
+    <div className="ads-legible relative flex min-h-full flex-col overflow-hidden bg-[#8fcaf0] text-[#1b2a4a]">
       {/* Mismo fondo fijo del Home/​/crear: la foto de cielo no se mueve
           con el scroll. */}
       <div
@@ -120,7 +120,7 @@ export default async function AdsLanding({ searchParams }) {
             {temporada.titulo}
           </h1>
           <p className="mx-auto mt-1.5 max-w-sm text-sm text-[#33456b]">{temporada.subtitulo}</p>
-          <p className="mt-1 text-lg font-bold text-accent">
+          <p className="mt-1 text-lg font-bold text-[#5b21b6]">
             Desde {formatCOP(DESDE_COP)}{" "}
             <span className="text-xs font-semibold text-emerald-800">· envío incluido</span>
           </p>
@@ -172,23 +172,18 @@ export default async function AdsLanding({ searchParams }) {
             atención y trayectoria real (+1.000 cuadros desde 2019, sobre todo
             por Instagram — confirmado por el dueño, oct 2026). */}
         <section className="px-4 pb-7">
-          <ul className="mx-auto grid max-w-md grid-cols-2 gap-2 text-[11px] leading-snug text-[#33456b]">
-            <li className="rounded-xl border border-black/5 bg-[#fffaf0] px-3 py-2">
-              <span className="block font-bold text-[#1b2a4a]">⚡ Hecho en 1-2 días</span>
-              Llega en máximo 5 días (sin domingos)
-            </li>
-            <li className="rounded-xl border border-black/5 bg-[#fffaf0] px-3 py-2">
-              <span className="block font-bold text-[#1b2a4a]">🔒 Pago seguro</span>
-              Con Wompi, o paga al recibir
-            </li>
-            <li className="rounded-xl border border-black/5 bg-[#fffaf0] px-3 py-2">
-              <span className="block font-bold text-[#1b2a4a]">🛡️ Garantía</span>
-              Ante daños de fábrica o transporte
-            </li>
-            <li className="rounded-xl border border-black/5 bg-[#fffaf0] px-3 py-2">
-              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="block">
-                <span className="block font-bold text-[#1b2a4a]">💬 WhatsApp</span>
-                <span className="underline underline-offset-2">Te respondemos ahí</span>
+          {/* nov 2026: antes eran 4 tarjetas (2x2) antes del editor; ahora
+              una franja de una línea con los mismos datos, para que el
+              editor (donde se compra) quede más cerca del primer
+              pantallazo. Las landings que mejor convierten ponen la
+              confianza en una franja corta (ver
+              reportes-internos/conversion/ADS-REDISENO.md). */}
+          <ul className="mx-auto flex max-w-md flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[12px] font-semibold text-[#1b2a4a]">
+            <li>⚡ Hecho en 1-2 días</li>
+            <li>🛡️ Garantía de fábrica y transporte</li>
+            <li>
+              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                💬 Dudas por WhatsApp
               </a>
             </li>
           </ul>

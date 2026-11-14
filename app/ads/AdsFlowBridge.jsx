@@ -111,8 +111,18 @@ export default function AdsFlowBridge({ targetId, temporada }) {
       const outOfView = rect.top > window.innerHeight * 0.5 || rect.bottom < 0;
       if (outOfView) {
         // Un frame después: deja que CrearFlow pinte el editor primero,
-        // para que el alto de la página ya sea el definitivo.
-        requestAnimationFrame(() => target.scrollIntoView({ behavior: "smooth", block: "start" }));
+        // para que el alto de la página ya sea el definitivo. Desde nov
+        // 2026 baja directo a la vista en vivo (no al título del flujo):
+        // así se ven la foto y los tamaños juntos sin hacer scroll.
+        requestAnimationFrame(() => {
+          const preview = target.querySelector("[data-crear-preview]");
+          if (!preview) {
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+          }
+          const top = preview.getBoundingClientRect().top + window.scrollY - 48;
+          window.scrollTo({ top, behavior: "smooth" });
+        });
       }
     };
     window.addEventListener("crearflow:state", onState);

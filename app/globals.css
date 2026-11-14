@@ -107,6 +107,23 @@ body {
   }
 }
 
+/* /ads (nov 2026, revisión de contraste pedida por Oscar): mismo morado
+   más oscuro que .tienda (blanco sobre el botón 3,96:1 → 5,4:1) sin
+   cambiar la tipografía de /ads. Además, el gris de los textos chicos
+   (#5b6b8c y #8a94ac) daba 3,0:1 y 1,9:1 sobre el cielo; #3d4a68 da 5,6:1
+   sobre el cielo y 8,5:1 sobre las tarjetas crema (WCAG AA pide 4,5:1).
+   También aplica a las páginas .tienda (mismo cielo de fondo). */
+.ads-legible {
+  --accent: #9333ea;
+  --accent-soft: #a855f7;
+}
+.ads-legible .text-\[\#5b6b8c\],
+.ads-legible .text-\[\#8a94ac\],
+.tienda .text-\[\#5b6b8c\],
+.tienda .text-\[\#8a94ac\] {
+  color: #3d4a68;
+}
+
 /* Slider de zoom del editor: pista más gruesa y thumb ampliado para que sea
    cómodo de arrastrar con el dedo, no solo con precisión de mouse. */
 input[type="range"] {
@@ -115,7 +132,8 @@ input[type="range"] {
   width: 100%;
   height: 8px;
   border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.15);
+  /* Antes blanco al 15 %: sobre el cielo casi no se veía la pista. */
+  background: rgba(27, 42, 74, 0.22);
   touch-action: none;
 }
 

@@ -362,7 +362,8 @@ export default function CrearFlow({ compact = false }) {
     if (!node) return;
 
     const startY = window.scrollY;
-    const targetY = node.getBoundingClientRect().top + window.scrollY - 12;
+    // 48 px: deja ver la vista completa debajo del encabezado fijo de /ads.
+    const targetY = node.getBoundingClientRect().top + window.scrollY - 48;
     const distance = targetY - startY;
     if (Math.abs(distance) < 4) return;
 
@@ -379,6 +380,19 @@ export default function CrearFlow({ compact = false }) {
 
     requestAnimationFrame(step);
   }, []);
+
+  // Solo móvil: después de cambiar zoom, tamaño o tipo de cuadro, si la
+  // vista en vivo quedó (aunque sea en parte) fuera de pantalla, la página
+  // sube sola hasta ella para ver el cambio. Si ya se ve completa, no se
+  // mueve nada (antes el zoom siempre hacía scroll, aunque no hiciera falta).
+  const revealCanvasIfHidden = useCallback(() => {
+    if (!isMobile) return;
+    const node = canvasWrapperRef.current;
+    if (!node) return;
+    const rect = node.getBoundingClientRect();
+    if (rect.top >= 0 && rect.bottom <= window.innerHeight) return;
+    scrollToCanvasSlowly();
+  }, [isMobile, scrollToCanvasSlowly]);
 
   const selectedSize = SIZES.find((s) => s.id === sizeId);
   const isUploadScreen = !imageSrc && !readyOrder;
@@ -924,7 +938,7 @@ export default function CrearFlow({ compact = false }) {
       ) : (
         <div className="grid gap-6 sm:gap-8 lg:grid-cols-[65fr_35fr] lg:items-start">
           {/* LIENZO — columna izquierda (~65%) */}
-          <div ref={canvasWrapperRef} className="flex scroll-mt-4 flex-col items-center gap-3">
+          <div ref={canvasWrapperRef} data-crear-preview className="flex scroll-mt-12 flex-col items-center gap-3">
             <div
               className="relative w-full max-w-[240px] overflow-hidden rounded-2xl sm:max-w-xl"
               style={{ aspectRatio: EDIT_BACKGROUND.ratio }}
@@ -977,140 +991,124 @@ export default function CrearFlow({ compact = false }) {
               </div>
             </div>
 
-            <p className="flex items-center gap-1.5 text-xs text-[#5b6b8c]">
-              <span aria-hidden="true">✨</span> Así quedará impreso
-            </p>
-
-            {error && <p className="text-sm text-red-400">{error}</p>}
-          </div>
-
-          {/* PANEL DE CONTROL — columna derecha (~35%) */}
-          <div className="flex w-full flex-col gap-6">
-            <div>
-              <h2 className="mb-2 text-sm font-medium text-[#33456b]">Tu imagen</h2>
+            <div className="flex w-full max-w-xs items-center justify-between gap-3 sm:max-w-xl">
+              <p className="flex items-center gap-1.5 text-xs text-[#5b6b8c]">
+                <span aria-hidden="true">✨</span> Así quedará impreso
+              </p>
               <label
                 htmlFor="file-upload"
-                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-accent/50 bg-transparent px-5 py-2.5 text-sm font-medium text-accent transition-colors hover:bg-accent/10"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-accent/50 px-3 py-1.5 text-xs font-medium text-accent transition-colors hover:bg-accent/10"
               >
                 <CameraIcon />
                 Cambiar foto
               </label>
             </div>
 
-            {/* En móvil, "Ajuste" y "Tamaño" van lado a lado (grid de 2
-                columnas) en vez de apilados: así ambos caben en menos alto
-                y quedan visibles junto al mockup, sin scroll, para ver el
-                efecto de cada cambio de inmediato. En desktop (sm+) vuelven
-                a apilarse como antes, sin cambios de comportamiento. */}
-            <FrameTypeSelector frameType={frameType} onChange={handleFrameTypeChange} />
-
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-1 sm:gap-6">
-              <div>
-                <h2 className="mb-3 text-sm font-medium text-[#33456b]">Ajuste</h2>
-                <div className="flex items-center gap-3">
-                  <ZoomOutIcon />
-                  <input
-                    type="range"
-                    min={1}
-                    max={3}
-                    step={0.01}
-                    value={zoom}
-                    onChange={(e) => setZoom(Number(e.target.value))}
-                    onMouseUp={() => isMobile && scrollToCanvasSlowly()}
-                    onTouchEnd={() => isMobile && scrollToCanvasSlowly()}
-                    className="flex-1"
-                  />
-                  <ZoomInIcon />
-                </div>
-                <p className="mt-1.5 text-[11px] text-[#5b6b8c]">
-                  Arrastra la imagen para moverla
-                </p>
-
-                {/* Solo móvil: esta columna queda con bastante espacio
-                    vacío debajo del control de zoom (la columna "Tamaño"
-                    de al lado es más alta, por su lista de tamaños). En
-                    vez de dejarlo en blanco, un segundo texto de ayuda +
-                    el logo como marca de agua sutil. */}
-                <p className="mt-3 text-[11px] text-[#5b6b8c] sm:hidden">
-                  Ajusta con tu dedo la posición del cuadro
-                </p>
-                <div className="mt-4 flex justify-center sm:hidden">
-                  <Image
-                    src="/images/Logo/logo-navbar.png"
-                    alt=""
-                    aria-hidden="true"
-                    width={120}
-                    height={78}
-                    unoptimized
-                    className="h-auto w-24 opacity-30"
-                  />
-                </div>
+            {/* Zoom pegado a la vista en vivo (nov 2026): antes estaba en
+                una columna aparte, debajo, y al usarlo la vista quedaba
+                fuera de pantalla en el celular. */}
+            <div className="w-full max-w-xs sm:max-w-xl">
+              <div className="flex items-center gap-3">
+                <ZoomOutIcon />
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.01}
+                  value={zoom}
+                  aria-label="Zoom de la foto"
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  onMouseUp={revealCanvasIfHidden}
+                  onTouchEnd={revealCanvasIfHidden}
+                  className="flex-1"
+                />
+                <ZoomInIcon />
               </div>
+              <p className="mt-1 text-center text-[11px] text-[#5b6b8c]">
+                Arrastra la foto con el dedo para moverla
+              </p>
+            </div>
 
-              <div>
-                <h2 className="mb-3 text-sm font-medium text-[#33456b]">Tamaño</h2>
-                <FreeShippingBanner />
-                <div className="mt-3 flex flex-col gap-2">
-                  {SIZES.map((size) => {
-                    const heightCm = Number(size.id.split("x")[1]);
-                    const isSelected = size.id === sizeId;
-                    return (
-                      <button
-                        key={size.id}
-                        type="button"
-                        onClick={() => handleSizeChange(size.id)}
-                        className={`flex w-full items-center gap-2 rounded-xl border px-3 py-3 text-left transition-colors sm:gap-3 sm:px-4 sm:py-3 ${
-                          isSelected
-                            ? "border-accent bg-accent/15 shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_20px_rgba(168,85,247,0.25)]"
-                            : "border-black/10 bg-[#fffaf0] hover:border-black/20"
+            {error && <p className="text-sm text-red-400">{error}</p>}
+          </div>
+
+          {/* PANEL DE CONTROL — columna derecha (~35%) */}
+          <div className="flex w-full flex-col gap-5">
+            {/* Orden (nov 2026): tamaños primero, justo debajo de la vista
+                en vivo y el zoom; el tipo de cuadro después. Así, en un
+                celular, la vista y los 5 tamaños caben juntos en pantalla.
+                Tamaños en cuadrícula compacta (pedido de Oscar):
+                antes eran 5 tarjetas apiladas, el scroll se hacía muy largo
+                y la vista en vivo se perdía de pantalla. Ahora son 2 filas
+                (3 + 2) que caben junto a la vista en un celular de 360-390
+                px. El tamaño a escala real sigue en "Así se ve en tu pared"
+                (pantalla "Tu cuadro está listo"). */}
+            <div>
+              <h2 className="mb-2 text-sm font-medium text-[#33456b]">Tamaño</h2>
+              <div className="grid grid-cols-3 gap-1.5 pt-2 sm:gap-2" role="radiogroup" aria-label="Tamaño del cuadro">
+                {SIZES.map((size) => {
+                  const isSelected = size.id === sizeId;
+                  const isRecommended = size.id === RECOMMENDED_SIZE_ID;
+                  return (
+                    <button
+                      key={size.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => {
+                        handleSizeChange(size.id);
+                        requestAnimationFrame(revealCanvasIfHidden);
+                      }}
+                      className={`relative flex min-h-[3.75rem] flex-col items-center justify-center rounded-xl border px-1 py-2 text-center transition-colors ${
+                        isSelected
+                          ? "border-accent bg-accent/15 shadow-[0_0_0_1px_rgba(168,85,247,0.6),0_0_16px_rgba(168,85,247,0.25)]"
+                          : "border-black/10 bg-[#fffaf0] hover:border-black/20"
+                      }`}
+                    >
+                      {isRecommended && (
+                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#7c3aed] px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-white">
+                          Recomendado
+                        </span>
+                      )}
+                      <span className="whitespace-nowrap text-sm font-semibold text-[#1b2a4a]">
+                        {size.label.replace(" cm", "").replace(" x ", "×")}
+                      </span>
+                      <span
+                        className={`whitespace-nowrap text-xs font-bold ${
+                          isSelected ? "text-[#6d28d9]" : "text-[#33456b]"
                         }`}
                       >
-                        <ScaleSilhouette
-                          heightCm={heightCm}
-                          currentColorClass={isSelected ? "text-accent" : "text-[#5b6b8c]"}
-                        />
-                        {/* En móvil la columna de tamaños es angosta (~165px):
-                            el precio va DEBAJO del tamaño — al lado se
-                            cortaba a partir de 360px con precios de 6 cifras
-                            ($149.000, $350.000). Desde sm, al lado como antes. */}
-                        <span className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-                          <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                            <span className={`whitespace-nowrap text-xs sm:text-sm ${isSelected ? "text-[#1b2a4a] font-medium" : "text-[#33456b]"}`}>
-                              {size.label}
-                            </span>
-                            {size.id === RECOMMENDED_SIZE_ID && (
-                              <span className="whitespace-nowrap rounded-full bg-accent/20 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-accent sm:px-2 sm:text-[10px]">
-                                Recomendado
-                              </span>
-                            )}
-                            {/* Con Tradicional elegido, avisa que tocarlo
-                                pasa a Premium (ver handleSizeChange) — el
-                                precio mostrado ya es el Premium. */}
-                            {size.premiumOnly && frameType !== "premium" && (
-                              <span className="whitespace-nowrap text-[9px] font-medium text-[#5b6b8c] sm:text-[10px]">
-                                Solo Premium
-                              </span>
-                            )}
-                          </span>
-                          <span
-                            className={`shrink-0 whitespace-nowrap text-sm font-bold sm:text-lg ${
-                              isSelected ? "text-accent" : "text-[#33456b]"
-                            }`}
-                          >
-                            {formatCOP(getPriceCOP(size.id, frameType))}
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {sizeUpgradeHint(frameType) && (
-                  <p className="mt-2 text-[11px] leading-snug text-[#5b6b8c] sm:text-xs">
-                    💡 {sizeUpgradeHint(frameType)}
-                  </p>
-                )}
+                        {formatCOP(getPriceCOP(size.id, frameType))}
+                      </span>
+                      {/* Con Tradicional elegido, avisa que tocarlo pasa a
+                          Premium (ver handleSizeChange) — el precio mostrado
+                          ya es el Premium. */}
+                      {size.premiumOnly && frameType !== "premium" && (
+                        <span className="text-[10px] font-medium text-[#5b6b8c]">Solo Premium</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
+              <p className="mt-1.5 text-center text-[11px] text-[#5b6b8c]">Medidas en centímetros</p>
+              {/* px-14 en móvil: el botón flotante de chat ocupa la esquina
+                  derecha; el texto centrado con margen nunca queda debajo. */}
+              {sizeUpgradeHint(frameType) && (
+                <p className="mt-2 px-14 text-center text-xs leading-snug text-[#33456b] sm:px-0">
+                  💡 {sizeUpgradeHint(frameType)}
+                </p>
+              )}
             </div>
+
+            <FrameTypeSelector
+              frameType={frameType}
+              onChange={(nextFrameType) => {
+                handleFrameTypeChange(nextFrameType);
+                requestAnimationFrame(revealCanvasIfHidden);
+              }}
+            />
+
+            <FreeShippingBanner />
 
             <button
               type="button"
