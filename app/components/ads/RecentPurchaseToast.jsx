@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import useCrearStage from "../../ads/useCrearStage";
 
 // Ventas REALES confirmadas antes del reset de la base de datos (Redis se
 // reinició, así que completed-orders ya no tiene ese historial en vivo).
@@ -38,6 +39,10 @@ export default function RecentPurchaseToast({ liveSales = [] }) {
   const [entry, setEntry] = useState(null);
   const [visible, setVisible] = useState(false);
   const queueRef = useRef([]);
+  // Mientras el cliente edita su foto (paso "edit") el aviso no se muestra:
+  // en el celular quedaba encima de los tamaños (nov 2026).
+  const { stage } = useCrearStage();
+  const isEditing = stage === "edit";
 
   useEffect(() => {
     // Histórico + en vivo, sin repetir nombres (si un cliente del
@@ -93,7 +98,7 @@ export default function RecentPurchaseToast({ liveSales = [] }) {
   return (
     <div
       className={`fixed bottom-32 left-3 z-40 max-w-[13rem] rounded-xl border border-black/10 bg-white/90 px-3 py-2 shadow-lg backdrop-blur transition-all duration-500 ${
-        visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
+        visible && !isEditing ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"
       }`}
       aria-live="polite"
     >

@@ -98,6 +98,21 @@ export default function ChatWidget() {
 
   const scrollRef = useRef(null);
 
+  // En el editor de la foto (/crear y /ads, paso "edit"), en celular, el
+  // botón flotante tapaba el texto de comparación de tamaños y el botón
+  // "Continuar" (pantallazo de Oscar, nov 2026). Mientras el cliente edita
+  // se oculta; vuelve en la subida de foto, en "Tu cuadro está listo" y en
+  // el resto del sitio. CrearFlow publica el paso con "crearflow:state".
+  // Se guarda junto con la ruta: al cambiar de página el paso viejo deja de
+  // contar solo (sin un setState extra en un efecto).
+  const [crearState, setCrearState] = useState({ stage: null, path: null });
+  useEffect(() => {
+    const onState = (e) => setCrearState({ stage: e.detail?.stage || null, path: window.location.pathname });
+    window.addEventListener("crearflow:state", onState);
+    return () => window.removeEventListener("crearflow:state", onState);
+  }, []);
+  const crearStage = crearState.path === pathname ? crearState.stage : null;
+
   useEffect(() => {
     if (!scrollRef.current) return;
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -268,7 +283,7 @@ export default function ChatWidget() {
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         aria-label={isOpen ? "Cerrar chat" : "Abrir chat"}
-        className={`fixed ${buttonPosition} z-50 flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 text-white shadow-lg shadow-accent/50 transition-transform hover:scale-105`}
+        className={`fixed ${buttonPosition} ${crearStage === "edit" && !isOpen ? "max-sm:hidden" : ""} z-50 flex items-center justify-center rounded-full bg-gradient-to-r from-fuchsia-500 via-accent to-purple-700 text-white shadow-lg shadow-accent/50 transition-transform hover:scale-105`}
       >
         {isOpen ? (
           <span className="text-2xl leading-none">✕</span>
