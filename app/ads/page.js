@@ -14,7 +14,8 @@ import AdsHeroCta from "./AdsHeroCta";
 import AdsFlowBridge from "./AdsFlowBridge";
 import AdsFaq from "./AdsFaq";
 import RealTestimonials from "../components/RealTestimonials";
-import AdsCatalogStrip, { ADS_CATALOG_LIMIT } from "./AdsCatalogStrip";
+import AdsCatalogStrip from "./AdsCatalogStrip";
+import AdsHeroVideo from "./AdsHeroVideo";
 import { WHATSAPP_URL } from "./contacto";
 
 // Landing exclusiva para tráfico pagado de TikTok — un solo scroll, sin
@@ -60,6 +61,11 @@ const EJEMPLOS = [
 // 2026). Versión .webp (~50 KB vs. ~124 KB del .jpg) + preload con
 // prioridad alta para que se pinte antes que cualquier otra imagen.
 const HERO_POSTER = "/images/page-ads/hero-poster.webp";
+
+// Diseños del catálogo que trae /ads (AdsCatalogStrip muestra 4 y el resto
+// al tocar "Ver más"). Vive acá y no en AdsCatalogStrip porque ese es un
+// componente de cliente: una constante importada desde ahí no llega como número.
+const ADS_CATALOG_LIMIT = 12;
 
 // Precio "desde" calculado de app/lib/order.js (no a mano): el más barato
 // de todos los tamaños/tipos — hoy 30x40 Tradicional.
@@ -134,18 +140,11 @@ export default async function AdsLanding({ searchParams }) {
             className="relative mx-auto mt-3 aspect-[4/5] w-64 max-w-full overflow-hidden rounded-2xl border border-black/10 shadow-lg shadow-accent/20"
             style={{ width: "min(16rem, 30svh, 100%)" }}
           >
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="auto"
+            <AdsHeroVideo
               poster={HERO_POSTER}
-              className="h-full w-full object-cover"
-              aria-label="Cuadro personalizado Mystery, animación de muestra"
-            >
-              <source src="/images/page-ads/hero-loop.mp4" type="video/mp4" />
-            </video>
+              src="/images/page-ads/hero-loop.mp4"
+              label="Cuadro personalizado Mystery, animación de muestra"
+            />
           </div>
 
           <div id="ads-hero-cta" className="mx-auto mt-4 max-w-sm">
