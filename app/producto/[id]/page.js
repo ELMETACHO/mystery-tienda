@@ -235,12 +235,12 @@ export default async function ProductPage({ params }) {
           sizes="(min-width: 1152px) 528px, (min-width: 768px) 46vw, (min-width: 640px) 448px, 100vw"
         />
 
-        {/* "Así se ve en tu pared": reutiliza la misma miniatura ?w=900 que
+        {/* "Así se ve en tu pared": reutiliza la misma miniatura ?w=750 que
             ya cargó la página (sin descarga nueva) y recorta el diseño del
             centro del mockup — /estudio siempre lo pone centrado al 58% del
             ancho en 4:5 (DESIGN_WIDTH_RATIO en EstudioApp.jsx). */}
         <WallVisualizerButton
-          imageSrc={`/api/catalog-thumbnail/${product.mockupFileId}?w=900`}
+          imageSrc={`/api/catalog-thumbnail/${product.mockupFileId}?w=750`}
           crop={MOCKUP_DESIGN_CROP}
           imageRatio={40 / 50}
           sizes={CATALOG_SIZES.map((s) => ({ id: s.id, label: s.label }))}

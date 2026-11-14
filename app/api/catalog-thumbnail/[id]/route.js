@@ -32,7 +32,7 @@ import { downloadFileBuffer } from "../../../lib/googleDrive";
 // no multiplicar las variantes cacheadas. SIN `w` la respuesta es
 // exactamente la de siempre (PNG original) — así /fabricante, /ads y
 // cualquier uso existente no cambian.
-const ALLOWED_WIDTHS = new Set([320, 480, 640, 900, 1200]);
+const ALLOWED_WIDTHS = new Set([320, 480, 640, 750, 900, 1200]);
 
 async function resizeImage(buffer, width, format) {
   // Import dinámico: sharp ya viene con Next (optimizador de imágenes). Si
