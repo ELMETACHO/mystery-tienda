@@ -46,13 +46,13 @@ const GENERIC_GALLERY = [
 ];
 
 export function getProductGalleryImages(product, mainAlt) {
-  const main = `/api/catalog-thumbnail/${product.mockupFileId}?w=900`;
+  const main = `/api/catalog-thumbnail/${product.mockupFileId}?w=750`;
   const own = Array.isArray(product.galleryImages)
     ? product.galleryImages
         .filter((img) => img && typeof img.fileId === "string" && img.fileId)
         .slice(0, 6)
         .map((img) => ({
-          src: `/api/catalog-thumbnail/${img.fileId}?w=900`,
+          src: `/api/catalog-thumbnail/${img.fileId}?w=750`,
           thumb: `/api/catalog-thumbnail/${img.fileId}?w=320`,
           kind: GALLERY_KINDS[img.kind] ? img.kind : "pared",
           alt: img.alt || `${mainAlt} — ${GALLERY_KINDS[img.kind] || "foto real"}`,
@@ -60,7 +60,7 @@ export function getProductGalleryImages(product, mainAlt) {
         }))
     : [];
   return [
-    // La miniatura del diseño reutiliza la misma URL ?w=900 que ya cargó la
+    // La miniatura del diseño reutiliza la misma URL ?w=750 que ya cargó la
     // foto principal (sin descarga extra).
     { src: main, thumb: main, kind: "diseno", alt: mainAlt, caption: null },
     ...own,
