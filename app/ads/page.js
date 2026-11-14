@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import Image from "next/image";
-import { preload } from "react-dom";
 import { getRecentProducts } from "../lib/catalog";
 import { getRecentSalesForToast } from "../lib/completedOrders";
 import { PRICES, formatCOP } from "../lib/order";
@@ -58,8 +57,9 @@ const EJEMPLOS = [
 ];
 
 // Póster del video del hero = elemento LCP de la página (Lighthouse, oct
-// 2026). Versión .webp (~50 KB vs. ~124 KB del .jpg) + preload con
-// prioridad alta para que se pinte antes que cualquier otra imagen.
+// 2026). WebP de 512 px (~33 KB; se muestra a 256 px CSS). La precarga con
+// prioridad alta la pone AdsHeroVideo (next/image con priority): un
+// preload() manual aquí hacía que el navegador lo bajara dos veces.
 const HERO_POSTER = "/images/page-ads/hero-poster.webp";
 
 // Diseños del catálogo que trae /ads (AdsCatalogStrip muestra 4 y el resto
@@ -74,8 +74,6 @@ const DESDE_COP = Math.min(
 );
 
 export default async function AdsLanding({ searchParams }) {
-  preload(HERO_POSTER, { as: "image", fetchPriority: "high" });
-
   const params = (await searchParams) || {};
   const temporada = resolverTemporada(params);
 
