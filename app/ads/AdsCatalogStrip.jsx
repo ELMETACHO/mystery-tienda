@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
 import Link from "next/link";
 import { categoryLabel, catalogThumbnailSrc } from "../components/ProductGrid";
 import { SIZES, getPriceCOP, formatCOP } from "../lib/order";
@@ -17,14 +20,20 @@ const DESDE_COP = getPriceCOP(SIZES[0].id, "tradicional");
 // `unoptimized`: no pasa por el optimizador de Vercel (cuota limitada).
 // Se cargan en diferido (lazy, comportamiento por defecto de next/image),
 // solo cuando el cliente baja hasta acá.
-export const ADS_CATALOG_LIMIT = 12;
+//
+// nov 2026: aun con lazy, el celular bajaba las 12 miniaturas apenas abría
+// /ads (la fila está a ~2 pantallas y Chrome precarga con margen). Ahora
+// muestra INICIALES y el resto llega al tocar "Ver más diseños".
+const INICIALES = 4;
 
 export default function AdsCatalogStrip({ items }) {
+  const [visibles, setVisibles] = useState(INICIALES);
   if (!items?.length) return null;
+  const faltan = items.length - Math.min(visibles, items.length);
 
   return (
     <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
-      {items.map((item) => {
+      {items.slice(0, visibles).map((item) => {
         const name = item.name ? `Cuadro ${item.name}` : `Cuadro ${categoryLabel(item.category)}`;
         return (
           <Link
@@ -54,6 +63,17 @@ export default function AdsCatalogStrip({ items }) {
           </Link>
         );
       })}
+      {faltan > 0 && (
+        <button
+          type="button"
+          onClick={() => setVisibles(items.length)}
+          className="flex w-40 shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-2xl border border-accent/30 bg-[#fffaf0] text-sm font-semibold text-accent shadow-[0_10px_25px_-12px_rgba(30,20,60,0.3)]"
+        >
+          <span aria-hidden="true" className="text-2xl leading-none">+</span>
+          Ver más diseños
+          <span className="text-xs font-normal opacity-70">{faltan} más</span>
+        </button>
+      )}
     </div>
   );
 }
